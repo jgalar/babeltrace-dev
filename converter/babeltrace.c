@@ -546,25 +546,33 @@ static
 int trace_pre_handler(struct bt_trace_descriptor *td_write,
 		  struct bt_context *ctx)
 {
-	struct ctf_text_stream_pos *sout;
-	struct trace_collection *tc;
 	int ret, i;
+	struct trace_collection *tc = ctx->tc;
+	const GPtrArray *out_streams = bt_trace_descriptor_get_stream_pos(td_write);
 
-	sout = container_of(td_write, struct ctf_text_stream_pos,
-			trace_descriptor);
+	if (!out_streams) {
+		ret = -1;
+		goto end;
+	}
 
-	if (!sout->parent.pre_trace_cb)
-		return 0;
-
-	tc = ctx->tc;
 	for (i = 0; i < tc->array->len; i++) {
-		struct bt_trace_descriptor *td =
+		int sout_nr;
+		struct bt_trace_descriptor *in_descriptor =
 			g_ptr_array_index(tc->array, i);
 
-		ret = sout->parent.pre_trace_cb(&sout->parent, td);
-		if (ret) {
-			fprintf(stderr, "[error] Writing to trace pre handler failed.\n");
-			goto end;
+		for (sout_nr = 0; sout_nr < out_streams->len; ++sout_nr) {
+			struct bt_stream_pos *sout =
+				g_ptr_array_index(out_streams, sout_nr);
+
+			if (!sout->pre_trace_cb) {
+				continue;
+			}
+
+			ret = sout->pre_trace_cb(sout, in_descriptor);
+			if (ret) {
+				fprintf(stderr, "[error] Writing to trace pre handler failed.\n");
+				goto end;
+			}
 		}
 	}
 	ret = 0;
@@ -576,25 +584,28 @@ static
 int trace_post_handler(struct bt_trace_descriptor *td_write,
 		  struct bt_context *ctx)
 {
-	struct ctf_text_stream_pos *sout;
-	struct trace_collection *tc;
 	int ret, i;
+	struct trace_collection *tc = ctx->tc;
+	const GPtrArray *out_streams = bt_trace_descriptor_get_stream_pos(td_write);
 
-	sout = container_of(td_write, struct ctf_text_stream_pos,
-			trace_descriptor);
-
-	if (!sout->parent.post_trace_cb)
-		return 0;
-
-	tc = ctx->tc;
 	for (i = 0; i < tc->array->len; i++) {
-		struct bt_trace_descriptor *td =
+		int sout_nr;
+		struct bt_trace_descriptor *in_descriptor =
 			g_ptr_array_index(tc->array, i);
 
-		ret = sout->parent.post_trace_cb(&sout->parent, td);
-		if (ret) {
-			fprintf(stderr, "[error] Writing to trace post handler failed.\n");
-			goto end;
+		for (sout_nr = 0; sout_nr < out_streams->len; ++sout_nr) {
+			struct bt_stream_pos *sout =
+				g_ptr_array_index(out_streams, sout_nr);
+
+			if (!sout->pre_trace_cb) {
+				continue;
+			}
+
+			ret = sout->post_trace_cb(sout, in_descriptor);
+			if (ret) {
+				fprintf(stderr, "[error] Writing to trace post handler failed.\n");
+				goto end;
+			}
 		}
 	}
 	ret = 0;
@@ -607,16 +618,10 @@ int convert_trace(struct bt_trace_descriptor *td_write,
 		  struct bt_context *ctx)
 {
 	struct bt_ctf_iter *iter;
-	struct ctf_text_stream_pos *sout;
 	struct bt_iter_pos begin_pos;
 	struct bt_ctf_event *ctf_event;
 	int ret;
-
-	sout = container_of(td_write, struct ctf_text_stream_pos,
-			trace_descriptor);
-
-	if (!sout->parent.event_cb)
-		return 0;
+	const GPtrArray *out_streams = bt_trace_descriptor_get_stream_pos(td_write);
 
 	begin_pos.type = BT_SEEK_BEGIN;
 	iter = bt_ctf_iter_create(ctx, &begin_pos, NULL);
@@ -625,14 +630,23 @@ int convert_trace(struct bt_trace_descriptor *td_write,
 		goto error_iter;
 	}
 	while ((ctf_event = bt_ctf_iter_read_event(iter))) {
-		ret = sout->parent.event_cb(&sout->parent, ctf_event->parent->stream);
-		if (ret) {
-			fprintf(stderr, "[error] Writing event failed.\n");
-			goto end;
+		int sout_nr;
+		for (sout_nr = 0; sout_nr < out_streams->len; ++sout_nr) {
+			struct bt_stream_pos *sout =
+				g_ptr_array_index(out_streams, sout_nr);
+			if (!sout->event_cb) {
+				continue;
+			}
+			ret = sout->event_cb(sout, ctf_event->parent->stream);
+			if (ret) {
+				fprintf(stderr, "[error] Writing event failed.\n");
+				goto end;
+			}
 		}
 		ret = bt_iter_next(bt_ctf_get_iter(iter));
-		if (ret < 0)
+		if (ret < 0) {
 			goto end;
+		}
 	}
 	ret = 0;
 

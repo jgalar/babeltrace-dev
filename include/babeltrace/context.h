@@ -33,6 +33,7 @@
 
 #include <unistd.h>
 #include <babeltrace/format.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {

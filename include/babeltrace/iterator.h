@@ -27,6 +27,7 @@
 
 #include <babeltrace/format.h>
 #include <babeltrace/context.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -125,6 +126,7 @@ struct bt_iter_pos *bt_iter_create_time_pos(struct bt_iter *iter,
 		uint64_t timestamp);
 
 void bt_ptr_iter_destroy(struct bt_ptr_iter *iter);
+
 struct bt_stream_pos *bt_ptr_iter_get_next_stream_pos(struct bt_ptr_iter *iter);
 
 #ifdef __cplusplus
