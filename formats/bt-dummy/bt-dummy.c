@@ -55,6 +55,8 @@ struct bt_trace_descriptor *bt_dummy_open_trace(const char *path, int flags,
 	pos->parent.rw_table = NULL;
 	pos->parent.event_cb = bt_dummy_write_event;
 	pos->parent.trace = &pos->trace_descriptor;
+	pos->trace_descriptor.stream_pos = g_ptr_array_sized_new(1);
+	g_ptr_array_add(pos->trace_descriptor.stream_pos, pos);
 	return &pos->trace_descriptor;
 }
 
@@ -64,6 +66,7 @@ int bt_dummy_close_trace(struct bt_trace_descriptor *td)
 	struct ctf_text_stream_pos *pos =
 		container_of(td, struct ctf_text_stream_pos,
 			trace_descriptor);
+	g_ptr_array_free(td->stream_pos, TRUE);
 	free(pos);
 	return 0;
 }

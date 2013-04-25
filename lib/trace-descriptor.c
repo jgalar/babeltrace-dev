@@ -1,14 +1,11 @@
-#ifndef _BABELTRACE_FORMAT_INTERNAL_H
-#define _BABELTRACE_FORMAT_INTERNAL_H
-
 /*
- * BabelTrace
+ * trace-descriptor.c
  *
- * Trace Format Internal Header
+ * Babeltrace Library
  *
- * Copyright 2010-2013 EfficiOS Inc. and Linux Foundation
+ * Copyright 2013 EfficiOS Inc. and Linux Foundation
  *
- * Author: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * Author: Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,26 +26,17 @@
  * SOFTWARE.
  */
 
-#include <limits.h>
-#include <babeltrace/context-internal.h>
-#include <babeltrace/babeltrace-internal.h>
+#include <babeltrace/trace-descriptor-internal.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/* Parent trace descriptor */
-struct bt_trace_descriptor {
-	char path[PATH_MAX];		/* trace path */
-	struct bt_context *ctx;
-	struct bt_trace_handle *handle;
-	struct trace_collection *collection;	/* Container of this trace */
-	GHashTable *clocks;
-	struct ctf_clock *single_clock;		/* currently supports only one clock */
-};
-
-#ifdef __cplusplus
+const GPtrArray *bt_trace_descriptor_get_stream_pos(
+	const struct bt_trace_descriptor *descriptor)
+{
+	const GPtrArray *ret;
+	if (!descriptor) {
+		ret = NULL;
+		goto end;
+	}
+	ret = descriptor->stream_pos;
+end:
+	return ret;
 }
-#endif
-
-#endif /* _BABELTRACE_FORMAT_INTERNAL_H */

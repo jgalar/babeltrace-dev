@@ -1728,9 +1728,10 @@ int ctf_open_file_stream_read(struct ctf_trace *td, const char *path, int flags,
 		fprintf(stderr, "[error] Stream index creation error.\n");
 		goto error_index;
 	}
-	/* Add stream file to stream class */
+	/* Add stream file to stream class and trace descriptor */
 	g_ptr_array_add(file_stream->parent.stream_class->streams,
 			&file_stream->parent);
+	g_ptr_array_add(td->parent.stream_pos, &file_stream->pos.parent);
 	return 0;
 
 error_index:
@@ -1864,6 +1865,7 @@ struct bt_trace_descriptor *ctf_open_trace(const char *path, int flags,
 		packet_seek = ctf_packet_seek;
 
 	td = g_new0(struct ctf_trace, 1);
+	td->parent.stream_pos = g_ptr_array_new();
 
 	switch (flags & O_ACCMODE) {
 	case O_RDONLY:
@@ -1871,7 +1873,8 @@ struct bt_trace_descriptor *ctf_open_trace(const char *path, int flags,
 			fprintf(stderr, "[error] Path missing for input CTF trace.\n");
 			goto error;
 		}
-		ret = ctf_open_trace_read(td, path, flags, packet_seek, metadata_fp);
+		ret = ctf_open_trace_read(td, path, flags, packet_seek,
+					metadata_fp);
 		if (ret)
 			goto error;
 		break;
@@ -1885,6 +1888,7 @@ struct bt_trace_descriptor *ctf_open_trace(const char *path, int flags,
 
 	return &td->parent;
 error:
+	g_ptr_array_free(td->parent.stream_pos, TRUE);
 	g_free(td);
 	return NULL;
 }
@@ -1967,9 +1971,10 @@ int ctf_open_mmap_stream_read(struct ctf_trace *td,
 	 */
 	file_stream->parent.current_clock = td->parent.single_clock;
 
-	/* Add stream file to stream class */
+	/* Add stream file to stream class and trace descriptor */
 	g_ptr_array_add(file_stream->parent.stream_class->streams,
 			&file_stream->parent);
+	g_ptr_array_add(td->parent.stream_pos, &file_stream->pos.parent);
 	return 0;
 
 error_index:

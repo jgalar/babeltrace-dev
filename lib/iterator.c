@@ -805,3 +805,43 @@ int bt_iter_next(struct bt_iter *iter)
 end:
 	return ret;
 }
+
+struct bt_ptr_iter *bt_ptr_iter_create(GPtrArray *array)
+{
+	struct bt_ptr_iter *iter = NULL;
+
+	if (!array) {
+		goto end;
+	}
+	iter = g_new0(struct bt_ptr_iter, 1);
+	if (iter) {
+		iter->array = array;
+	}
+end:
+	return iter;
+}
+
+void *bt_ptr_iter_get_next(struct bt_ptr_iter *iter)
+{
+	void *elem = NULL;
+
+	if (!iter) {
+		goto end;
+	}
+	assert(iter->array);
+	if (iter->index < iter->array->len) {
+		elem = g_ptr_array_index(iter->array, iter->index++);
+	}
+end:
+	return elem;
+}
+
+struct bt_stream_pos *bt_ptr_iter_get_next_stream_pos(struct bt_ptr_iter *iter)
+{
+	return (struct bt_stream_pos*)bt_ptr_iter_get_next(iter);
+}
+
+void bt_ptr_iter_destroy(struct bt_ptr_iter *iter)
+{
+	g_free(iter);
+}

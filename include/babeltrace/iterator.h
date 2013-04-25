@@ -40,6 +40,7 @@ enum {
 /* Forward declarations */
 struct bt_iter;
 struct bt_saved_pos;
+struct bt_ptr_iter;
 
 /*
  * bt_iter is an abstract class, each format has to implement its own
@@ -122,6 +123,9 @@ int bt_iter_set_pos(struct bt_iter *iter, const struct bt_iter_pos *pos);
  */
 struct bt_iter_pos *bt_iter_create_time_pos(struct bt_iter *iter,
 		uint64_t timestamp);
+
+void bt_ptr_iter_destroy(struct bt_ptr_iter *iter);
+struct bt_stream_pos *bt_ptr_iter_get_next_stream_pos(struct bt_ptr_iter *iter);
 
 #ifdef __cplusplus
 }

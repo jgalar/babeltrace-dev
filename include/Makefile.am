@@ -5,7 +5,8 @@ babeltraceinclude_HEADERS = \
 	babeltrace/iterator.h \
 	babeltrace/trace-handle.h \
 	babeltrace/list.h \
-	babeltrace/clock-types.h
+	babeltrace/clock-types.h \
+	babeltrace/trace-descriptor.h
 
 babeltracectfinclude_HEADERS = \
 	babeltrace/ctf/events.h \
@@ -19,7 +20,7 @@ noinst_HEADERS = \
 	babeltrace/clock-internal.h \
 	babeltrace/compiler.h \
 	babeltrace/context-internal.h \
-	babeltrace/format-internal.h \
+	babeltrace/trace-descriptor-internal.h \
 	babeltrace/iterator-internal.h \
 	babeltrace/trace-collection.h \
 	babeltrace/prio_heap.h \

@@ -562,6 +562,8 @@ struct bt_trace_descriptor *ctf_text_open_trace(const char *path, int flags,
 		pos->parent.rw_table = write_dispatch_table;
 		pos->parent.event_cb = ctf_text_write_event;
 		pos->parent.trace = &pos->trace_descriptor;
+		pos->trace_descriptor.stream_pos = g_ptr_array_sized_new(1);
+		g_ptr_array_add(pos->trace_descriptor.stream_pos, pos);
 		pos->print_names = 0;
 		break;
 	case O_RDONLY:
@@ -582,6 +584,7 @@ int ctf_text_close_trace(struct bt_trace_descriptor *td)
 	int ret;
 	struct ctf_text_stream_pos *pos =
 		container_of(td, struct ctf_text_stream_pos, trace_descriptor);
+	g_ptr_array_free(td->stream_pos, TRUE);
 	if (pos->fp != stdout) {
 		ret = fclose(pos->fp);
 		if (ret) {

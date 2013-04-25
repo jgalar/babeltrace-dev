@@ -29,7 +29,7 @@
 
 #include <babeltrace/types.h>
 #include <babeltrace/format.h>
-#include <babeltrace/format-internal.h>
+#include <babeltrace/trace-descriptor-internal.h>
 #include <babeltrace/ctf/types.h>
 #include <sys/types.h>
 #include <dirent.h>

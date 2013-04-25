@@ -9,7 +9,8 @@ libbabeltrace_la_SOURCES = babeltrace.c \
 			   context.c \
 			   trace-handle.c \
 			   trace-collection.c \
-			   registry.c
+			   registry.c \
+			   trace-descriptor.c
 
 libbabeltrace_la_LDFLAGS = \
 	-Wl,--no-as-needed \

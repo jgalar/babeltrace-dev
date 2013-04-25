@@ -30,6 +30,7 @@
  */
 
 #include <babeltrace/ctf/events.h>
+#include <babeltrace/iterator.h>
 
 /*
  * struct bt_iter: data structure representing an iterator on a trace
@@ -67,5 +68,13 @@ int bt_iter_init(struct bt_iter *iter,
 		const struct bt_iter_pos *begin_pos,
 		const struct bt_iter_pos *end_pos);
 void bt_iter_fini(struct bt_iter *iter);
+
+struct bt_ptr_iter {
+	GPtrArray *array;
+	int index;
+};
+
+struct bt_ptr_iter *bt_ptr_iter_create(GPtrArray *array);
+void *bt_ptr_iter_get(struct bt_ptr_iter *iter);
 
 #endif /* _BABELTRACE_ITERATOR_INTERNAL_H */

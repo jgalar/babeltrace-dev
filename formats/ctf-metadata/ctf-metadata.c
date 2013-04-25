@@ -96,6 +96,8 @@ struct bt_trace_descriptor *ctf_metadata_open_trace(const char *path, int flags,
 		pos->fp = fp;
 		pos->parent.pre_trace_cb = ctf_metadata_trace_pre_handler;
 		pos->parent.trace = &pos->trace_descriptor;
+		pos->trace_descriptor.stream_pos = g_ptr_array_sized_new(1);
+		g_ptr_array_add(pos->trace_descriptor.stream_pos, pos);
 		pos->print_names = 0;
 		break;
 	case O_RDONLY:
@@ -116,6 +118,7 @@ int ctf_metadata_close_trace(struct bt_trace_descriptor *td)
 	int ret;
 	struct ctf_text_stream_pos *pos =
 		container_of(td, struct ctf_text_stream_pos, trace_descriptor);
+	g_ptr_array_free(td->stream_pos, TRUE);
 	if (pos->fp != stdout) {
 		ret = fclose(pos->fp);
 		if (ret) {
