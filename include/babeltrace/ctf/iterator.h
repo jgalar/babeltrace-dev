@@ -59,7 +59,7 @@ struct bt_ctf_event;
  * will return NULL. The previous iterator must be destroyed before
  * creation of the new iterator for this function to succeed.
  */
-struct bt_ctf_iter *bt_ctf_iter_create(struct bt_context *ctx,
+struct bt_iter *bt_ctf_iter_create(struct bt_context *ctx,
 		const struct bt_iter_pos *begin_pos,
 		const struct bt_iter_pos *end_pos);
 
@@ -71,7 +71,7 @@ struct bt_iter *bt_ctf_get_iter(struct bt_ctf_iter *iter);
 /*
  * bt_ctf_iter_destroy - Free a CTF trace collection iterator.
  */
-void bt_ctf_iter_destroy(struct bt_ctf_iter *iter);
+void bt_ctf_iter_destroy(struct bt_iter *iter);
 
 /*
  * bt_ctf_iter_read_event: Read the iterator's current event data.
@@ -80,7 +80,7 @@ void bt_ctf_iter_destroy(struct bt_ctf_iter *iter);
  *
  * Return current event on success, NULL on end of trace.
  */
-struct bt_ctf_event *bt_ctf_iter_read_event(struct bt_ctf_iter *iter);
+struct bt_ctf_event *bt_ctf_iter_read_event(struct bt_iter *iter);
 
 /*
  * bt_ctf_iter_read_event_flags: Read the iterator's current event data.

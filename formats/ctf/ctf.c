@@ -29,6 +29,7 @@
 #include <babeltrace/format.h>
 #include <babeltrace/ctf/types.h>
 #include <babeltrace/ctf/metadata.h>
+#include <babeltrace/ctf/iterator.h>
 #include <babeltrace/babeltrace-internal.h>
 #include <babeltrace/ctf/events-internal.h>
 #include <babeltrace/trace-handle-internal.h>
@@ -144,6 +145,8 @@ struct bt_format ctf_format = {
 	.timestamp_begin = ctf_timestamp_begin,
 	.timestamp_end = ctf_timestamp_end,
 	.convert_index_timestamp = ctf_convert_index_timestamp,
+	.iterator_create = bt_ctf_iter_create,
+	.iterator_destroy = bt_ctf_iter_destroy
 };
 
 static

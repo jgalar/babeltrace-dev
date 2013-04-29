@@ -42,6 +42,7 @@ enum {
 struct bt_iter;
 struct bt_saved_pos;
 struct bt_ptr_iter;
+struct bt_ctf_event;
 
 /*
  * bt_iter is an abstract class, each format has to implement its own
@@ -128,6 +129,15 @@ struct bt_iter_pos *bt_iter_create_time_pos(struct bt_iter *iter,
 void bt_ptr_iter_destroy(struct bt_ptr_iter *iter);
 
 struct bt_stream_pos *bt_ptr_iter_get_next_stream_pos(struct bt_ptr_iter *iter);
+
+/*
+ * bt_iter_get_event: Get the iterator's current event data
+ *
+ * @iter trace collection iterator (input). Should not be NULL.
+ *
+ * Return current event on success, NULL on end of trace.
+ */
+struct bt_ctf_event *bt_iter_get_event(struct bt_iter *iter);
 
 #ifdef __cplusplus
 }

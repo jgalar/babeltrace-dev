@@ -45,6 +45,9 @@ typedef int bt_intern_str;
 struct bt_stream_pos;
 struct bt_context;
 struct bt_trace_handle;
+struct bt_trace_descriptor;
+struct bt_iter;
+struct bt_iter_pos;
 
 struct bt_mmap_stream {
 	int fd;
@@ -77,6 +80,17 @@ struct bt_format {
 	uint64_t (*timestamp_end)(struct bt_trace_descriptor *descriptor,
 			struct bt_trace_handle *handle, enum bt_clock_type type);
 	int (*convert_index_timestamp)(struct bt_trace_descriptor *descriptor);
+
+	/*
+	 * Only one iterator can be created against a context. If more than one
+	 * iterator is being created for the same context, the second creation
+	 * will return NULL. The previous iterator must be destroyed before
+	 * creation of the new iterator for this function to succeed.
+	 */
+	struct bt_iter *(*iterator_create)(struct bt_context *ctx,
+			const struct bt_iter_pos *begin_pos,
+			const struct bt_iter_pos *end_pos);
+	void (*iterator_destroy)(struct bt_iter *iterator);
 };
 
 extern struct bt_format *bt_lookup_format(bt_intern_str qname);

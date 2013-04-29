@@ -845,3 +845,17 @@ void bt_ptr_iter_destroy(struct bt_ptr_iter *iter)
 {
 	g_free(iter);
 }
+
+struct bt_ctf_event *bt_iter_get_event(struct bt_iter *iter)
+{
+	struct bt_ctf_event *event;
+	if (!iter->get_event) {
+		event = NULL;
+		fprintf(stderr, "[error] No get_event callback registered by the output plug-in.\n");
+		goto end;
+	}
+	event = iter->get_event(iter);
+
+end:
+	return event;
+}

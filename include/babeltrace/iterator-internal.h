@@ -40,6 +40,7 @@ struct bt_iter {
 	struct ptr_heap *stream_heap;
 	struct bt_context *ctx;
 	const struct bt_iter_pos *end_pos;
+	struct bt_ctf_event *(*get_event)(struct bt_iter *iter);
 };
 
 /*

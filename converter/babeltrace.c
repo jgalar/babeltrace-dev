@@ -617,19 +617,19 @@ static
 int convert_trace(struct bt_trace_descriptor *td_write,
 		  struct bt_context *ctx)
 {
-	struct bt_ctf_iter *iter;
+	struct bt_iter *iter;
 	struct bt_iter_pos begin_pos;
 	struct bt_ctf_event *ctf_event;
 	int ret;
 	const GPtrArray *out_streams = bt_trace_descriptor_get_stream_pos(td_write);
 
 	begin_pos.type = BT_SEEK_BEGIN;
-	iter = bt_ctf_iter_create(ctx, &begin_pos, NULL);
+	iter = bt_context_create_iterator(ctx, &begin_pos, NULL);
 	if (!iter) {
 		ret = -1;
 		goto error_iter;
 	}
-	while ((ctf_event = bt_ctf_iter_read_event(iter))) {
+	while ((ctf_event = bt_iter_get_event(iter))) {
 		int sout_nr;
 		for (sout_nr = 0; sout_nr < out_streams->len; ++sout_nr) {
 			struct bt_stream_pos *sout =
@@ -643,7 +643,7 @@ int convert_trace(struct bt_trace_descriptor *td_write,
 				goto end;
 			}
 		}
-		ret = bt_iter_next(bt_ctf_get_iter(iter));
+		ret = bt_iter_next(iter);
 		if (ret < 0) {
 			goto end;
 		}
@@ -651,7 +651,7 @@ int convert_trace(struct bt_trace_descriptor *td_write,
 	ret = 0;
 
 end:
-	bt_ctf_iter_destroy(iter);
+	bt_context_destroy_iterator(ctx, iter);
 error_iter:
 	return ret;
 }

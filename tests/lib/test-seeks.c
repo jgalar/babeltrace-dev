@@ -37,7 +37,7 @@
 void run_seek_begin(char *path, uint64_t expected_begin)
 {
 	struct bt_context *ctx;
-	struct bt_ctf_iter *iter;
+	struct bt_iter *iter;
 	struct bt_ctf_event *event;
 	struct bt_iter_pos newpos;
 	int ret;
@@ -51,12 +51,12 @@ void run_seek_begin(char *path, uint64_t expected_begin)
 	}
 
 	/* Create iterator with null begin and end */
-	iter = bt_ctf_iter_create(ctx, NULL, NULL);
+	iter = bt_context_create_iterator(ctx, NULL, NULL);
 	if (!iter) {
 		plan_skip_all("Cannot create valid iterator");
 	}
 
-	event = bt_ctf_iter_read_event(iter);
+	event = bt_iter_get_event(iter);
 
 	ok(event, "Event valid");
 
@@ -67,7 +67,7 @@ void run_seek_begin(char *path, uint64_t expected_begin)
 
 	/* Validate that we get the same value after a seek begin */
 	newpos.type = BT_SEEK_BEGIN;
-	ret = bt_iter_set_pos(bt_ctf_get_iter(iter), &newpos);
+	ret = bt_iter_set_pos(iter, &newpos);
 
 	ok(ret == 0, "Seek begin retval %d", ret);
 
@@ -86,7 +86,7 @@ void run_seek_begin(char *path, uint64_t expected_begin)
 void run_seek_last(char *path, uint64_t expected_last)
 {
 	struct bt_context *ctx;
-	struct bt_ctf_iter *iter;
+	struct bt_iter *iter;
 	struct bt_ctf_event *event;
 	struct bt_iter_pos newpos;
 	int ret;
@@ -99,18 +99,18 @@ void run_seek_last(char *path, uint64_t expected_last)
 	}
 
 	/* Create iterator with null last and end */
-	iter = bt_ctf_iter_create(ctx, NULL, NULL);
+	iter = bt_context_create_iterator(ctx, NULL, NULL);
 	if (!iter) {
 		plan_skip_all("Cannot create valid iterator");
 	}
 
-	event = bt_ctf_iter_read_event(iter);
+	event = bt_iter_get_event(iter);
 
 	ok(event, "Event valid at beginning");
 
 	/* Seek to last */
 	newpos.type = BT_SEEK_LAST;
-	ret = bt_iter_set_pos(bt_ctf_get_iter(iter), &newpos);
+	ret = bt_iter_set_pos(iter, &newpos);
 
 	ok(ret == 0, "Seek last retval %d", ret);
 
@@ -123,11 +123,11 @@ void run_seek_last(char *path, uint64_t expected_last)
 	ok1(timestamp_last == expected_last);
 
 	/* Try to read next event */
-	ret = bt_iter_next(bt_ctf_get_iter(iter));
+	ret = bt_iter_next(iter);
 
 	ok(ret == 0, "iter next should return an error");
 
-	event = bt_ctf_iter_read_event(iter);
+	event = bt_iter_get_event(iter);
 
 	ok(event == 0, "Event after last should be invalid");
 
@@ -139,7 +139,7 @@ void run_seek_cycles(char *path,
 		uint64_t expected_last)
 {
 	struct bt_context *ctx;
-	struct bt_ctf_iter *iter;
+	struct bt_iter *iter;
 	struct bt_ctf_event *event;
 	struct bt_iter_pos newpos;
 	int ret;
@@ -152,22 +152,22 @@ void run_seek_cycles(char *path,
 	}
 
 	/* Create iterator with null last and end */
-	iter = bt_ctf_iter_create(ctx, NULL, NULL);
+	iter = bt_context_create_iterator(ctx, NULL, NULL);
 	if (!iter) {
 		plan_skip_all("Cannot create valid iterator");
 	}
 
-	event = bt_ctf_iter_read_event(iter);
+	event = bt_iter_get_event(iter);
 
 	ok(event, "Event valid at beginning");
 
 	/* Seek to last */
 	newpos.type = BT_SEEK_LAST;
-	ret = bt_iter_set_pos(bt_ctf_get_iter(iter), &newpos);
+	ret = bt_iter_set_pos(iter, &newpos);
 
 	ok(ret == 0, "Seek last retval %d", ret);
 
-	event = bt_ctf_iter_read_event(iter);
+	event = bt_iter_get_event(iter);
 
 	ok(event, "Event valid at last position");
 
@@ -176,21 +176,21 @@ void run_seek_cycles(char *path,
 	ok1(timestamp == expected_last);
 
 	/* Try to read next event */
-	ret = bt_iter_next(bt_ctf_get_iter(iter));
+	ret = bt_iter_next(iter);
 
 	ok(ret == 0, "iter next should return an error");
 
-	event = bt_ctf_iter_read_event(iter);
+	event = bt_iter_get_event(iter);
 
 	ok(event == 0, "Event after last should be invalid");
 
 	/* Seek to BEGIN */
 	newpos.type = BT_SEEK_BEGIN;
-	ret = bt_iter_set_pos(bt_ctf_get_iter(iter), &newpos);
+	ret = bt_iter_set_pos(iter, &newpos);
 
 	ok(ret == 0, "Seek begin retval %d", ret);
 
-	event = bt_ctf_iter_read_event(iter);
+	event = bt_iter_get_event(iter);
 
 	ok(event, "Event valid at first position");
 
@@ -200,11 +200,11 @@ void run_seek_cycles(char *path,
 
 	/* Seek last again */
 	newpos.type = BT_SEEK_LAST;
-	ret = bt_iter_set_pos(bt_ctf_get_iter(iter), &newpos);
+	ret = bt_iter_set_pos(iter, &newpos);
 
 	ok(ret == 0, "Seek last retval %d", ret);
 
-	event = bt_ctf_iter_read_event(iter);
+	event = bt_iter_get_event(iter);
 
 	ok(event, "Event valid at last position");
 

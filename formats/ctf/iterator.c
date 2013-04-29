@@ -30,6 +30,7 @@
 #include <babeltrace/babeltrace.h>
 #include <babeltrace/format.h>
 #include <babeltrace/ctf/events.h>
+#include <babeltrace/ctf/iterator.h>
 #include <babeltrace/ctf-ir/metadata.h>
 #include <babeltrace/prio_heap.h>
 #include <babeltrace/iterator-internal.h>
@@ -39,7 +40,7 @@
 
 #include "events-private.h"
 
-struct bt_ctf_iter *bt_ctf_iter_create(struct bt_context *ctx,
+struct bt_iter *bt_ctf_iter_create(struct bt_context *ctx,
 		const struct bt_iter_pos *begin_pos,
 		const struct bt_iter_pos *end_pos)
 {
@@ -60,10 +61,11 @@ struct bt_ctf_iter *bt_ctf_iter_create(struct bt_context *ctx,
 	iter->recalculate_dep_graph = 0;
 	iter->main_callbacks.callback = NULL;
 	iter->dep_gc = g_ptr_array_new();
-	return iter;
+	iter->parent.get_event = bt_ctf_iter_read_event;
+	return &iter->parent;
 }
 
-void bt_ctf_iter_destroy(struct bt_ctf_iter *iter)
+void bt_ctf_iter_destroy(struct bt_iter *iter)
 {
 	struct bt_stream_callbacks *bt_stream_cb;
 	struct bt_callback_chain *bt_chain;
@@ -71,13 +73,16 @@ void bt_ctf_iter_destroy(struct bt_ctf_iter *iter)
 
 	assert(iter);
 
+	struct bt_ctf_iter *ctf_iter =
+		container_of(iter, struct bt_ctf_iter, parent);
+
 	/* free all events callbacks */
-	if (iter->main_callbacks.callback)
-		g_array_free(iter->main_callbacks.callback, TRUE);
+	if (ctf_iter->main_callbacks.callback)
+		g_array_free(ctf_iter->main_callbacks.callback, TRUE);
 
 	/* free per-event callbacks */
-	for (i = 0; i < iter->callbacks->len; i++) {
-		bt_stream_cb = &g_array_index(iter->callbacks,
+	for (i = 0; i < ctf_iter->callbacks->len; i++) {
+		bt_stream_cb = &g_array_index(ctf_iter->callbacks,
 				struct bt_stream_callbacks, i);
 		if (!bt_stream_cb || !bt_stream_cb->per_id_callbacks)
 			continue;
@@ -90,10 +95,10 @@ void bt_ctf_iter_destroy(struct bt_ctf_iter *iter)
 		}
 		g_array_free(bt_stream_cb->per_id_callbacks, TRUE);
 	}
-	g_array_free(iter->callbacks, TRUE);
-	g_ptr_array_free(iter->dep_gc, TRUE);
+	g_array_free(ctf_iter->callbacks, TRUE);
+	g_ptr_array_free(ctf_iter->dep_gc, TRUE);
 
-	bt_iter_fini(&iter->parent);
+	bt_iter_fini(iter);
 	g_free(iter);
 }
 
@@ -158,9 +163,14 @@ stop:
 	return NULL;
 }
 
-struct bt_ctf_event *bt_ctf_iter_read_event(struct bt_ctf_iter *iter)
+struct bt_ctf_event *bt_ctf_iter_read_event(struct bt_iter *iter)
 {
-	return bt_ctf_iter_read_event_flags(iter, NULL);
+	struct bt_ctf_iter *ctf_iter;
+	if (!iter) {
+		return NULL;
+	}
+	ctf_iter = container_of(iter, struct bt_ctf_iter, parent);
+	return bt_ctf_iter_read_event_flags(ctf_iter, NULL);
 }
 
 uint64_t bt_ctf_get_lost_events_count(struct bt_ctf_iter *iter)

@@ -51,6 +51,7 @@ struct bt_context {
 	int refcount;
 	int last_trace_handle_id;
 	struct bt_iter *current_iterator;
+	struct bt_format *input_trace_format;
 };
 
 #endif /* _BABELTRACE_CONTEXT_INTERNAL_H */

@@ -87,6 +87,12 @@ int bt_context_add_trace(struct bt_context *ctx, const char *path,
 		ret = -1;
 		goto end;
 	}
+	if (ctx->input_trace_format && ctx->input_trace_format != fmt) {
+		fprintf(stderr, "[error] [Context] Opening traces of different formats in the same context is not supported.\n");
+		ret = -1;
+		goto end;
+	}
+	ctx->input_trace_format = fmt;
 	if (path) {
 		td = fmt->open_trace(path, O_RDONLY, packet_seek, NULL);
 		if (!td) {
@@ -210,4 +216,55 @@ void bt_context_put(struct bt_context *ctx)
 	ctx->refcount--;
 	if (ctx->refcount == 0)
 		bt_context_destroy(ctx);
+}
+
+struct bt_iter *bt_context_create_iterator(struct bt_context *ctx,
+			const struct bt_iter_pos *position_begin,
+			const struct bt_iter_pos *position_end)
+{
+	struct bt_iter *iter = NULL;
+	struct bt_format *fmt;
+	assert(ctx);
+
+	if (!ctx->input_trace_format) {
+		fprintf(stderr, "[error] No trace opened in context.\n");
+		goto end;
+	}
+	fmt = ctx->input_trace_format;
+	if (!fmt->iterator_create) {
+		fprintf(stderr, "[error] The %s format plug-in did not register an iterator creation function.\n", g_quark_to_string(fmt->name));
+		goto end;
+	}
+	iter = fmt->iterator_create(ctx, position_begin, position_end);
+
+	if (!ctx->current_iterator) {
+		fprintf(stderr, "[error] The %s format plug-in did not call bt_iter_init in its iterator creation function.\n",
+			g_quark_to_string(fmt->name));
+	}
+
+end:
+	return iter;
+}
+
+void bt_context_destroy_iterator(struct bt_context *ctx,
+			struct bt_iter *iter)
+{
+	struct bt_format *fmt;
+	assert(ctx);
+
+	if (!ctx->input_trace_format) {
+		fprintf(stderr, "[error] No trace opened in context.\n");
+		return;
+	}
+	fmt = ctx->input_trace_format;
+	if (!fmt->iterator_destroy) {
+		fprintf(stderr, "[error] The %s format plug-in did not register an iterator destruction function.\n",
+			g_quark_to_string(fmt->name));
+		return;
+	}
+	fmt->iterator_destroy(iter);
+	if (ctx->current_iterator) {
+		fprintf(stderr, "[warn] The %s format plug-in did not call bt_iter_fini in its iterator destruction function.\n",
+			g_quark_to_string(fmt->name));
+	}
 }

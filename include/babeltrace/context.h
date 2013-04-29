@@ -32,6 +32,7 @@
  */
 
 #include <unistd.h>
+#include <stdio.h>
 #include <babeltrace/format.h>
 #include <stdio.h>
 
@@ -95,6 +96,36 @@ int bt_context_add_trace(struct bt_context *ctx, const char *path,
  * is not in context.
  */
 int bt_context_remove_trace(struct bt_context *ctx, int trace_id);
+
+/*
+ * bt_context_create_iterator: Allocate an iterator on the current trace
+ * collection's events.
+ *
+ * begin_pos and end_pos are optional parameters to specify the position
+ * at which the trace collection should be seeked upon iterator
+ * creation, and the position at which iteration will start returning
+ * "EOF".
+ *
+ * By default, if begin_pos is NULL, a BT_SEEK_CUR is performed at
+ * creation. By default, if end_pos is NULL, a BT_SEEK_END (end of
+ * trace) is the EOF criterion.
+ *
+ * Return a pointer to the newly allocated iterator.
+ *
+ * Only one iterator can be created against a context. If more than one
+ * iterator is being created for the same context, the second creation
+ * will return NULL. The previous iterator must be destroyed before
+ * creation of the new iterator for this function to succeed.
+ */
+struct bt_iter *bt_context_create_iterator(struct bt_context *ctx,
+	const struct bt_iter_pos *position_begin,
+	const struct bt_iter_pos *position_end);
+
+/*
+ * bt_context_destroy_iterator: Free a trace collection iterator.
+ */
+void bt_context_destroy_iterator(struct bt_context *ctx,
+		 struct bt_iter *iterator);
 
 /*
  * bt_context_get and bt_context_put : increments and decrement the
