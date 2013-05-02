@@ -2,6 +2,10 @@
 
 #ifdef __MINGW32__
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+
 char* strtok_r(
 	char *str,
 	const char *delim,
@@ -71,6 +75,42 @@ size_t strnlen(const char *str, size_t maxlen)
 
 	}
 	return len;
+}
+
+ssize_t getline(char **buf, size_t *len, FILE *stream)
+{
+	int c = EOF;
+	ssize_t count = (ssize_t)0;
+
+	if( feof( stream ) || ferror( stream ) )
+		return -1;
+
+	for(;;) {
+		/* read character from stream */
+		c = fgetc(stream);
+		if (c == EOF) {
+			break;
+		}
+		if (c == '\n') {
+			break;
+		}
+
+		/* store to *buf */
+		/* check if it fits - space for character and NUL */
+		if (count > *len - 2) {
+			/* have to allocate more space */
+			*len = *len + 100;
+			*buf = realloc(*buf, *len);
+			if (*buf == NULL) {
+				errno = ENOMEM;
+				return (ssize_t)-1;
+			}
+		}
+		(*buf)[count] = c;
+		count++;
+	}
+	(*buf)[count] = '\0';
+	return (count == (ssize_t)0) ? (ssize_t)-1 : (ssize_t)0;
 }
 
 #endif
