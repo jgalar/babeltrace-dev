@@ -1,5 +1,17 @@
 #include <babeltrace/compat/string.h>
 
+#ifdef __MINGW32__
+int strerror_r(int errnum, char *buf, size_t buflen)
+{
+	/* non-recursive implementation of strerror_r */
+	char * retbuf;
+	retbuf = strerror(errnum);
+	strncpy(buf, retbuf, buflen);
+	buf[buflen - 1] = '\0';
+	return 0;
+}
+#endif
+
 int compat_strerror_r(int errnum, char *buf, size_t buflen)
 {
 #if !defined(__linux__) || ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE))
