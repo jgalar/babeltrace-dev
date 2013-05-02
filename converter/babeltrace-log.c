@@ -332,7 +332,7 @@ int main(int argc, char **argv)
 		exit(EXIT_SUCCESS);
 	}
 
-	ret = mkdir(s_outputname, S_IRWXU|S_IRWXG);
+	ret = compat_mkdir(s_outputname, S_IRWXU|S_IRWXG);
 	if (ret) {
 		perror("mkdir");
 		goto error;

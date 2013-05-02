@@ -6,6 +6,18 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#ifndef S_IRGRP
+#define S_IRGRP 0
+#endif
+
+#ifndef S_IWGRP
+#define S_IWGRP 0
+#endif
+
+#ifndef S_IRWXG
+#define S_IRWXG 0
+#endif
+
 #ifdef __MINGW32__
 static inline
 int posix_fallocate(int fd, off_t offset, off_t len)
@@ -65,6 +77,21 @@ int compat_closedirfd(int dirfd)
 	return close(dirfd);
 #else
 	return 0;
+#endif
+}
+
+static inline
+int compat_mkdir(const char *pathname, ...)
+{
+#ifdef __MINGW32__
+	return mkdir(pathname);
+#else
+	mode_t mode = 0;
+	va_list args;
+	va_start (args, pathname);
+	mode = (mode_t)va_arg(args, int);
+	va_end(args);
+	return mkdir(pathname, mode);
 #endif
 }
 
