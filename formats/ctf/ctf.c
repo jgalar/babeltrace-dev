@@ -1085,7 +1085,7 @@ int ctf_open_trace_metadata_read(struct ctf_trace *td,
 			goto end_free;
 		}
 
-		fp = fdopen(metadata_stream->pos.fd, "r");
+		fp = fdopen(metadata_stream->pos.fd, "rb");
 		if (!fp) {
 			fprintf(stderr, "[error] Unable to open metadata stream.\n");
 			perror("Metadata stream open");

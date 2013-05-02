@@ -70,7 +70,7 @@ FILE *babeltrace_fmemopen(void *buf, size_t size, const char *mode)
 	/*
 	 * We need to write to the file.
 	 */
-	fp = fdopen(ret, "w+");
+	fp = fdopen(ret, "w+b");
 	if (!fp) {
 		goto error_unlink;
 	}
@@ -151,7 +151,7 @@ FILE *babeltrace_open_memstream(char **ptr, size_t *sizeloc)
 	if (ret < 0) {
 		return NULL;
 	}
-	fp = fdopen(ret, "w+");
+	fp = fdopen(ret, "w+b");
 	if (!fp) {
 		goto error_unlink;
 	}
