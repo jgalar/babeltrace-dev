@@ -122,8 +122,38 @@ int babeltrace_uuid_compare(const unsigned char *uuid_a,
 		return -1;
 }
 
+#elif defined(__MINGW32__)
+static inline
+int babeltrace_uuid_generate(unsigned char *uuid_out)
+{
+	extern int compat_uuid_generate(unsigned char *uuid_out);
+	return compat_uuid_generate(uuid_out);
+}
+
+static inline
+int babeltrace_uuid_unparse(const unsigned char *uuid_in, char *str_out)
+{
+	extern int compat_uuid_unparse(const unsigned char *uuid_in, char *str_out);
+	return compat_uuid_unparse(uuid_in, str_out);
+}
+
+static inline
+int babeltrace_uuid_parse(const char *str_in, unsigned char *uuid_out)
+{
+	extern int compat_uuid_parse(const char *str_in, unsigned char *uuid_out);
+	return compat_uuid_parse(str_in, uuid_out);
+}
+
+static inline
+int babeltrace_uuid_compare(const unsigned char *uuid_a,
+		const unsigned char *uuid_b)
+{
+	extern int compat_uuid_compare(const unsigned char *uuid_a,
+		const unsigned char *uuid_b);
+	return compat_uuid_compare(uuid_a, uuid_b);
+}
 #else
 #error "Babeltrace needs to have a UUID generator configured."
 #endif
 
-#endif /* _BABELTRACE_UUID_H */
+#endif /* _BABELTRACE_INCLUDE_COMPAT_UUID_H */

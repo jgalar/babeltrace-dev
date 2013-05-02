@@ -8,3 +8,6 @@ libcompat_la_SOURCES = \
 libcompat_la_LDFLAGS = \
 	-Wl,--no-as-needed
 
+if BABELTRACE_BUILD_WITH_MINGW
+libcompat_la_SOURCES += compat_uuid.c
+endif
