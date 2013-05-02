@@ -1078,7 +1078,7 @@ int ctf_open_trace_metadata_read(struct ctf_trace *td,
 		metadata_stream->pos.fd = -1;
 	} else {
 		td->metadata = &metadata_stream->parent;
-		metadata_stream->pos.fd = openat(td->dirfd, "metadata", O_RDONLY);
+		metadata_stream->pos.fd = compat_openat(td->parent.path, td->dirfd, "metadata", O_RDONLY);
 		if (metadata_stream->pos.fd < 0) {
 			fprintf(stderr, "Unable to open metadata.\n");
 			ret = -1;
@@ -1624,7 +1624,7 @@ int ctf_open_file_stream_read(struct ctf_trace *td, const char *path, int flags,
 	struct ctf_file_stream *file_stream;
 	struct stat statbuf;
 
-	fd = openat(td->dirfd, path, flags);
+	fd = compat_openat(td->parent.path, td->dirfd, path, flags);
 	if (fd < 0) {
 		perror("File stream openat()");
 		ret = fd;
@@ -1717,7 +1717,7 @@ int ctf_open_trace_read(struct ctf_trace *td,
 		goto error;
 	}
 
-	td->dirfd = open(path, 0);
+	td->dirfd = compat_opendirfd(path, 0);
 	if (td->dirfd < 0) {
 		fprintf(stderr, "[error] Unable to open trace directory file descriptor for path \"%s\".\n", path);
 		perror("Trace directory open");
@@ -1775,7 +1775,7 @@ int ctf_open_trace_read(struct ctf_trace *td,
 readdir_error:
 	free(dirent);
 error_metadata:
-	closeret = close(td->dirfd);
+	closeret = compat_closedirfd(td->dirfd);
 	if (closeret) {
 		perror("Error on fd close");
 	}

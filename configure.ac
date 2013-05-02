@@ -84,6 +84,13 @@ AC_CHECK_LIB([c], [open_memstream],
 ]
 )
 
+# Check for openat
+AC_CHECK_LIB([c], [openat],
+[
+	AC_DEFINE_UNQUOTED([BABELTRACE_HAVE_OPENAT], 1, [Has openat support.])
+]
+)
+
 AC_CHECK_LIB([popt], [poptGetContext], [],
         [AC_MSG_ERROR([Cannot find popt.])]
 )

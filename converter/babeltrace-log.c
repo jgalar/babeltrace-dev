@@ -32,9 +32,9 @@
 #include <config.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <babeltrace/compat/fcntl.h>
 #include <babeltrace/compat/mman.h>
-#include <dirent.h>
+#include <babeltrace/compat/dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -343,20 +343,20 @@ int main(int argc, char **argv)
 		perror("opendir");
 		goto error_rmdir;
 	}
-	dir_fd = dirfd(dir);
+	dir_fd = compat_dirfd(dir);
 	if (dir_fd < 0) {
 		perror("dirfd");
 		goto error_closedir;
 	}
 
-	fd = openat(dir_fd, "datastream", O_RDWR|O_CREAT,
+	fd = compat_openat(s_outputname, dir_fd, "datastream", O_RDWR|O_CREAT,
 		    S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 	if (fd < 0) {
 		perror("openat");
 		goto error_closedirfd;
 	}
 
-	metadata_fd = openat(dir_fd, "metadata", O_RDWR|O_CREAT,
+	metadata_fd = compat_openat(s_outputname, dir_fd, "metadata", O_RDWR|O_CREAT,
 			     S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 	if (fd < 0) {
 		perror("openat");

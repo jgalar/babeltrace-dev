@@ -45,7 +45,7 @@
 #include <ctype.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <fcntl.h>
+#include <babeltrace/compat/fcntl.h>
 #include <unistd.h>
 #include <inttypes.h>
 #include <babeltrace/compat/ftw.h>
@@ -409,15 +409,15 @@ static int traverse_trace_dir(const char *fpath, const struct stat *sb,
 	if (tflag != FTW_D)
 		return 0;
 
-	dirfd = open(fpath, 0);
+	dirfd = compat_opendirfd(fpath, 0);
 	if (dirfd < 0) {
 		fprintf(stderr, "[error] [Context] Unable to open trace "
 			"directory file descriptor.\n");
 		return 0;	/* partial error */
 	}
-	metafd = openat(dirfd, "metadata", O_RDONLY);
+	metafd = compat_openat(fpath, dirfd, "metadata", O_RDONLY);
 	if (metafd < 0) {
-		closeret = close(dirfd);
+		closeret = compat_closedirfd(dirfd);
 		if (closeret < 0) {
 			perror("close");
 			return -1;
@@ -430,7 +430,7 @@ static int traverse_trace_dir(const char *fpath, const struct stat *sb,
 			perror("close");
 			return -1;	/* failure */
 		}
-		closeret = close(dirfd);
+		closeret = compat_closedirfd(dirfd);
 		if (closeret < 0) {
 			perror("close");
 			return -1;	/* failure */

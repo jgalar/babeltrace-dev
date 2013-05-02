@@ -17,4 +17,15 @@ int readdir_r (DIR *dirp, struct dirent *entry, struct dirent **result)
 }
 #endif
 
+static inline
+int compat_dirfd(DIR * dirp)
+{
+#ifdef BABELTRACE_HAVE_OPENAT
+	return dirfd(dirp);
+#else
+	/* ignore dirfd - see compat_openat() */
+	return 0;
+#endif
+}
+
 #endif
