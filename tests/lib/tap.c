@@ -27,7 +27,7 @@
 #define _GNU_SOURCE
 #include <ctype.h>
 #include <stdarg.h>
-#include <stdio.h>
+#include <babeltrace/compat/stdio.h>
 #include <stdlib.h>
 
 #include "tap.h"
