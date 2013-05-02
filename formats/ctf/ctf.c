@@ -44,7 +44,7 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <glib.h>
-#include <unistd.h>
+#include <babeltrace/compat/unistd.h>
 #include <stdlib.h>
 
 #include "metadata/ctf-scanner.h"
