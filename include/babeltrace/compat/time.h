@@ -15,5 +15,13 @@ struct tm *gmtime_r(const time_t *timep, struct tm *result)
 	return result;
 }
 
+static inline
+struct tm *localtime_r(const time_t *timep, struct tm *result)
+{
+	struct tm * r;
+	r = localtime(timep);
+	memcpy(result, r, sizeof (struct tm));
+	return result;
+}
 #endif
 #endif
