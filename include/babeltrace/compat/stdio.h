@@ -8,6 +8,10 @@ static inline void flockfile (FILE * filehandle)
 {
 	return;
 }
+static inline void funlockfile(FILE * filehandle)
+{
+	return;
+}
 
 #endif
 
