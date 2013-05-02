@@ -41,7 +41,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <babeltrace/compat/fcntl.h>
 #include <dirent.h>
 #include <glib.h>
 #include <babeltrace/compat/unistd.h>
