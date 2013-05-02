@@ -46,7 +46,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <babeltrace/compat/fcntl.h>
-#include <unistd.h>
+#include <babeltrace/compat/unistd.h>
 #include <inttypes.h>
 #include <babeltrace/compat/ftw.h>
 #include <babeltrace/compat/string.h>
