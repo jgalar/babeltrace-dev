@@ -1,6 +1,46 @@
 #include <babeltrace/compat/string.h>
 
 #ifdef __MINGW32__
+
+char* strtok_r(
+	char *str,
+	const char *delim,
+	char **nextp)
+{
+	char *ret;
+
+	/* if str is NULL, continue from nextp */
+	if (str == NULL) {
+		str = *nextp;
+	}
+	/* skip the leading delimiter characters */
+	str += strspn(str, delim);
+
+	/* return NULL if all are delimiters */
+	if (*str == '\0') {
+		return NULL;
+	}
+	/* return the pointer to the first character that is not delimiter */
+	ret = str;
+
+	/* scan to the next delimiter */
+	str += strcspn(str, delim);
+
+	/* if we found a delimiter instead of a NUL */
+	if (*str) {
+		/* replace the delimiter with the NUL */
+		*str = '\0';
+		/* next time, scan from the character after NUL */
+		*nextp = str + 1;
+	}
+	else {
+		/* end of string: next time, scan at the end (NUL) again */
+		*nextp = str;
+	}
+
+	return ret;
+}
+
 int strerror_r(int errnum, char *buf, size_t buflen)
 {
 	/* non-recursive implementation of strerror_r */

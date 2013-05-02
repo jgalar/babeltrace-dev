@@ -49,7 +49,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <babeltrace/compat/ftw.h>
-#include <string.h>
+#include <babeltrace/compat/string.h>
 
 #include <babeltrace/ctf-ir/metadata.h>	/* for clocks */
 
