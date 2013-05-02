@@ -52,6 +52,7 @@
 #include "metadata/ctf-ast.h"
 #include "events-private.h"
 #include "babeltrace/compat/memstream.h"
+#include <babeltrace/compat/time.h>
 
 #define LOG2_CHAR_BIT	3
 
