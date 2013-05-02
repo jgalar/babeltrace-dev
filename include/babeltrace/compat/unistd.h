@@ -16,6 +16,8 @@ int fpathconf (int fd, int name)
 	return MAX_PATH;
 }
 
+#define sleep(x) Sleep(1000 * (x))
+
 #endif
 
 #endif
