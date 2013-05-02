@@ -42,7 +42,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <babeltrace/compat/fcntl.h>
-#include <dirent.h>
+#include <babeltrace/compat/dirent.h>
 #include <glib.h>
 #include <babeltrace/compat/unistd.h>
 #include <stdlib.h>
