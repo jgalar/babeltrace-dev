@@ -27,7 +27,7 @@
 
 #include <babeltrace/align.h>
 #include <stdlib.h>
-#include <sys/mman.h>
+#include <babeltrace/compat/mman.h>
 
 /*
  * This header implements a wrapper over mmap (mmap_align) that memory

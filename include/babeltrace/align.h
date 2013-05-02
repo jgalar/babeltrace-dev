@@ -30,8 +30,13 @@
 #include <limits.h>
 
 #ifndef PAGE_SIZE		/* Cygwin limits.h defines its own PAGE_SIZE */
+#ifdef __MINGW32__
+#define PAGE_SIZE		4096
+#else
 #define PAGE_SIZE		sysconf(_SC_PAGE_SIZE)
 #endif
+#endif
+
 
 #define ALIGN(x, a)		__ALIGN_MASK(x, (typeof(x))(a) - 1)
 #define __ALIGN_MASK(x, mask)	(((x) + (mask)) & ~(mask))
