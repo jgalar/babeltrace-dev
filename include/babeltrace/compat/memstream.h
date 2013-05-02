@@ -1,5 +1,5 @@
-#ifndef _BABELTRACE_FORMAT_CTF_MEMSTREAM_H
-#define _BABELTRACE_FORMAT_CTF_MEMSTREAM_H
+#ifndef _BABELTRACE_COMPAT_MEMSTREAM_H
+#define _BABELTRACE_COMPAT_MEMSTREAM_H
 
 /*
  * format/ctf/memstream.h
@@ -41,7 +41,7 @@ FILE *babeltrace_fmemopen(void *buf, size_t size, const char *mode)
 
 #else /* BABELTRACE_HAVE_FMEMOPEN */
 
-#include <stdlib.h>
+#include <babeltrace/compat/stdlib.h>
 #include <stdio.h>
 
 /*
@@ -85,10 +85,14 @@ FILE *babeltrace_fmemopen(void *buf, size_t size, const char *mode)
 		goto error_close;
 	}
 	/* We keep the handle open, but can unlink the file on the VFS. */
+	/* Unlinking under MINGW only gives an error, so let's not even try. */
+#ifndef __MINGW32__
 	ret = unlink(tmpname);
 	if (ret < 0) {
 		perror("unlink");
 	}
+#endif
+
 	return fp;
 
 error_close:
@@ -97,10 +101,12 @@ error_close:
 		perror("close");
 	}
 error_unlink:
+#ifndef __MINGW32__
 	ret = unlink(tmpname);
 	if (ret < 0) {
 		perror("unlink");
 	}
+#endif
 	return NULL;
 }
 
@@ -154,17 +160,21 @@ FILE *babeltrace_open_memstream(char **ptr, size_t *sizeloc)
 	 * with read from fp. No need to keep the file around, just the
 	 * handle.
 	 */
+#ifndef __MINGW32__
 	ret = unlink(tmpname);
 	if (ret < 0) {
 		perror("unlink");
 	}
+#endif
 	return fp;
 
 error_unlink:
+#ifndef __MINGW32__
 	ret = unlink(tmpname);
 	if (ret < 0) {
 		perror("unlink");
 	}
+#endif
 	return NULL;
 }
 
@@ -233,4 +243,4 @@ error_free:
 
 #endif /* BABELTRACE_HAVE_OPEN_MEMSTREAM */
 
-#endif /* _BABELTRACE_FORMAT_CTF_MEMSTREAM_H */
+#endif /* _BABELTRACE_COMPAT_MEMSTREAM_H */
