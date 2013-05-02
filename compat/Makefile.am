@@ -1,0 +1,10 @@
+AM_CFLAGS = $(PACKAGE_CFLAGS) -I$(top_srcdir)/include
+
+lib_LTLIBRARIES = libcompat.la
+
+libcompat_la_SOURCES = \
+	compat_strlib.c
+
+libcompat_la_LDFLAGS = \
+	-Wl,--no-as-needed
+

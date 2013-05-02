@@ -93,6 +93,7 @@ AC_SUBST(babeltracectfincludedir)
 AC_CONFIG_FILES([
 	Makefile
 	types/Makefile
+	compat/Makefile
 	formats/Makefile
 	formats/ctf/Makefile
 	formats/ctf/types/Makefile
