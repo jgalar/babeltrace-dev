@@ -50,6 +50,29 @@ int strerror_r(int errnum, char *buf, size_t buflen)
 	buf[buflen - 1] = '\0';
 	return 0;
 }
+
+size_t strnlen(const char *str, size_t maxlen)
+{
+	char * ptr;
+	size_t len;
+	ptr = (char *)str;
+	len = 0;
+
+	/* while there still are characters in the string */
+	while(*ptr != '\0') {
+		/* increment counter */
+		len++;
+		/* check that we do not exceed the given maximum */
+		if (len == maxlen) {
+			return len;
+		}
+		/* next character */
+		ptr++;
+
+	}
+	return len;
+}
+
 #endif
 
 int compat_strerror_r(int errnum, char *buf, size_t buflen)
