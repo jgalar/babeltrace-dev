@@ -10,7 +10,13 @@ babeltraceinclude_HEADERS = \
 babeltracectfinclude_HEADERS = \
 	babeltrace/ctf/events.h \
 	babeltrace/ctf/callbacks.h \
-	babeltrace/ctf/iterator.h
+	babeltrace/ctf/iterator.h \
+	babeltrace/ctf-writer/clock.h \
+	babeltrace/ctf-writer/ctf-writer.h \
+	babeltrace/ctf-writer/event-field.h \
+	babeltrace/ctf-writer/event-type.h \
+	babeltrace/ctf-writer/event.h \
+	babeltrace/ctf-writer/stream.h
 
 noinst_HEADERS = \
 	babeltrace/align.h \
