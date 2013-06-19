@@ -35,7 +35,7 @@ extern "C" {
 
 struct bt_ctf_writer;
 struct bt_ctf_stream;
-struct bt_ctf_event_class;
+struct bt_ctf_clock;
 
 enum bt_ctf_string_encoding {
 	BT_CTF_STRING_ENCODING_NONE = -1,
@@ -51,6 +51,10 @@ enum bt_ctf_byte_order {
 };
 
 extern struct bt_ctf_writer *bt_ctf_writer_create(const char *path);
+
+extern void bt_ctf_writer_get(struct bt_ctf_writer *writer);
+
+extern void bt_ctf_writer_put(struct bt_ctf_writer *writer);
 
 extern struct bt_ctf_stream *bt_ctf_writer_add_stream(
 		struct bt_ctf_writer *writer,
@@ -68,8 +72,6 @@ extern char *bt_ctf_writer_get_metadata_string(struct bt_ctf_writer *writer);
 /* Defaults to the host's native endianness (BT_CTF_BYTE_ORDER_NATIVE) */
 extern void bt_ctf_writer_set_endianness(struct bt_ctf_writer *writer,
 		enum bt_ctf_byte_order endianness);
-
-extern void bt_ctf_writer_destroy(struct bt_ctf_writer *writer);
 
 #ifdef __cplusplus
 }

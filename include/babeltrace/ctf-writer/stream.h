@@ -41,15 +41,17 @@ struct bt_ctf_clock;
 
 extern struct bt_ctf_stream_class *bt_ctf_stream_class_create(void);
 
-extern int bt_ctf_stream_class_set_clock(struct bt_ctf_stream_class *stream,
+extern int bt_ctf_stream_class_set_clock(struct bt_ctf_stream_class *stream_class,
 		struct bt_ctf_clock *clock);
 
 /* Add an event class to the stream */
 extern int bt_ctf_stream_class_add_event_class(
-		struct bt_ctf_stream_class *stream,
+		struct bt_ctf_stream_class *stream_class,
 		struct bt_ctf_event_class *event_class);
 
-extern void bt_ctf_stream_class_release(struct bt_ctf_stream_class *stream);
+extern void bt_ctf_stream_class_get(struct bt_ctf_stream_class *stream_class);
+
+extern void bt_ctf_stream_class_put(struct bt_ctf_stream_class *stream_class);
 
 
 extern void bt_ctf_stream_create(struct bt_ctf_stream_class *stream_class);
@@ -65,12 +67,15 @@ extern void bt_ctf_stream_push_discarded_events(struct bt_ctf_stream *stream,
 extern int bt_ctf_stream_push_event(struct bt_ctf_stream *stream,
 		struct bt_ctf_event *event);
 
-/* Close the current packet. The next event pushed will be placed in a new
+/* 
+ * Close the current packet. The next event pushed will be placed in a new
  * packet.
  */
 extern int bt_ctf_stream_flush(struct bt_ctf_stream *stream);
 
-extern void bt_ctf_stream_release(struct bt_ctf_stream *stream);
+extern void bt_ctf_stream_get(struct bt_ctf_stream *stream);
+
+extern void bt_ctf_stream_put(struct bt_ctf_stream *stream);
 
 #ifdef __cplusplus
 }

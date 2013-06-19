@@ -123,7 +123,9 @@ extern int bt_ctf_field_type_set_alignment(struct bt_ctf_field_type *type,
 extern int bt_ctf_field_type_set_byte_order(struct bt_ctf_field_type *type,
 		enum bt_ctf_byte_order byte_order);
 
-extern void bt_ctf_field_type_release(struct bt_ctf_field_type *type);
+extern void bt_ctf_field_type_get(struct bt_ctf_field_type *type);
+
+extern void bt_ctf_field_type_put(struct bt_ctf_field_type *type);
 
 #ifdef __cplusplus
 }

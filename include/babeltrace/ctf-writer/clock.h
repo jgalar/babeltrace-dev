@@ -37,6 +37,10 @@ struct bt_ctf_clock;
 
 extern bt_ctf_clock *bt_ctf_clock_create(const char *name);
 
+extern void bt_ctf_clock_get(struct bt_ctf_clock *clock);
+
+extern void bt_ctf_clock_put(struct bt_ctf_clock *clock);
+
 extern const char *bt_ctf_clock_get_name(struct bt_ctf_clock *clock);
 
 /* Optional */
@@ -77,8 +81,6 @@ extern void bt_ctf_clock_set_is_absolute(struct bt_ctf_clock *clock,
  * attributes)
  */
 extern void bt_ctf_clock_set_time(struct bt_ctf_clock *clock, uint64_t time);
-
-extern void bt_ctf_clock_release(struct bt_ctf_clock *clock);
 
 #ifdef __cplusplus
 }

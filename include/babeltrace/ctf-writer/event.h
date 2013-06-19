@@ -46,8 +46,9 @@ extern int bt_ctf_event_class_add_field(struct bt_ctf_event_class *event_class,
 		struct bt_ctf_field_type *type,
 		const char *name);
 
-extern void bt_ctf_event_class_release(struct bt_ctf_event_class *event_class);
+extern void bt_ctf_event_class_get(struct bt_ctf_event_class *event_class);
 
+extern void bt_ctf_event_class_put(struct bt_ctf_event_class *event_class);
 
 extern struct bt_ctf_event *bt_ctf_event_create(
 		struct bt_ctf_event_class *event_class);
@@ -56,7 +57,9 @@ extern int bt_ctf_event_set_payload(struct bt_ctf_event *event,
 		const char *name,
 		struct bt_ctf_field *value);
 
-extern void bt_ctf_event_release(struct bt_ctf_event *event);
+extern void bt_ctf_event_get(struct bt_ctf_event *event);
+
+extern void bt_ctf_event_put(struct bt_ctf_event *event);
 
 #ifdef __cplusplus
 }

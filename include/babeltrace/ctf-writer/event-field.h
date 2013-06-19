@@ -42,7 +42,9 @@ struct bt_ctf_field_type;
 extern struct bt_ctf_field bt_ctf_field_create(
 	const struct bt_ctf_field_type *type);
 
-extern void bt_ctf_field_release(struct bt_ctf_field *field);
+extern void bt_ctf_field_get(struct bt_ctf_field *field);
+
+extern void bt_ctf_field_put(struct bt_ctf_field *field);
 
 extern int bt_ctf_field_structure_set_value(struct bt_ctf_field *field,
 		const char *name,
