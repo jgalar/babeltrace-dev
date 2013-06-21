@@ -72,7 +72,7 @@ extern int bt_ctf_writer_add_clock(struct bt_ctf_writer *writer,
 extern char *bt_ctf_writer_get_metadata_string(struct bt_ctf_writer *writer);
 
 /* Defaults to the host's native endianness (BT_CTF_BYTE_ORDER_NATIVE) */
-extern void bt_ctf_writer_set_endianness(struct bt_ctf_writer *writer,
+extern int bt_ctf_writer_set_endianness(struct bt_ctf_writer *writer,
 		enum bt_ctf_byte_order endianness);
 
 #ifdef __cplusplus
