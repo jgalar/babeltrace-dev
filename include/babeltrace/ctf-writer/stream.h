@@ -54,7 +54,8 @@ extern void bt_ctf_stream_class_get(struct bt_ctf_stream_class *stream_class);
 extern void bt_ctf_stream_class_put(struct bt_ctf_stream_class *stream_class);
 
 
-extern void bt_ctf_stream_create(struct bt_ctf_stream_class *stream_class);
+extern struct bt_ctf_stream *bt_ctf_stream_create(
+		struct bt_ctf_stream_class *stream_class);
 
 /*
  * Insert event_count discarded/dropped events in stream before the next
