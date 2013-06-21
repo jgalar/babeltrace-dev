@@ -31,26 +31,26 @@
 
 #include <assert.h>
 
-struct bt_ctf_writer_ref {
+struct bt_ctf_ref {
 	long refcount;
-	void (*release)(struct bt_ctf_writer_ref *);
+	void (*release)(struct bt_ctf_ref *);
 };
 
-static inline void bt_ctf_writer_ref_init(
-		struct bt_ctf_writer_ref *ref,
-		void (*release)(struct bt_ctf_writer_ref *))
+static inline void bt_ctf_ref_init(
+		struct bt_ctf_ref *ref,
+		void (*release)(struct bt_ctf_ref *))
 {
 	assert(release);
 	ref->refcount = 1;
 	ref->release = release;
 }
 
-static inline void bt_ctf_writer_ref_get(struct bt_ctf_writer_ref *ref)
+static inline void bt_ctf_ref_get(struct bt_ctf_ref *ref)
 {
 	ref->refcount++;
 }
 
-static inline void bt_ctf_writer_ref_put(struct bt_ctf_writer_ref *ref)
+static inline void bt_ctf_ref_put(struct bt_ctf_ref *ref)
 {
 	if ((--ref->refcount) == 0) {
 		ref->release(ref);
