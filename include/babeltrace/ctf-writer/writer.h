@@ -40,14 +40,16 @@ struct bt_ctf_clock;
 enum bt_ctf_string_encoding {
 	BT_CTF_STRING_ENCODING_NONE = -1,
 	BT_CTF_STRING_ENCODING_UTF8 = 0,
-	BT_CTF_STRING_ENCODING_ASCII
+	BT_CTF_STRING_ENCODING_ASCII,
+	BT_CTF_STRING_ENCODING_END
 };
 
 enum bt_ctf_byte_order {
 	BT_CTF_BYTE_ORDER_NATIVE = 0,
 	BT_CTF_BYTE_ORDER_LITTLE_ENDIAN,
 	BT_CTF_BYTE_ORDER_BIG_ENDIAN,
-	BT_CTF_BYTE_ORDER_NETWORK
+	BT_CTF_BYTE_ORDER_NETWORK,
+	BT_CTF_BYTE_ORDER_END
 };
 
 extern struct bt_ctf_writer *bt_ctf_writer_create(const char *path);
