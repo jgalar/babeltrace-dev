@@ -12,9 +12,9 @@ babeltracectfinclude_HEADERS = \
 	babeltrace/ctf/callbacks.h \
 	babeltrace/ctf/iterator.h \
 	babeltrace/ctf-writer/clock.h \
-	babeltrace/ctf-writer/ctf-writer.h \
-	babeltrace/ctf-writer/event-field.h \
-	babeltrace/ctf-writer/event-type.h \
+	babeltrace/ctf-writer/writer.h \
+	babeltrace/ctf-writer/event-fields.h \
+	babeltrace/ctf-writer/event-types.h \
 	babeltrace/ctf-writer/event.h \
 	babeltrace/ctf-writer/stream.h
 
