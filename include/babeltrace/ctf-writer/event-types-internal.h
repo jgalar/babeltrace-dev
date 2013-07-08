@@ -93,13 +93,13 @@ struct structure_field {
 
 struct bt_ctf_field_type_structure {
 	struct bt_ctf_field_type parent;
-	GPtrArray *fields; /* Array of pointers to struct struct_field */
+	GPtrArray *fields; /* Array of pointers to struct structure_field */
 };
 
 struct bt_ctf_field_type_variant {
 	struct bt_ctf_field_type parent;
 	GQuark tag_name;
-	GPtrArray *fields; /* Array of pointers to struct struct_field */
+	GPtrArray *fields; /* Array of pointers to struct structure_field */
 };
 
 struct bt_ctf_field_type_array {
