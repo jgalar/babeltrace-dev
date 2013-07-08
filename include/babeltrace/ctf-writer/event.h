@@ -35,6 +35,7 @@ extern "C" {
 
 struct bt_ctf_event_class;
 struct bt_ctf_event;
+struct bt_ctf_field;
 struct bt_ctf_field_type;
 
 extern struct bt_ctf_event_class *bt_ctf_event_class_create(const char *name);

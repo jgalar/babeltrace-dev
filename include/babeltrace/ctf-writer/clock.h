@@ -2,7 +2,7 @@
 #define _BABELTRACE_CTF_CLOCK_H
 
 /*
- * BabelTrace - Clock
+ * BabelTrace - CTF Clock
  *
  * CTF Writer
  *

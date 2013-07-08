@@ -29,6 +29,7 @@
  * SOFTWARE.
  */
 
+#include <babeltrace/ctf-writer/writer.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -40,14 +41,23 @@ struct bt_ctf_event;
 struct bt_ctf_field_type;
 
 enum bt_ctf_integer_base {
-	BT_CTF_INTEGER_BASE_DECIMAL = 0,
+	BT_CTF_INTEGER_BASE_UNKNOWN = -1,
+	BT_CTF_INTEGER_BASE_DECIMAL,
 	BT_CTF_INTEGER_BASE_HEXADECIMAL,
 	BT_CTF_INTEGER_BASE_OCTAL,
-	BT_CTF_INTEGER_BASE_BINARY
+	BT_CTF_INTEGER_BASE_BINARY,
+	NR_BT_CTF_INTEGER_BASE_TYPES
 };
 
-/* Creates an alias to this type if alias_name is not null */
-extern struct bt_ctf_field_type *bt_ctf_field_type_integer_create(int size);
+enum bt_ctf_string_encoding {
+	BT_CTF_STRING_ENCODING_NONE = -1,
+	BT_CTF_STRING_ENCODING_UTF8,
+	BT_CTF_STRING_ENCODING_ASCII,
+	NR_BT_CTF_STRING_ENCODING_TYPES
+};
+
+extern struct bt_ctf_field_type *bt_ctf_field_type_integer_create(
+		unsigned int size);
 
 extern int bt_ctf_field_type_integer_set_signed(
 		struct bt_ctf_field_type *integer, int is_signed);
@@ -69,21 +79,22 @@ extern int bt_ctf_field_type_integer_set_encoding(
 		enum bt_ctf_string_encoding encoding);
 
 extern struct bt_ctf_field_type *bt_ctf_field_type_enumeration_create(
-		struct bt_ctf_field_type *integer_type);
+		struct bt_ctf_field_type *integer_container_type);
 
+/* Range is inclusive */
 extern int bt_ctf_field_type_enumeration_add_mapping(
 		struct bt_ctf_field_type *enumeration, const char *string,
-		int64 range_start, int64 range_end);
+		int64_t range_start, int64_t range_end);
 
 extern struct bt_ctf_field_type *bt_ctf_field_type_floating_point_create(void);
 
 extern int bt_ctf_field_type_floating_point_set_exponent_digit(
 		struct bt_ctf_field_type *floating_point,
-		int exponent_digit);
+		unsigned int exponent_digit);
 
 extern int bt_ctf_field_type_floating_point_set_mantissa_digit(
 		struct bt_ctf_field_type *floating_point,
-		int mantissa_digit);
+		unsigned int mantissa_digit);
 
 extern struct bt_ctf_field_type *bt_ctf_field_type_structure_create(void);
 
@@ -92,11 +103,8 @@ extern int bt_ctf_field_type_structure_add_field(
 		struct bt_ctf_field_type *field_type,
 		const char *field_name);
 
-extern struct bt_ctf_field_type *bt_ctf_field_type_variant_create(void);
-
-/* Set the field indicating the variant's tag (type selector) */
-extern int bt_ctf_field_type_variant_set_tag(struct bt_ctf_field_type *variant,
-		struct bt_ctf_field_type *tag_enumeration);
+extern struct bt_ctf_field_type *bt_ctf_field_type_variant_create(
+		const char *tag_name);
 
 extern int bt_ctf_field_type_variant_add_field(
 		struct bt_ctf_field_type *variant,
@@ -105,11 +113,15 @@ extern int bt_ctf_field_type_variant_add_field(
 
 extern struct bt_ctf_field_type *bt_ctf_field_type_array_create(
 		struct bt_ctf_field_type *element_type,
-		int length);
+		unsigned int length);
 
+/*
+ * The length field is resolved by name when the sequence is added to an event
+ * or a compound type. The length field must be added before the sequence.
+ */
 extern struct bt_ctf_field_type *bt_ctf_field_type_sequence_create(
 		struct bt_ctf_field_type *element_type,
-		struct bt_ctf_field_type *length_type);
+		const char *length_field_name);
 
 extern struct bt_ctf_field_type *bt_ctf_field_type_string_create(void);
 
@@ -118,7 +130,7 @@ extern int bt_ctf_field_type_string_set_encoding(
 		enum bt_ctf_string_encoding encoding);
 
 extern int bt_ctf_field_type_set_alignment(struct bt_ctf_field_type *type,
-		int alignment);
+		unsigned int alignment);
 
 extern int bt_ctf_field_type_set_byte_order(struct bt_ctf_field_type *type,
 		enum bt_ctf_byte_order byte_order);

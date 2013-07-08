@@ -37,37 +37,40 @@ extern "C" {
 
 struct bt_ctf_event_class;
 struct bt_ctf_event;
+struct bt_ctf_field;
 struct bt_ctf_field_type;
 
-extern struct bt_ctf_field bt_ctf_field_create(
-	const struct bt_ctf_field_type *type);
+extern struct bt_ctf_field *bt_ctf_field_create(
+	struct bt_ctf_field_type *type);
 
 extern void bt_ctf_field_get(struct bt_ctf_field *field);
 
 extern void bt_ctf_field_put(struct bt_ctf_field *field);
 
-extern int bt_ctf_field_structure_set_value(struct bt_ctf_field *field,
-		const char *name,
+/* Creates and returns a field linked to the structure */
+extern struct bt_ctf_field *bt_ctf_field_structure_get_field(
+		struct bt_ctf_field *structure, const char *name);
+
+/* Creates and returns a field linked to the array */
+extern int bt_ctf_field_array_get_field(struct bt_ctf_field *array,
+		unsigned int index);
+
+
+extern int bt_ctf_field_variant_set_value(struct bt_ctf_field *variant,
 		struct bt_ctf_field *value);
 
-extern int bt_ctf_field_array_set_value(struct bt_ctf_field *field,
-		unsigned int index,
-		struct bt_ctf_field *value);
-
-extern int bt_ctf_field_variant_set_value(struct bt_ctf_field *field,
-		struct bt_ctf_field *value);
-
-extern int bt_ctf_field_signed_integer_set_value(struct bt_ctf_field *field,
+extern int bt_ctf_field_signed_integer_set_value(struct bt_ctf_field *integer,
 		int64_t value);
 
-extern int bt_ctf_field_unsigned_integer_set_value(struct bt_ctf_field *field,
+extern int bt_ctf_field_unsigned_integer_set_value(struct bt_ctf_field *integer,
 		uint64_t value);
 
-extern int bt_ctf_field_floating_point_set_value(struct bt_ctf_field *field,
-		double value);
+extern int bt_ctf_field_floating_point_set_value(
+		struct bt_ctf_field *floating_point,
+		long double value);
 
-extern int bt_ctf_field_string_set_value(struct bt_ctf_field *field,
-		const char *string);
+extern int bt_ctf_field_string_set_value(struct bt_ctf_field *string,
+		const char *value);
 
 #ifdef __cplusplus
 }
