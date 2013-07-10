@@ -93,12 +93,14 @@ struct structure_field {
 
 struct bt_ctf_field_type_structure {
 	struct bt_ctf_field_type parent;
+	GHashTable *field_quark_to_index;
 	GPtrArray *fields; /* Array of pointers to struct structure_field */
 };
 
 struct bt_ctf_field_type_variant {
 	struct bt_ctf_field_type parent;
 	GQuark tag_name;
+	GHashTable *field_quark_to_index;
 	GPtrArray *fields; /* Array of pointers to struct structure_field */
 };
 

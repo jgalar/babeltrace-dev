@@ -105,6 +105,7 @@ static void bt_ctf_field_type_init(struct bt_ctf_field_type *type)
 }
 
 static int add_structure_field(GPtrArray *fields,
+		GHashTable *field_quark_to_index,
 		struct bt_ctf_field_type *field_type,
 		const char *field_name)
 {
@@ -126,6 +127,9 @@ static int add_structure_field(GPtrArray *fields,
 	bt_ctf_field_type_get(field_type);
 	field->name = name_quark;
 	field->type = field_type;
+	g_hash_table_insert(field_quark_to_index,
+		(gpointer) (unsigned long) name_quark,
+		(gpointer) (unsigned long) fields->len);
 	g_ptr_array_add(fields, field);
 	ret = 0;
 end:
@@ -343,6 +347,7 @@ struct bt_ctf_field_type *bt_ctf_field_type_structure_create(void)
 	bt_ctf_field_type_init(&structure->parent);
 	structure->fields = g_ptr_array_new_with_free_func(
 		destroy_structure_field);
+	structure->field_quark_to_index = g_hash_table_new(NULL, NULL);
 	return &structure->parent;
 error:
 	return NULL;
@@ -361,7 +366,8 @@ int bt_ctf_field_type_structure_add_field(struct bt_ctf_field_type *type,
 
 	struct bt_ctf_field_type_structure *structure = container_of(type,
 		struct bt_ctf_field_type_structure, parent);
-	if (add_structure_field(structure->fields, field_type, field_name)) {
+	if (add_structure_field(structure->fields,
+		structure->field_quark_to_index, field_type, field_name)) {
 		goto end;
 	}
 	ret = 0;
@@ -386,6 +392,7 @@ struct bt_ctf_field_type *bt_ctf_field_type_variant_create(const char *tag_name)
 	bt_ctf_field_type_init(&variant->parent);
 	variant->fields = g_ptr_array_new_with_free_func(
 		destroy_structure_field);
+	variant->field_quark_to_index = g_hash_table_new(NULL, NULL);
 	return &variant->parent;
 error:
 	return NULL;
@@ -404,7 +411,8 @@ int bt_ctf_field_type_variant_add_field(struct bt_ctf_field_type *type,
 
 	struct bt_ctf_field_type_variant *variant = container_of(type,
 		struct bt_ctf_field_type_variant, parent);
-	if (add_structure_field(variant->fields, field_type, field_name)) {
+	if (add_structure_field(variant->fields, variant->field_quark_to_index,
+		field_type, field_name)) {
 		goto end;
 	}
 	ret = 0;
@@ -599,6 +607,7 @@ void bt_ctf_field_type_structure_destroy(struct bt_ctf_ref *ref)
 		container_of(ref, struct bt_ctf_field_type, ref_count),
 		struct bt_ctf_field_type_structure, parent);
 	g_ptr_array_free(structure->fields, TRUE);
+	g_hash_table_destroy(structure->field_quark_to_index);
 	g_free(structure);
 }
 
@@ -611,6 +620,7 @@ void bt_ctf_field_type_variant_destroy(struct bt_ctf_ref *ref)
 		container_of(ref, struct bt_ctf_field_type, ref_count),
 		struct bt_ctf_field_type_variant, parent);
 	g_ptr_array_free(variant->fields, TRUE);
+	g_hash_table_destroy(variant->field_quark_to_index);
 	g_free(variant);
 }
 
