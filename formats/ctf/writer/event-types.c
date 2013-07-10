@@ -152,16 +152,19 @@ struct bt_ctf_field_type *bt_ctf_field_type_integer_create(unsigned int size)
 int bt_ctf_field_type_integer_set_signed(struct bt_ctf_field_type *type,
 		int is_signed)
 {
-	int ret = 0;
+	int ret = -1;
 	if (!type || type->locked ||
 		type->field_type != BT_CTF_FIELD_TYPE_ID_INTEGER) {
-		ret = -1;
 		goto end;
 	}
 
 	struct bt_ctf_field_type_integer *integer = container_of(type,
 		struct bt_ctf_field_type_integer, parent);
+	if (is_signed && integer->size <= 1) {
+		goto end;
+	}
 	integer->is_signed = is_signed ? 1 : 0;
+	ret = 0;
 end:
 	return ret;
 }
