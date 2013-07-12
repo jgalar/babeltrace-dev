@@ -35,6 +35,7 @@
 struct range_overlap_query {
 	int64_t range_start, range_end;
 	int overlaps;
+	GQuark mapping_name;
 };
 
 struct structure_name_query {
@@ -84,8 +85,11 @@ static void check_ranges_overlap(gpointer element, gpointer query)
 {
 	struct enumeration_mapping *mapping = element;
 	struct range_overlap_query *range_query = query;
-	range_query->overlaps |= mapping->range_start <= range_query->range_end
-		&& range_query->range_start <= mapping->range_end;
+	if (mapping->range_start <= range_query->range_end
+	    && range_query->range_start <= mapping->range_end) {
+		range_query->overlaps = 1;
+		range_query->mapping_name = mapping->string;
+	}
 }
 
 static void find_structure_field_name(gpointer element, gpointer query)
@@ -561,6 +565,77 @@ enum bt_ctf_field_type_id bt_ctf_field_type_get_type_id(
 		return BT_CTF_FIELD_TYPE_ID_UNKNOWN;
 	}
 	return type->field_type;
+}
+
+struct bt_ctf_field_type *bt_ctf_field_type_structure_get_type(
+		struct bt_ctf_field_type_structure *structure,
+		const char *name)
+{
+	struct bt_ctf_field_type *type = NULL;
+	GQuark name_quark = g_quark_try_string(name);
+	if (!name_quark) {
+		goto end;
+	}
+
+	/* May return 0 (a valid index); the quark must be checked */
+	size_t index = (size_t) g_hash_table_lookup(
+		structure->field_quark_to_index,
+		GUINT_TO_POINTER(name_quark));
+	if (index > structure->fields->len) {
+		goto end;
+	}
+
+	struct structure_field *field_entry = g_ptr_array_index(
+		structure->fields, index);
+	if (field_entry->name == name_quark) {
+		type = field_entry->type;
+	}
+end:
+	return type;
+}
+
+struct bt_ctf_field_type *bt_ctf_field_type_array_get_element_type(
+		struct bt_ctf_field_type_array *array)
+{
+	return array->element_type;
+}
+
+struct bt_ctf_field_type *bt_ctf_field_type_sequence_get_element_type(
+		struct bt_ctf_field_type_sequence *sequence)
+{
+	return sequence->element_type;
+}
+
+struct bt_ctf_field_type *bt_ctf_field_type_variant_get_type(
+		struct bt_ctf_field_type_variant *variant,
+		struct bt_ctf_field_type_enumeration *enumeration,
+		int64_t tag)
+{
+	struct bt_ctf_field_type *type = NULL;
+
+	struct range_overlap_query query = {.range_start = tag,
+		.range_end = tag, .overlaps = 0};
+	g_ptr_array_foreach(enumeration->entries, check_ranges_overlap, &query);
+	if (!query.overlaps) {
+		goto end;
+	}
+	GQuark name_quark = query.mapping_name;
+
+	/* May return 0 (a valid index); the quark must be checked */
+	size_t index = (size_t) g_hash_table_lookup(
+		variant->field_quark_to_index,
+		GUINT_TO_POINTER(name_quark));
+	if (index > variant->fields->len) {
+		goto end;
+	}
+
+	struct structure_field *field_entry = g_ptr_array_index(
+		variant->fields, index);
+	if (field_entry->name == name_quark) {
+		type = field_entry->type;
+	}
+end:
+	return type;
 }
 
 void bt_ctf_field_type_integer_destroy(struct bt_ctf_ref *ref)

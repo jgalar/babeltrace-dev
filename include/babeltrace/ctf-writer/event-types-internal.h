@@ -128,4 +128,22 @@ BT_HIDDEN
 enum bt_ctf_field_type_id bt_ctf_field_type_get_type_id(
 		struct bt_ctf_field_type *type);
 
+BT_HIDDEN
+struct bt_ctf_field_type *bt_ctf_field_type_structure_get_type(
+		struct bt_ctf_field_type_structure *structure,
+		const char *name);
+
+BT_HIDDEN
+struct bt_ctf_field_type *bt_ctf_field_type_array_get_element_type(
+		struct bt_ctf_field_type_array *array);
+
+BT_HIDDEN
+struct bt_ctf_field_type *bt_ctf_field_type_sequence_get_element_type(
+		struct bt_ctf_field_type_sequence *sequence);
+
+BT_HIDDEN
+struct bt_ctf_field_type *bt_ctf_field_type_variant_get_type(
+		struct bt_ctf_field_type_variant *variant,
+		struct bt_ctf_field_type_enumeration *enumeration, int64_t tag);
+
 #endif /* _BABELTRACE_CTF_WRITER_EVENT_TYPES_INTERNAL_H */
