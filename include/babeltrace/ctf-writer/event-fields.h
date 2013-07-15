@@ -47,17 +47,24 @@ extern void bt_ctf_field_get(struct bt_ctf_field *field);
 
 extern void bt_ctf_field_put(struct bt_ctf_field *field);
 
+extern int bt_ctf_field_sequence_set_length(struct bt_ctf_field *sequence,
+		struct bt_ctf_field *length_field);
+
 /* Creates and returns a field linked to the structure */
 extern struct bt_ctf_field *bt_ctf_field_structure_get_field(
 		struct bt_ctf_field *structure, const char *name);
 
 /* Creates and returns a field linked to the array */
-extern int bt_ctf_field_array_get_field(struct bt_ctf_field *array,
-		unsigned int index);
+extern struct bt_ctf_field *bt_ctf_field_array_get_field(
+		struct bt_ctf_field *array, uint64_t index);
 
+/* Creates and returns a field linked to the sequence */
+extern struct bt_ctf_field *bt_ctf_field_sequence_get_field(
+		struct bt_ctf_field *sequence, uint64_t index);
 
-extern int bt_ctf_field_variant_set_value(struct bt_ctf_field *variant,
-		struct bt_ctf_field *value);
+/* Creates and returns a field linked to the variant */
+extern struct bt_ctf_field *bt_ctf_field_variant_get_field(
+		struct bt_ctf_field *variant, struct bt_ctf_field *tag);
 
 extern int bt_ctf_field_signed_integer_set_value(struct bt_ctf_field *integer,
 		int64_t value);
