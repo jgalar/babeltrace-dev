@@ -40,9 +40,6 @@ struct bt_ctf_field_type;
 
 extern struct bt_ctf_event_class *bt_ctf_event_class_create(const char *name);
 
-extern const char *bt_ctf_event_class_get_name(
-	struct bt_ctf_event_class *event_class);
-
 extern int bt_ctf_event_class_add_field(struct bt_ctf_event_class *event_class,
 		struct bt_ctf_field_type *type,
 		const char *name);
