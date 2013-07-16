@@ -570,19 +570,19 @@ struct bt_ctf_field_type *bt_ctf_field_type_structure_get_type(
 		goto end;
 	}
 
-	/* May return 0 (a valid index); the quark must be checked */
-	size_t index = (size_t) g_hash_table_lookup(
-		structure->field_name_to_index,
-		GUINT_TO_POINTER(name_quark));
+	gpointer result;
+	if (!g_hash_table_lookup_extended(structure->field_name_to_index,
+	      GUINT_TO_POINTER(name_quark), NULL, &result)) {
+		goto end;
+	}
+
+	size_t index = GPOINTER_TO_UINT(result);
 	if (index > structure->fields->len) {
 		goto end;
 	}
 
-	struct structure_field *field_entry = g_ptr_array_index(
-		structure->fields, index);
-	if (field_entry->name == name_quark) {
-		type = field_entry->type;
-	}
+	struct structure_field *field = structure->fields->pdata[index];
+	type = field->type;
 end:
 	return type;
 }
