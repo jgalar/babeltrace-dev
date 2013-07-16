@@ -57,7 +57,7 @@ struct bt_ctf_field_floating_point {
 
 struct bt_ctf_field_structure {
 	struct bt_ctf_field parent;
-	GHashTable *field_quark_to_index;
+	GHashTable *field_name_to_index;
 	GPtrArray *fields; /* Array of pointers to struct bt_ctf_field */
 };
 
