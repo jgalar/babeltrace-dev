@@ -151,6 +151,7 @@ int bt_ctf_field_sequence_set_length(struct bt_ctf_field *field,
 		struct bt_ctf_field_sequence, parent);
 	if (sequence->elements) {
 		g_ptr_array_free(sequence->elements, TRUE);
+		bt_ctf_field_put(sequence->length);
 	}
 
 	sequence->elements = g_ptr_array_new_full((size_t)sequence_length,
@@ -177,18 +178,27 @@ struct bt_ctf_field *bt_ctf_field_structure_get_field(
 		goto end;
 	}
 
+	GQuark field_quark = g_quark_from_string(name);
 	struct bt_ctf_field_structure *structure = container_of(field,
 		struct bt_ctf_field_structure, parent);
 	struct bt_ctf_field_type_structure *structure_type = container_of(
 		field->type, struct bt_ctf_field_type_structure, parent);
 	struct bt_ctf_field_type *field_type =
 		bt_ctf_field_type_structure_get_type(structure_type, name);
-	new_field = bt_ctf_field_create(field_type);
+	size_t index = (size_t)g_hash_table_lookup(
+		structure->field_name_to_index, GUINT_TO_POINTER(field_quark));
+	if (structure->fields->pdata[index]) {
+		new_field = structure->fields->pdata[index];
+		goto end;
+	}
 
-	g_hash_table_insert(structure->field_quark_to_index,
-		(gpointer) (unsigned long) g_quark_from_string(name),
-		(gpointer) (unsigned long) structure->fields->len);
-	g_ptr_array_add(structure->fields, new_field);
+	new_field = bt_ctf_field_create(field_type);
+	if (!new_field) {
+		goto end;
+	}
+
+	bt_ctf_field_get(new_field);
+	structure->fields->pdata[index] = new_field;
 end:
 	return new_field;
 }
@@ -212,6 +222,11 @@ struct bt_ctf_field *bt_ctf_field_array_get_field(struct bt_ctf_field *field,
 		struct bt_ctf_field_type_array, parent);
 	struct bt_ctf_field_type *field_type =
 		bt_ctf_field_type_array_get_element_type(array_type);
+	if (array->elements->pdata[(size_t)index]) {
+		new_field = array->elements->pdata[(size_t)index];
+		goto end;
+	}
+
 	new_field = bt_ctf_field_create(field_type);
 	bt_ctf_field_get(new_field);
 	array->elements->pdata[(size_t)index] = new_field;
@@ -238,6 +253,11 @@ struct bt_ctf_field *bt_ctf_field_sequence_get_field(struct bt_ctf_field *field,
 		field->type, struct bt_ctf_field_type_sequence, parent);
 	struct bt_ctf_field_type *field_type =
 		bt_ctf_field_type_sequence_get_element_type(sequence_type);
+	if (sequence->elements->pdata[(size_t)index]) {
+		new_field = sequence->elements->pdata[(size_t)index];
+		goto end;
+	}
+
 	new_field = bt_ctf_field_create(field_type);
 	bt_ctf_field_get(new_field);
 	sequence->elements->pdata[(size_t)index] = new_field;
@@ -277,9 +297,12 @@ struct bt_ctf_field *bt_ctf_field_variant_get_field(struct bt_ctf_field *field,
 		goto end;
 	}
 
+	bt_ctf_field_put(variant->tag);
+	bt_ctf_field_put(variant->payload);
 	bt_ctf_field_get(new_field);
 	bt_ctf_field_get(tag_field);
 	variant->tag = tag_field;
+	variant->payload = new_field;
 end:
 	return new_field;
 }
@@ -404,6 +427,8 @@ struct bt_ctf_field *bt_ctf_field_floating_point_create(
 struct bt_ctf_field *bt_ctf_field_structure_create(
 	struct bt_ctf_field_type *type)
 {
+	struct bt_ctf_field_type_structure *structure_type = container_of(type,
+		struct bt_ctf_field_type_structure, parent);
 	struct bt_ctf_field_structure *structure = g_new0(
 		struct bt_ctf_field_structure, 1);
 	struct bt_ctf_field *field = NULL;
@@ -411,18 +436,11 @@ struct bt_ctf_field *bt_ctf_field_structure_create(
 		goto end;
 	}
 
-	structure->field_quark_to_index = g_hash_table_new(NULL, NULL);
-	if (!structure->field_quark_to_index) {
-		goto end;
-	}
-
+	structure->field_name_to_index = structure_type->field_name_to_index;
 	structure->fields = g_ptr_array_new_with_free_func(
 		(GDestroyNotify)bt_ctf_field_put);
-	if (structure->fields) {
-		g_hash_table_destroy(structure->field_quark_to_index);
-		goto end;
-	}
-
+	g_ptr_array_set_size(structure->fields,
+		g_hash_table_size(structure->field_name_to_index));
 	field = &structure->parent;
 end:
 	return field;
@@ -541,7 +559,6 @@ void bt_ctf_field_structure_destroy(struct bt_ctf_field *field)
 	struct bt_ctf_field_structure *structure = container_of(field,
 		struct bt_ctf_field_structure, parent);
 	g_ptr_array_free(structure->fields, TRUE);
-	g_hash_table_destroy(structure->field_quark_to_index);
 	g_free(structure);
 }
 
