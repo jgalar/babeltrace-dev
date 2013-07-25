@@ -25,6 +25,16 @@ SCRIPT_LIST = test_seek_big_trace test_seek_empty_packet
 
 dist_noinst_SCRIPTS = $(SCRIPT_LIST)
 
+test_ctf_writer_LDADD = libtestcommon.a \
+	$(top_builddir)/lib/libbabeltrace.la \
+	$(top_builddir)/formats/ctf/libbabeltrace-ctf.la
+
+noinst_PROGRAMS = test-seeks test-bitfield test-ctf-writer
+
+test_seeks_SOURCES = test-seeks.c
+test_bitfield_SOURCES = test-bitfield.c
+test_ctf_writer_SOURCES = test-ctf-writer.c
+
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
 		for script in $(SCRIPT_LIST); do \
