@@ -43,7 +43,7 @@ static void destroy_field_entry(struct field_entry *entry);
 struct bt_ctf_event_class *bt_ctf_event_class_create(const char *name)
 {
 	struct bt_ctf_event_class *event_class = NULL;
-	if (!name || validate_identifier(name)) {
+	if (validate_identifier(name)) {
 		goto end;
 	}
 
@@ -66,7 +66,7 @@ int bt_ctf_event_class_add_field(struct bt_ctf_event_class *event_class,
 		const char *name)
 {
 	int ret = -1;
-	if (!event_class || !type || !name || validate_identifier(name) ||
+	if (!event_class || !type || validate_identifier(name) ||
 		event_class->locked) {
 		goto end;
 	}
@@ -139,7 +139,7 @@ int bt_ctf_event_set_payload(struct bt_ctf_event *event,
 		struct bt_ctf_field *value)
 {
 	int ret = -1;
-	if (!event || !name || !value || validate_identifier(name)) {
+	if (!event || !value || validate_identifier(name)) {
 		goto end;
 	}
 

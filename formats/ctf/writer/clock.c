@@ -36,7 +36,7 @@ static void bt_ctf_clock_destroy(struct bt_ctf_ref *ref);
 struct bt_ctf_clock *bt_ctf_clock_create(const char *name)
 {
 	struct bt_ctf_clock *clock = NULL;
-	if (!name || validate_identifier(name)) {
+	if (validate_identifier(name)) {
 		goto error;
 	}
 	clock = g_new0(struct bt_ctf_clock, 1);

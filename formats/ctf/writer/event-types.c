@@ -253,8 +253,7 @@ int bt_ctf_field_type_enumeration_add_mapping(
 		int64_t range_start, int64_t range_end)
 {
 	int ret = -1;
-	if (!type || !string ||
-		type->field_type != BT_CTF_FIELD_TYPE_ID_ENUMERATION ||
+	if (!type || type->field_type != BT_CTF_FIELD_TYPE_ID_ENUMERATION ||
 		type->locked ||
 		range_end < range_start) {
 		goto end;
@@ -374,7 +373,7 @@ int bt_ctf_field_type_structure_add_field(struct bt_ctf_field_type *type,
 		const char *field_name)
 {
 	int ret = -1;
-	if (!type || !field_type || !field_name || type->locked ||
+	if (!type || !field_type || type->locked ||
 		validate_identifier(field_name) ||
 		type->field_type != BT_CTF_FIELD_TYPE_ID_STRUCTURE) {
 		goto end;
@@ -394,7 +393,7 @@ end:
 struct bt_ctf_field_type *bt_ctf_field_type_variant_create(const char *tag_name)
 {
 	struct bt_ctf_field_type_variant *variant = NULL;
-	if (!tag_name || validate_identifier(tag_name)) {
+	if (validate_identifier(tag_name)) {
 		goto error;
 	}
 
@@ -419,7 +418,7 @@ int bt_ctf_field_type_variant_add_field(struct bt_ctf_field_type *type,
 		const char *field_name)
 {
 	int ret = -1;
-	if (!type || !field_type || !field_name || type->locked ||
+	if (!type || !field_type || type->locked ||
 		validate_identifier(field_name) ||
 		type->field_type != BT_CTF_FIELD_TYPE_ID_VARIANT) {
 		goto end;
@@ -465,8 +464,7 @@ struct bt_ctf_field_type *bt_ctf_field_type_sequence_create(
 		const char *length_field_name)
 {
 	struct bt_ctf_field_type_sequence *sequence = NULL;
-	if (!element_type || !length_field_name ||
-		validate_identifier(length_field_name)) {
+	if (!element_type || validate_identifier(length_field_name)) {
 		goto error;
 	}
 
