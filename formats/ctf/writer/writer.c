@@ -30,6 +30,8 @@
 #include <babeltrace/ctf-writer/clock.h>
 #include <babeltrace/ctf-writer/writer-internal.h>
 #include <babeltrace/ctf-writer/functor-internal.h>
+#include <babeltrace/ctf-writer/stream-internal.h>
+#include <babeltrace/ctf-writer/stream.h>
 #include <babeltrace/compiler.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,6 +93,7 @@ struct bt_ctf_writer *bt_ctf_writer_create(const char *path)
 	if (!writer->clocks) {
 		goto error_destroy;
 	}
+
 	return writer;
 
 error_destroy:
@@ -129,10 +132,25 @@ static void bt_ctf_writer_destroy(struct bt_ctf_ref *ref)
 	g_free(writer);
 }
 
-struct bt_ctf_stream *bt_ctf_writer_add_stream(struct bt_ctf_writer *writer,
+void bt_ctf_writer_add_stream(struct bt_ctf_writer *writer,
 		struct bt_ctf_stream *stream)
 {
-	return NULL;
+	if (!writer || !stream) {
+		return;
+	}
+	bt_ctf_stream_get(stream);
+	g_ptr_array_add(writer->streams, stream);
+
+	int stream_class_found = 0;
+	for (size_t i = 0; i < writer->stream_classes->len; i++) {
+		if (writer->stream_classes->pdata[i] == stream->stream_class) {
+			stream_class_found = 1;
+		}
+	}
+
+	if (!stream_class_found) {
+		g_ptr_array_add(writer->stream_classes, stream->stream_class);
+	}
 }
 
 int bt_ctf_writer_add_environment_field(struct bt_ctf_writer *writer,
@@ -227,7 +245,7 @@ int validate_identifier(const char *input_string)
 {
 	int ret = -1;
 	char *string = NULL;
-	if (!input_string) {
+	if (!input_string || input_string[0] == '\0') {
 		goto end;
 	}
 
