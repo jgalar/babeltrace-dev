@@ -30,6 +30,7 @@
  */
 
 #include <babeltrace/ctf-writer/ref-internal.h>
+#include <babeltrace/babeltrace-internal.h>
 #include <glib.h>
 
 struct field_type_entry {
@@ -56,5 +57,8 @@ struct bt_ctf_event {
 	GHashTable *field_name_to_index;
 	GPtrArray *fields; /* Array of pointers to struct field_entry */
 };
+
+BT_HIDDEN
+void bt_ctf_event_class_lock(struct bt_ctf_event_class *event_class);
 
 #endif /* _BABELTRACE_CTF_WRITER_EVENT_INTERNAL_H */

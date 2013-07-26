@@ -140,7 +140,7 @@ int bt_ctf_field_sequence_set_length(struct bt_ctf_field *field,
 
 	struct bt_ctf_field_type_integer *length_type = container_of(
 		length_field->type, struct bt_ctf_field_type_integer, parent);
-	if (length_type->is_signed) {
+	if (length_type->_signed) {
 		goto end;
 	}
 
@@ -321,6 +321,10 @@ int bt_ctf_field_signed_integer_set_value(struct bt_ctf_field *field,
 		struct bt_ctf_field_integer, parent);
 	struct bt_ctf_field_type_integer *integer_type = container_of(
 		field->type, struct bt_ctf_field_type_integer, parent);
+	if (!integer_type->_signed) {
+		goto end;
+	}
+
 	unsigned int size = integer_type->size;
 	int64_t min_value = -(1 << (size - 1));
 	int64_t max_value = (1 << (size - 1)) - 1;
@@ -347,6 +351,10 @@ int bt_ctf_field_unsigned_integer_set_value(struct bt_ctf_field *field,
 		struct bt_ctf_field_integer, parent);
 	struct bt_ctf_field_type_integer *integer_type = container_of(
 		field->type, struct bt_ctf_field_type_integer, parent);
+	if (integer_type->_signed) {
+		goto end;
+	}
+
 	unsigned int size = integer_type->size;
 	int64_t max_value = (1 << size) - 1;
 	if (value > max_value) {

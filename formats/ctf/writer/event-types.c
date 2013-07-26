@@ -61,6 +61,24 @@ static void (*type_destroy_funcs[])(struct bt_ctf_ref *) =
 	[BT_CTF_FIELD_TYPE_ID_STRING] = bt_ctf_field_type_string_destroy
 };
 
+static void generic_field_type_lock(struct bt_ctf_field_type *);
+static void bt_ctf_field_type_enumeration_lock(struct bt_ctf_field_type *);
+static void bt_ctf_field_type_structure_lock(struct bt_ctf_field_type *);
+static void bt_ctf_field_type_variant_lock(struct bt_ctf_field_type *);
+static void bt_ctf_field_type_array_lock(struct bt_ctf_field_type *);
+static void bt_ctf_field_type_sequence_lock(struct bt_ctf_field_type *);
+
+static type_lock_func type_lock_funcs[] =
+{
+	[BT_CTF_FIELD_TYPE_ID_INTEGER] = generic_field_type_lock,
+	[BT_CTF_FIELD_TYPE_ID_ENUMERATION] = bt_ctf_field_type_enumeration_lock,
+	[BT_CTF_FIELD_TYPE_ID_FLOATING_POINT] = generic_field_type_lock,
+	[BT_CTF_FIELD_TYPE_ID_STRUCTURE] = bt_ctf_field_type_structure_lock,
+	[BT_CTF_FIELD_TYPE_ID_VARIANT] = bt_ctf_field_type_variant_lock,
+	[BT_CTF_FIELD_TYPE_ID_ARRAY] = bt_ctf_field_type_array_lock,
+	[BT_CTF_FIELD_TYPE_ID_SEQUENCE] = bt_ctf_field_type_sequence_lock,
+	[BT_CTF_FIELD_TYPE_ID_STRING] = generic_field_type_lock
+};
 
 static void destroy_enumeration_mapping(gpointer elem)
 {
@@ -95,6 +113,7 @@ static void bt_ctf_field_type_init(struct bt_ctf_field_type *type)
 	assert(type && type->field_type > BT_CTF_FIELD_TYPE_ID_UNKNOWN &&
 		type->field_type < NR_BT_CTF_FIELD_TYPE_ID_TYPES);
 	bt_ctf_ref_init(&type->ref_count, type_destroy_funcs[type->field_type]);
+	type->lock = type_lock_funcs[type->field_type];
 	type->endianness = BT_CTF_BYTE_ORDER_NATIVE;
 	type->alignment = 1;
 }
@@ -138,7 +157,7 @@ struct bt_ctf_field_type *bt_ctf_field_type_integer_create(unsigned int size)
 	}
 
 	integer->parent.field_type = BT_CTF_FIELD_TYPE_ID_INTEGER;
-	integer->is_signed = 0;
+	integer->_signed = 0;
 	integer->size = size;
 	integer->base = BT_CTF_INTEGER_BASE_DECIMAL;
 	integer->encoding = BT_CTF_STRING_ENCODING_NONE;
@@ -160,7 +179,7 @@ int bt_ctf_field_type_integer_set_signed(struct bt_ctf_field_type *type,
 	if (is_signed && integer->size <= 1) {
 		goto end;
 	}
-	integer->is_signed = is_signed ? 1 : 0;
+	integer->_signed = is_signed ? 1 : 0;
 	ret = 0;
 end:
 	return ret;
@@ -548,7 +567,7 @@ void bt_ctf_field_type_lock(struct bt_ctf_field_type *type)
 	if (!type) {
 		return;
 	}
-	type->locked = 1;
+	type->lock(type);
 }
 
 enum bt_ctf_field_type_id bt_ctf_field_type_get_type_id(
@@ -725,4 +744,56 @@ void bt_ctf_field_type_string_destroy(struct bt_ctf_ref *ref)
 		container_of(ref, struct bt_ctf_field_type, ref_count),
 		struct bt_ctf_field_type_string, parent);
 	g_free(string);
+}
+
+void generic_field_type_lock(struct bt_ctf_field_type *type)
+{
+	type->locked = 1;
+}
+
+void bt_ctf_field_type_enumeration_lock(struct bt_ctf_field_type *type)
+{
+	generic_field_type_lock(type);
+	struct bt_ctf_field_type_enumeration *enumeration_type = container_of(
+		type, struct bt_ctf_field_type_enumeration, parent);
+	bt_ctf_field_type_lock(enumeration_type->container);
+}
+
+static void lock_structure_field(struct structure_field *field)
+{
+	bt_ctf_field_type_lock(field->type);
+}
+
+void bt_ctf_field_type_structure_lock(struct bt_ctf_field_type *type)
+{
+	generic_field_type_lock(type);
+	struct bt_ctf_field_type_structure *structure_type = container_of(
+		type, struct bt_ctf_field_type_structure, parent);
+	g_ptr_array_foreach(structure_type->fields, (GFunc)lock_structure_field,
+		NULL);
+}
+
+void bt_ctf_field_type_variant_lock(struct bt_ctf_field_type *type)
+{
+	generic_field_type_lock(type);
+	struct bt_ctf_field_type_variant *variant_type = container_of(
+		type, struct bt_ctf_field_type_variant, parent);
+	g_ptr_array_foreach(variant_type->fields, (GFunc)lock_structure_field,
+		NULL);
+}
+
+void bt_ctf_field_type_array_lock(struct bt_ctf_field_type *type)
+{
+	generic_field_type_lock(type);
+	struct bt_ctf_field_type_array *array_type = container_of(
+		type, struct bt_ctf_field_type_array, parent);
+	bt_ctf_field_type_lock(array_type->element_type);
+}
+
+void bt_ctf_field_type_sequence_lock(struct bt_ctf_field_type *type)
+{
+	generic_field_type_lock(type);
+	struct bt_ctf_field_type_sequence *sequence_type = container_of(
+		type, struct bt_ctf_field_type_sequence, parent);
+	bt_ctf_field_type_lock(sequence_type->element_type);
 }

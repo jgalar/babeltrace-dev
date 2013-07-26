@@ -31,17 +31,22 @@
 
 #include <babeltrace/ctf-writer/ref-internal.h>
 #include <babeltrace/ctf-writer/clock.h>
+#include <babeltrace/babeltrace-internal.h>
 #include <glib.h>
 
 struct bt_ctf_stream_class {
 	struct bt_ctf_ref ref_count;
 	struct bt_ctf_clock *clock;
 	GPtrArray *event_classes; /* Array of pointers to bt_ctf_event_class */
+	int locked;
 };
 
 struct bt_ctf_stream {
 	struct bt_ctf_ref ref_count;
 	struct bt_ctf_stream_class *stream_class;
 };
+
+BT_HIDDEN
+void bt_ctf_stream_class_lock(struct bt_ctf_stream_class *stream_class);
 
 #endif /* _BABELTRACE_CTF_WRITER_STREAM_INTERNAL_H */

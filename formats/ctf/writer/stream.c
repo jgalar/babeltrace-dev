@@ -27,7 +27,9 @@
  */
 
 #include <babeltrace/ctf-writer/clock.h>
+#include <babeltrace/ctf-writer/clock-internal.h>
 #include <babeltrace/ctf-writer/event.h>
+#include <babeltrace/ctf-writer/event-internal.h>
 #include <babeltrace/ctf-writer/stream.h>
 #include <babeltrace/ctf-writer/stream-internal.h>
 #include <babeltrace/ctf-writer/functor-internal.h>
@@ -64,7 +66,7 @@ int bt_ctf_stream_class_set_clock(struct bt_ctf_stream_class *stream_class,
 		struct bt_ctf_clock *clock)
 {
 	int ret = 0;
-	if (!stream_class || !clock) {
+	if (!stream_class || !clock || stream_class->locked) {
 		ret = -1;
 		goto end;
 	}
@@ -119,6 +121,18 @@ void bt_ctf_stream_class_put(struct bt_ctf_stream_class *stream_class)
 	bt_ctf_ref_put(&stream_class->ref_count);
 }
 
+void bt_ctf_stream_class_lock(struct bt_ctf_stream_class *stream_class)
+{
+	if (!stream_class) {
+		return;
+	}
+
+	stream_class->locked = 1;
+	bt_ctf_clock_lock(stream_class->clock);
+	g_ptr_array_foreach(stream_class->event_classes,
+		(GFunc)bt_ctf_event_class_lock, NULL);
+}
+
 static void bt_ctf_stream_class_destroy(struct bt_ctf_ref *ref)
 {
 	if (!ref) {
@@ -152,6 +166,7 @@ struct bt_ctf_stream *bt_ctf_stream_create(
 	bt_ctf_ref_init(&stream->ref_count, bt_ctf_stream_destroy);
 	bt_ctf_stream_class_put(stream_class);
 	stream->stream_class = stream_class;
+	bt_ctf_stream_class_lock(stream_class);
 end:
 	return stream;
 }

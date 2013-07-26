@@ -31,6 +31,7 @@
 
 #include <babeltrace/ctf-writer/ref-internal.h>
 #include <babeltrace/ctf-writer/clock.h>
+#include <babeltrace/babeltrace-internal.h>
 #include <glib.h>
 
 struct bt_ctf_clock {
@@ -39,6 +40,14 @@ struct bt_ctf_clock {
 	GString *description;
 	uint64_t frequency, precision, offset_s, offset, time;
 	int is_absolute;
+	/*
+	 * A clock's properties can't be modified once it is added to a stream
+	 * class.
+	 */
+	int locked;
 };
+
+BT_HIDDEN
+void bt_ctf_clock_lock(struct bt_ctf_clock *clock);
 
 #endif /* _BABELTRACE_CTF_WRITER_CLOCK_INTERNAL_H */

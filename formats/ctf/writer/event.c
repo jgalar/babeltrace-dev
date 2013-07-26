@@ -30,20 +30,20 @@
 #include <babeltrace/ctf-writer/event-types.h>
 #include <babeltrace/ctf-writer/event-fields.h>
 #include <babeltrace/ctf-writer/event-fields-internal.h>
+#include <babeltrace/ctf-writer/event-types-internal.h>
 #include <babeltrace/ctf-writer/event-internal.h>
 #include <babeltrace/ctf-writer/writer-internal.h>
 #include <babeltrace/compiler.h>
 
 static void bt_ctf_event_class_destroy(struct bt_ctf_ref *ref);
 static void bt_ctf_event_destroy(struct bt_ctf_ref *ref);
-static void bt_ctf_event_class_lock(struct bt_ctf_event_class *event_class);
 static void destroy_field_type_entry(struct field_type_entry *entry);
 static void destroy_field_entry(struct field_entry *entry);
 
 struct bt_ctf_event_class *bt_ctf_event_class_create(const char *name)
 {
 	struct bt_ctf_event_class *event_class = NULL;
-	if (!name) {
+	if (!name || validate_identifier(name)) {
 		goto end;
 	}
 
@@ -207,14 +207,20 @@ void bt_ctf_event_destroy(struct bt_ctf_ref *ref)
 	struct bt_ctf_event *event = container_of(ref, struct bt_ctf_event,
 		ref_count);
 	g_ptr_array_free(event->fields, TRUE);
-	g_hash_table_destroy(event->field_name_to_index);
 	bt_ctf_event_class_put(event->event_class);
 	g_free(event);
+}
+
+static void lock_field_type_entry(struct field_type_entry *entry)
+{
+	bt_ctf_field_type_lock(entry->field_type);
 }
 
 void bt_ctf_event_class_lock(struct bt_ctf_event_class *event_class)
 {
 	event_class->locked = 1;
+	g_ptr_array_foreach(event_class->fields, (GFunc)lock_field_type_entry,
+		NULL);
 }
 
 void destroy_field_type_entry(struct field_type_entry *entry)
@@ -222,7 +228,7 @@ void destroy_field_type_entry(struct field_type_entry *entry)
 	if (!entry) {
 		return;
 	}
-	
+
 	bt_ctf_field_type_put(entry->field_type);
 	g_free(entry);
 }

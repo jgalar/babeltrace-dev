@@ -36,6 +36,8 @@
 #include <babeltrace/babeltrace-internal.h>
 #include <glib.h>
 
+typedef void(*type_lock_func)(struct bt_ctf_field_type *);
+
 enum bt_ctf_field_type_id {
 	BT_CTF_FIELD_TYPE_ID_UNKNOWN = 0,
 	BT_CTF_FIELD_TYPE_ID_INTEGER,
@@ -54,6 +56,7 @@ struct bt_ctf_field_type {
 	enum bt_ctf_field_type_id field_type;
 	enum bt_ctf_byte_order endianness;
 	unsigned int alignment;
+	type_lock_func lock;
 	/*
 	 * A type can't be modified once it is added to an event or after a
 	 * a field has been instanciated from it.
@@ -63,7 +66,7 @@ struct bt_ctf_field_type {
 
 struct bt_ctf_field_type_integer {
 	struct bt_ctf_field_type parent;
-	int is_signed;
+	int _signed;
 	unsigned int size;
 	enum bt_ctf_integer_base base;
 	enum bt_ctf_string_encoding encoding;

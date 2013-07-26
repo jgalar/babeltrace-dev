@@ -28,6 +28,7 @@
 
 #include <babeltrace/ctf-writer/clock.h>
 #include <babeltrace/ctf-writer/clock-internal.h>
+#include <babeltrace/ctf-writer/writer-internal.h>
 #include <babeltrace/compiler.h>
 
 static void bt_ctf_clock_destroy(struct bt_ctf_ref *ref);
@@ -35,8 +36,7 @@ static void bt_ctf_clock_destroy(struct bt_ctf_ref *ref);
 struct bt_ctf_clock *bt_ctf_clock_create(const char *name)
 {
 	struct bt_ctf_clock *clock = NULL;
-	if (!name || !name[0]) {
-		/* A name is mandatory and "\0" is not a valid name */
+	if (!name || validate_identifier(name)) {
 		goto error;
 	}
 	clock = g_new0(struct bt_ctf_clock, 1);
@@ -73,7 +73,7 @@ const char *bt_ctf_clock_get_description(struct bt_ctf_clock *clock)
 int bt_ctf_clock_set_description(struct bt_ctf_clock *clock, const char *desc)
 {
 	int ret = -1;
-	if (!clock || !desc) {
+	if (!clock || !desc || clock->locked) {
 		goto end;
 	}
 	clock->description = g_string_new(desc);
@@ -90,10 +90,12 @@ uint64_t bt_ctf_clock_get_frequency(struct bt_ctf_clock *clock)
 int bt_ctf_clock_set_frequency(struct bt_ctf_clock *clock, uint64_t freq)
 {
 	int ret = 0;
-	if (!clock) {
-		return -1;
+	if (!clock || clock->locked) {
+		ret = -1;
+		goto end;
 	}
 	clock->frequency = freq;
+end:
 	return ret;
 }
 
@@ -105,10 +107,12 @@ uint64_t bt_ctf_clock_get_precision(struct bt_ctf_clock *clock)
 int bt_ctf_clock_set_precision(struct bt_ctf_clock *clock, uint64_t precision)
 {
 	int ret = 0;
-	if (!clock) {
-		return -1;
+	if (!clock || clock->locked) {
+		ret = -1;
+		goto end;
 	}
 	clock->precision = precision;
+end:
 	return ret;
 }
 
@@ -120,10 +124,12 @@ uint64_t bt_ctf_clock_get_offset_s(struct bt_ctf_clock *clock)
 int bt_ctf_clock_set_offset_s(struct bt_ctf_clock *clock, uint64_t offset_s)
 {
 	int ret = 0;
-	if (!clock) {
-		return -1;
+	if (!clock || clock->locked) {
+		ret = -1;
+		goto end;
 	}
 	clock->offset_s = offset_s;
+end:
 	return ret;
 }
 
@@ -135,10 +141,12 @@ uint64_t bt_ctf_clock_get_offset(struct bt_ctf_clock *clock)
 int bt_ctf_clock_set_offset(struct bt_ctf_clock *clock, uint64_t offset)
 {
 	int ret = 0;
-	if (!clock) {
-		return -1;
+	if (!clock || clock->locked) {
+		ret = -1;
+		goto end;
 	}
 	clock->offset = offset;
+end:
 	return ret;
 }
 
@@ -150,10 +158,12 @@ int bt_ctf_clock_is_absolute(struct bt_ctf_clock *clock)
 int bt_ctf_clock_set_is_absolute(struct bt_ctf_clock *clock, int is_absolute)
 {
 	int ret = 0;
-	if (!clock) {
-		return -1;
+	if (!clock || clock->locked) {
+		ret = -1;
+		goto end;
 	}
 	clock->is_absolute = is_absolute ? 1 : 0;
+end:
 	return ret;
 }
 
@@ -181,6 +191,14 @@ void bt_ctf_clock_put(struct bt_ctf_clock *clock)
 		return;
 	}
 	bt_ctf_ref_put(&clock->ref_count);
+}
+
+void bt_ctf_clock_lock(struct bt_ctf_clock *clock)
+{
+	if (!clock) {
+		return;
+	}
+	clock->locked = 1;
 }
 
 static void bt_ctf_clock_destroy(struct bt_ctf_ref *ref)
