@@ -72,7 +72,7 @@ extern int bt_ctf_field_type_integer_set_base(
 
 /*
  * An integer encoding may be set to signal that the integer must be printed as
- * a textcharacter, default BT_CTF_STRING_ENCODING_NONE
+ * text, default BT_CTF_STRING_ENCODING_NONE
  */
 extern int bt_ctf_field_type_integer_set_encoding(
 		struct bt_ctf_field_type *integer,
