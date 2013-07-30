@@ -243,6 +243,8 @@ int main(int argc, char **argv)
 	ok(bt_ctf_event_set_payload(simple_event, "int_16", uint_12),
 		"Reject event payloads of incorrect type");
 
+	char *metadata_string = bt_ctf_writer_get_metadata_string(writer);
+	ok(metadata_string, "Get metadata string");
 
 	bt_ctf_field_put(uint_12);
 	bt_ctf_clock_put(clock);
@@ -253,6 +255,7 @@ int main(int argc, char **argv)
 	bt_ctf_field_type_put(int_16_type);
 	bt_ctf_event_put(simple_event);
 	bt_ctf_writer_put(writer);
+	free(metadata_string);
 
 	return 0;
 }
