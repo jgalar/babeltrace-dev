@@ -234,11 +234,24 @@ int main(int argc, char **argv)
 		"Check 0 is allowed for an unsigned 12-bit integer");
 	bt_ctf_field_unsigned_integer_set_value(uint_12, 1295);
 
+	/* Set event payload */
+	ok(bt_ctf_event_set_payload(simple_event, "uint_12", uint_12) == 0,
+		"Set an event field payload");
+	ok(bt_ctf_event_set_payload(simple_event, "uint_12", uint_12) == 0,
+		"Change an event's existing payload");
+	bt_ctf_event_set_payload(simple_event, "int_16", int_16);
+	ok(bt_ctf_event_set_payload(simple_event, "int_16", uint_12),
+		"Reject event payloads of incorrect type");
+
+
+	bt_ctf_field_put(uint_12);
+	bt_ctf_clock_put(clock);
+	bt_ctf_field_put(int_16);
 	bt_ctf_stream_class_put(stream_class);
 	bt_ctf_event_class_put(simple_event_class);
 	bt_ctf_field_type_put(uint_12_type);
 	bt_ctf_field_type_put(int_16_type);
-	bt_ctf_clock_put(clock);
+	bt_ctf_event_put(simple_event);
 	bt_ctf_writer_put(writer);
 
 	return 0;
