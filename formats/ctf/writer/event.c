@@ -126,6 +126,13 @@ struct bt_ctf_event *bt_ctf_event_create(struct bt_ctf_event_class *event_class)
 	bt_ctf_event_class_get(event_class);
 	bt_ctf_event_class_lock(event_class);
 	event->event_class = event_class;
+
+	/*
+	 * The field name to position hash table is shared with the event class
+	 * The same indexes are thus shared in the event_class and event field
+	 * arrays. This makes it easy to check for unset fields (NULL) and to
+	 * print the relevant diagnostic information.
+	 */
 	event->field_name_to_index = event_class->field_name_to_index;
 	event->fields = g_ptr_array_new_full(event_class->fields->len,
 		(GDestroyNotify)destroy_field_entry);
@@ -166,6 +173,11 @@ int bt_ctf_event_set_payload(struct bt_ctf_event *event,
 	entry->name = name_quark;
 	entry->field = value;
 	bt_ctf_field_get(value);
+	if (event->fields->pdata[index]) {
+		destroy_field_entry(event->fields->pdata[index]);
+	}
+
+	event->fields->pdata[index] = entry;
 	ret = 0;
 end:
 	return ret;
