@@ -246,6 +246,11 @@ int main(int argc, char **argv)
 	char *metadata_string = bt_ctf_writer_get_metadata_string(writer);
 	ok(metadata_string, "Get metadata string");
 
+	ok(bt_ctf_stream_push_event(stream1, simple_event) == 0,
+		"Push event to trace stream");
+	ok(bt_ctf_stream_flush(stream1) == 0,
+		"Flush trace stream");
+
 	bt_ctf_field_put(uint_12);
 	bt_ctf_clock_put(clock);
 	bt_ctf_field_put(int_16);
@@ -255,6 +260,7 @@ int main(int argc, char **argv)
 	bt_ctf_field_type_put(int_16_type);
 	bt_ctf_event_put(simple_event);
 	bt_ctf_writer_put(writer);
+	bt_ctf_stream_put(stream1);
 	free(metadata_string);
 
 	return 0;
