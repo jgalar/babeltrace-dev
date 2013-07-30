@@ -44,6 +44,7 @@ int main(int argc, char **argv)
 		bt_ctf_writer_create("/home/decapsuleur/EfficiOS/TestTrace");
 	ok(writer, "bt_ctf_create succeeds in creating trace with path");
 
+	/* Add environment context to the trace */
 	char hostname[HOST_NAME_MAX];
 	gethostname(hostname, HOST_NAME_MAX);
 	ok(bt_ctf_writer_add_environment_field(writer, "host", hostname) == 0,
@@ -83,6 +84,7 @@ int main(int argc, char **argv)
 		name->machine);
 	free(name);
 
+	/* Define a clock and add it to the trace */
 	const char *clock_name = "test_clock";
 	const char *clock_description = "This is a test clock";
 
@@ -125,6 +127,7 @@ int main(int argc, char **argv)
 	ok(bt_ctf_writer_add_clock(writer, clock),
 		"Verify a clock can't be added twice to a writer instance");
 
+	/* Define a stream class and field types */
 	struct bt_ctf_stream_class *stream_class = bt_ctf_stream_class_create();
 	ok(stream_class, "Create stream class");
 	ok(bt_ctf_stream_class_set_clock(stream_class, clock) == 0,
@@ -177,11 +180,13 @@ int main(int argc, char **argv)
 	ok(bt_ctf_event_class_add_field(simple_event_class, int_16_type,
 		"int_16") == 0, "Add field of type signed integer to an event");
 
+	/* Add event class to the stream class */
 	ok(bt_ctf_stream_class_add_event_class(stream_class, NULL),
 		"Reject addition of NULL event class to a stream class");
 	ok(bt_ctf_stream_class_add_event_class(stream_class,
 		simple_event_class) == 0, "Add an event class to stream class");
 
+	/* Instanciate a stream and an event */
 	struct bt_ctf_stream *stream1 = bt_ctf_stream_create(stream_class);
 	ok(stream1, "Instanciate a stream class");
 	/* Should fail after instanciating a stream (locked)*/
