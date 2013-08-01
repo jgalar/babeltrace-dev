@@ -39,14 +39,17 @@ struct bt_ctf_clock *bt_ctf_clock_create(const char *name)
 	if (validate_identifier(name)) {
 		goto error;
 	}
+
 	clock = g_new0(struct bt_ctf_clock, 1);
 	if (!clock) {
 		goto error;
 	}
+
 	clock->name = g_string_new(name);
 	if (!clock->name) {
 		goto error_destroy;
 	}
+
 	clock->precision = 1;
 	bt_ctf_ref_init(&clock->ref_count, bt_ctf_clock_destroy);
 	return clock;
@@ -76,6 +79,7 @@ int bt_ctf_clock_set_description(struct bt_ctf_clock *clock, const char *desc)
 	if (!clock || !desc || clock->locked) {
 		goto end;
 	}
+
 	clock->description = g_string_new(desc);
 	ret = clock->description ? 0 : ret;
 end:
@@ -94,6 +98,7 @@ int bt_ctf_clock_set_frequency(struct bt_ctf_clock *clock, uint64_t freq)
 		ret = -1;
 		goto end;
 	}
+
 	clock->frequency = freq;
 end:
 	return ret;
@@ -206,13 +211,16 @@ static void bt_ctf_clock_destroy(struct bt_ctf_ref *ref)
 	if (!ref) {
 		return;
 	}
+
 	struct bt_ctf_clock *clock = container_of(ref, struct bt_ctf_clock,
 		ref_count);
 	if (clock->name) {
 		g_string_free(clock->name, TRUE);
 	}
+
 	if (clock->description) {
 		g_string_free(clock->description, TRUE);
 	}
+
 	g_free(clock);
 }
