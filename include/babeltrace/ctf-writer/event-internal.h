@@ -46,6 +46,8 @@ struct field_entry {
 struct bt_ctf_event_class {
 	struct bt_ctf_ref ref_count;
 	GQuark name;
+	int id_set;
+	uint32_t id;
 	GHashTable *field_name_to_index;
 	GPtrArray *fields; /* Array of pointers to struct field_type_entry */
 	int locked;
@@ -54,11 +56,16 @@ struct bt_ctf_event_class {
 struct bt_ctf_event {
 	struct bt_ctf_ref ref_count;
 	struct bt_ctf_event_class *event_class;
+	/* This hash table is owned by the event_class */
 	GHashTable *field_name_to_index;
 	GPtrArray *fields; /* Array of pointers to struct field_entry */
 };
 
 BT_HIDDEN
 void bt_ctf_event_class_lock(struct bt_ctf_event_class *event_class);
+
+BT_HIDDEN
+int bt_ctf_event_class_set_id(struct bt_ctf_event_class *event_class,
+	uint32_t id);
 
 #endif /* _BABELTRACE_CTF_WRITER_EVENT_INTERNAL_H */

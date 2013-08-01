@@ -39,8 +39,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-static void environment_variable_deallocate(gpointer element);
-static void clock_put(gpointer element);
+static void environment_variable_destroy(struct environment_variable *var);
 static void bt_ctf_writer_destroy(struct bt_ctf_ref *ref);
 
 static const char * reserved_keywords_str[] = {"align", "callsite" "const",
@@ -84,13 +83,15 @@ struct bt_ctf_writer *bt_ctf_writer_create(const char *path)
 		}
 	}
 	writer->environment = g_ptr_array_new_with_free_func(
-		environment_variable_deallocate);
-	if (!writer->environment) {
-		goto error_destroy;
-	}
-
-	writer->clocks = g_ptr_array_new_with_free_func(clock_put);
-	if (!writer->clocks) {
+		(GDestroyNotify)environment_variable_destroy);
+	writer->clocks = g_ptr_array_new_with_free_func(
+		(GDestroyNotify)bt_ctf_clock_put);
+	writer->streams = g_ptr_array_new_with_free_func(
+		(GDestroyNotify)bt_ctf_stream_put);
+	writer->stream_classes = g_ptr_array_new_with_free_func(
+		(GDestroyNotify)bt_ctf_stream_class_put);
+	if (!writer->environment || !writer->clocks ||
+		!writer->stream_classes || !writer->streams) {
 		goto error_destroy;
 	}
 
@@ -115,31 +116,41 @@ static void bt_ctf_writer_destroy(struct bt_ctf_ref *ref)
 	if (writer->path) {
 		g_string_free(writer->path, TRUE);
 	}
+
 	if (writer->trace_dir_fd != -1) {
 		close(writer->trace_dir_fd);
 	}
+
 	if (writer->trace_dir) {
 		closedir(writer->trace_dir);
 	}
+
 	if (writer->environment) {
-		/* Individual elements are deallocated via GDestroyNotify */
 		g_ptr_array_free(writer->environment, TRUE);
 	}
+
 	if (writer->clocks) {
-		/* Clocks' refcounts are decreased via GDestroyNotify */
 		g_ptr_array_free(writer->clocks, TRUE);
 	}
+
+	if (writer->streams) {
+		g_ptr_array_free(writer->streams, TRUE);
+	}
+
+	if (writer->stream_classes) {
+		g_ptr_array_free(writer->stream_classes, TRUE);
+	}
+
 	g_free(writer);
 }
 
-void bt_ctf_writer_add_stream(struct bt_ctf_writer *writer,
+int bt_ctf_writer_add_stream(struct bt_ctf_writer *writer,
 		struct bt_ctf_stream *stream)
 {
+	int ret = -1;
 	if (!writer || !stream) {
-		return;
+		goto end;
 	}
-	bt_ctf_stream_get(stream);
-	g_ptr_array_add(writer->streams, stream);
 
 	int stream_class_found = 0;
 	for (size_t i = 0; i < writer->stream_classes->len; i++) {
@@ -149,8 +160,20 @@ void bt_ctf_writer_add_stream(struct bt_ctf_writer *writer,
 	}
 
 	if (!stream_class_found) {
+		if (bt_ctf_stream_class_set_id(stream->stream_class,
+					       writer->next_stream_id++)) {
+			goto end;
+		}
+
+		bt_ctf_stream_class_get(stream->stream_class);
 		g_ptr_array_add(writer->stream_classes, stream->stream_class);
 	}
+
+	bt_ctf_stream_get(stream);
+	g_ptr_array_add(writer->streams, stream);
+	ret = 0;
+end:
+	return ret;
 }
 
 int bt_ctf_writer_add_environment_field(struct bt_ctf_writer *writer,
@@ -268,17 +291,11 @@ end:
 	return ret;
 }
 
-static void environment_variable_deallocate(gpointer element)
+static void environment_variable_destroy(struct environment_variable *var)
 {
-	struct environment_variable *var = element;
 	g_string_free(var->name, TRUE);
 	g_string_free(var->value, TRUE);
 	g_free(var);
-}
-
-static void clock_put(gpointer element)
-{
-	bt_ctf_clock_put(element);
 }
 
 static __attribute__((constructor))

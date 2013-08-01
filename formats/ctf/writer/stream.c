@@ -98,6 +98,12 @@ int bt_ctf_stream_class_add_event_class(
 		goto end;
 	}
 
+	if (bt_ctf_event_class_set_id(event_class,
+		stream_class->next_event_id++)) {
+		/* The event is already associated to a stream class */
+		goto end;
+	}
+
 	bt_ctf_event_class_get(event_class);
 	g_ptr_array_add(stream_class->event_classes, event_class);
 	ret = 0;
@@ -133,6 +139,20 @@ void bt_ctf_stream_class_lock(struct bt_ctf_stream_class *stream_class)
 		(GFunc)bt_ctf_event_class_lock, NULL);
 }
 
+int bt_ctf_stream_class_set_id(struct bt_ctf_stream_class *stream_class,
+	uint32_t id)
+{
+	int ret = stream_class->id_set;
+	if (stream_class->id_set) {
+		goto end;
+	}
+
+	stream_class->id = id;
+	stream_class->id_set = 1;
+end:
+	return ret;
+}
+
 static void bt_ctf_stream_class_destroy(struct bt_ctf_ref *ref)
 {
 	if (!ref) {
@@ -148,7 +168,6 @@ static void bt_ctf_stream_class_destroy(struct bt_ctf_ref *ref)
 	}
 	g_free(stream_class);
 }
-
 
 struct bt_ctf_stream *bt_ctf_stream_create(
 		struct bt_ctf_stream_class *stream_class)

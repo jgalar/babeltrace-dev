@@ -51,7 +51,7 @@ extern void bt_ctf_writer_get(struct bt_ctf_writer *writer);
 
 extern void bt_ctf_writer_put(struct bt_ctf_writer *writer);
 
-extern void bt_ctf_writer_add_stream(struct bt_ctf_writer *writer,
+extern int bt_ctf_writer_add_stream(struct bt_ctf_writer *writer,
 		struct bt_ctf_stream *stream);
 
 extern int bt_ctf_writer_add_environment_field(struct bt_ctf_writer *writer,

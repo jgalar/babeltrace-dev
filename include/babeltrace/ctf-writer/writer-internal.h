@@ -47,10 +47,16 @@ struct bt_ctf_writer {
 	GPtrArray *clocks; /* Array of pointers to bt_ctf_clock */
 	GPtrArray *streams; /* Array of pointers to bt_ctf_stream */
 	GPtrArray *stream_classes; /* Array of pointers to bt_ctf_stream_class */
+	uint32_t next_stream_id;
 };
 
 struct environment_variable {
 	GString *name, *value;
+};
+
+struct metadata_context {
+	GString *string;
+	unsigned int indentation_level;
 };
 
 /* Checks that the string is not a reserved keyword */

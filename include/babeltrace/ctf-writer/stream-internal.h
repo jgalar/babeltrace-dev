@@ -38,6 +38,9 @@ struct bt_ctf_stream_class {
 	struct bt_ctf_ref ref_count;
 	struct bt_ctf_clock *clock;
 	GPtrArray *event_classes; /* Array of pointers to bt_ctf_event_class */
+	int id_set;
+	uint32_t id;
+	uint32_t next_event_id;
 	int locked;
 };
 
@@ -48,5 +51,9 @@ struct bt_ctf_stream {
 
 BT_HIDDEN
 void bt_ctf_stream_class_lock(struct bt_ctf_stream_class *stream_class);
+
+BT_HIDDEN
+int bt_ctf_stream_class_set_id(struct bt_ctf_stream_class *stream_class,
+	uint32_t id);
 
 #endif /* _BABELTRACE_CTF_WRITER_STREAM_INTERNAL_H */

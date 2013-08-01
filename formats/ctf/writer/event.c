@@ -235,6 +235,19 @@ void bt_ctf_event_class_lock(struct bt_ctf_event_class *event_class)
 		NULL);
 }
 
+int bt_ctf_event_class_set_id(struct bt_ctf_event_class *event_class, uint32_t id)
+{
+	int ret = event_class->id_set;
+	if (event_class->id_set) {
+		goto end;
+	}
+
+	event_class->id = id;
+	event_class->id_set = 1;
+end:
+	return ret;
+}
+
 void destroy_field_type_entry(struct field_type_entry *entry)
 {
 	if (!entry) {
