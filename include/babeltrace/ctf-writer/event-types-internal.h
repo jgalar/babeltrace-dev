@@ -33,10 +33,13 @@
 #include <babeltrace/ctf-writer/ref-internal.h>
 #include <babeltrace/ctf-writer/event-fields.h>
 #include <babeltrace/ctf-writer/writer.h>
+#include <babeltrace/ctf-writer/writer-internal.h>
 #include <babeltrace/babeltrace-internal.h>
 #include <glib.h>
 
 typedef void(*type_lock_func)(struct bt_ctf_field_type *);
+typedef int(*type_serialize_func)(struct bt_ctf_field_type *,
+		struct metadata_context *);
 
 enum bt_ctf_field_type_id {
 	BT_CTF_FIELD_TYPE_ID_UNKNOWN = 0,
@@ -57,6 +60,7 @@ struct bt_ctf_field_type {
 	enum bt_ctf_byte_order endianness;
 	unsigned int alignment;
 	type_lock_func lock;
+	type_serialize_func serialize;
 	/*
 	 * A type can't be modified once it is added to an event or after a
 	 * a field has been instanciated from it.
@@ -148,5 +152,9 @@ BT_HIDDEN
 struct bt_ctf_field_type *bt_ctf_field_type_variant_get_type(
 		struct bt_ctf_field_type_variant *variant,
 		struct bt_ctf_field_type_enumeration *enumeration, int64_t tag);
+
+BT_HIDDEN
+int bt_ctf_field_type_serialize(struct bt_ctf_field_type *type,
+		struct metadata_context *context);
 
 #endif /* _BABELTRACE_CTF_WRITER_EVENT_TYPES_INTERNAL_H */

@@ -47,7 +47,7 @@ static void bt_ctf_field_type_array_destroy(struct bt_ctf_ref *);
 static void bt_ctf_field_type_sequence_destroy(struct bt_ctf_ref *);
 static void bt_ctf_field_type_string_destroy(struct bt_ctf_ref *);
 
-static void (*type_destroy_funcs[])(struct bt_ctf_ref *) =
+static void (* const type_destroy_funcs[])(struct bt_ctf_ref *) =
 {
 	[BT_CTF_FIELD_TYPE_ID_INTEGER] = bt_ctf_field_type_integer_destroy,
 	[BT_CTF_FIELD_TYPE_ID_ENUMERATION] =
@@ -68,7 +68,7 @@ static void bt_ctf_field_type_variant_lock(struct bt_ctf_field_type *);
 static void bt_ctf_field_type_array_lock(struct bt_ctf_field_type *);
 static void bt_ctf_field_type_sequence_lock(struct bt_ctf_field_type *);
 
-static type_lock_func type_lock_funcs[] =
+static type_lock_func const type_lock_funcs[] =
 {
 	[BT_CTF_FIELD_TYPE_ID_INTEGER] = generic_field_type_lock,
 	[BT_CTF_FIELD_TYPE_ID_ENUMERATION] = bt_ctf_field_type_enumeration_lock,
@@ -78,6 +78,37 @@ static type_lock_func type_lock_funcs[] =
 	[BT_CTF_FIELD_TYPE_ID_ARRAY] = bt_ctf_field_type_array_lock,
 	[BT_CTF_FIELD_TYPE_ID_SEQUENCE] = bt_ctf_field_type_sequence_lock,
 	[BT_CTF_FIELD_TYPE_ID_STRING] = generic_field_type_lock
+};
+
+static int bt_ctf_field_type_integer_serialize(struct bt_ctf_field_type *,
+		struct metadata_context *);
+static int bt_ctf_field_type_enumeration_serialize(struct bt_ctf_field_type *,
+		struct metadata_context *);
+static int bt_ctf_field_type_floating_point_serialize(
+		struct bt_ctf_field_type *, struct metadata_context *);
+static int bt_ctf_field_type_structure_serialize(struct bt_ctf_field_type *,
+		struct metadata_context *);
+static int bt_ctf_field_type_variant_serialize(struct bt_ctf_field_type *,
+		struct metadata_context *);
+static int bt_ctf_field_type_array_serialize(struct bt_ctf_field_type *,
+		struct metadata_context *);
+static int bt_ctf_field_type_sequence_serialize(struct bt_ctf_field_type *,
+		struct metadata_context *);
+static int bt_ctf_field_type_string_serialize(struct bt_ctf_field_type *,
+		struct metadata_context *);
+
+static type_serialize_func const type_serialize_funcs[] =
+{
+	[BT_CTF_FIELD_TYPE_ID_INTEGER] = bt_ctf_field_type_integer_serialize,
+	[BT_CTF_FIELD_TYPE_ID_ENUMERATION] =
+		bt_ctf_field_type_enumeration_serialize,
+	[BT_CTF_FIELD_TYPE_ID_FLOATING_POINT] =
+		bt_ctf_field_type_floating_point_serialize,
+	[BT_CTF_FIELD_TYPE_ID_STRUCTURE] = bt_ctf_field_type_structure_serialize,
+	[BT_CTF_FIELD_TYPE_ID_VARIANT] = bt_ctf_field_type_variant_serialize,
+	[BT_CTF_FIELD_TYPE_ID_ARRAY] = bt_ctf_field_type_array_serialize,
+	[BT_CTF_FIELD_TYPE_ID_SEQUENCE] = bt_ctf_field_type_sequence_serialize,
+	[BT_CTF_FIELD_TYPE_ID_STRING] = bt_ctf_field_type_string_serialize
 };
 
 static void destroy_enumeration_mapping(gpointer elem)
@@ -114,6 +145,7 @@ static void bt_ctf_field_type_init(struct bt_ctf_field_type *type)
 		type->field_type < NR_BT_CTF_FIELD_TYPE_ID_TYPES);
 	bt_ctf_ref_init(&type->ref_count, type_destroy_funcs[type->field_type]);
 	type->lock = type_lock_funcs[type->field_type];
+	type->serialize = type_serialize_funcs[type->field_type];
 	type->endianness = BT_CTF_BYTE_ORDER_NATIVE;
 	type->alignment = 1;
 }
@@ -528,6 +560,7 @@ int bt_ctf_field_type_set_alignment(struct bt_ctf_field_type *type,
 		goto end;
 	}
 	type->alignment = alignment;
+	ret = 0;
 end:
 	return ret;
 }
@@ -646,6 +679,20 @@ struct bt_ctf_field_type *bt_ctf_field_type_variant_get_type(
 	}
 end:
 	return type;
+}
+
+int bt_ctf_field_type_serialize(struct bt_ctf_field_type *type,
+		struct metadata_context *context)
+{
+	int ret;
+	if (!type || !context) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = type->serialize(type, context);
+end:
+	return ret;
 }
 
 void bt_ctf_field_type_integer_destroy(struct bt_ctf_ref *ref)
@@ -794,4 +841,52 @@ void bt_ctf_field_type_sequence_lock(struct bt_ctf_field_type *type)
 	struct bt_ctf_field_type_sequence *sequence_type = container_of(
 		type, struct bt_ctf_field_type_sequence, parent);
 	bt_ctf_field_type_lock(sequence_type->element_type);
+}
+
+int bt_ctf_field_type_integer_serialize(struct bt_ctf_field_type *type,
+		struct metadata_context *context)
+{
+	return -1;
+}
+
+int bt_ctf_field_type_enumeration_serialize(struct bt_ctf_field_type *type,
+		struct metadata_context *context)
+{
+	return -1;
+}
+
+int bt_ctf_field_type_floating_point_serialize(struct bt_ctf_field_type *type,
+		struct metadata_context *context)
+{
+	return -1;
+}
+
+int bt_ctf_field_type_structure_serialize(struct bt_ctf_field_type *type,
+		struct metadata_context *context)
+{
+	return -1;
+}
+
+int bt_ctf_field_type_variant_serialize(struct bt_ctf_field_type *type,
+		struct metadata_context *context)
+{
+	return -1;
+}
+
+int bt_ctf_field_type_array_serialize(struct bt_ctf_field_type *type,
+		struct metadata_context *context)
+{
+	return -1;
+}
+
+int bt_ctf_field_type_sequence_serialize(struct bt_ctf_field_type *type,
+		struct metadata_context *context)
+{
+	return -1;
+}
+
+int bt_ctf_field_type_string_serialize(struct bt_ctf_field_type *type,
+		struct metadata_context *context)
+{
+	return -1;
 }
