@@ -31,15 +31,18 @@
 
 #include <babeltrace/ctf-writer/ref-internal.h>
 #include <babeltrace/ctf-writer/clock.h>
+#include <babeltrace/ctf-writer/writer-internal.h>
 #include <babeltrace/babeltrace-internal.h>
 #include <glib.h>
+#include <uuid/uuid.h>
 
 struct bt_ctf_clock {
 	struct bt_ctf_ref ref_count;
 	GString *name;
 	GString *description;
 	uint64_t frequency, precision, offset_s, offset, time;
-	int is_absolute;
+	uuid_t uuid;
+	int absolute;
 	/*
 	 * A clock's properties can't be modified once it is added to a stream
 	 * class.
@@ -49,5 +52,9 @@ struct bt_ctf_clock {
 
 BT_HIDDEN
 void bt_ctf_clock_lock(struct bt_ctf_clock *clock);
+
+BT_HIDDEN
+void bt_ctf_clock_serialize(struct bt_ctf_clock *clock,
+		struct metadata_context *context);
 
 #endif /* _BABELTRACE_CTF_WRITER_CLOCK_INTERNAL_H */

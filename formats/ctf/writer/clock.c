@@ -30,6 +30,7 @@
 #include <babeltrace/ctf-writer/clock-internal.h>
 #include <babeltrace/ctf-writer/writer-internal.h>
 #include <babeltrace/compiler.h>
+#include <inttypes.h>
 
 static void bt_ctf_clock_destroy(struct bt_ctf_ref *ref);
 
@@ -51,6 +52,7 @@ struct bt_ctf_clock *bt_ctf_clock_create(const char *name)
 	}
 
 	clock->precision = 1;
+	uuid_generate(clock->uuid);
 	bt_ctf_ref_init(&clock->ref_count, bt_ctf_clock_destroy);
 	return clock;
 
@@ -157,7 +159,7 @@ end:
 
 int bt_ctf_clock_is_absolute(struct bt_ctf_clock *clock)
 {
-	return clock ? clock->is_absolute : -1;
+	return clock ? clock->absolute : -1;
 }
 
 int bt_ctf_clock_set_is_absolute(struct bt_ctf_clock *clock, int is_absolute)
@@ -167,7 +169,7 @@ int bt_ctf_clock_set_is_absolute(struct bt_ctf_clock *clock, int is_absolute)
 		ret = -1;
 		goto end;
 	}
-	clock->is_absolute = is_absolute ? 1 : 0;
+	clock->absolute = is_absolute ? 1 : 0;
 end:
 	return ret;
 }
@@ -204,6 +206,38 @@ void bt_ctf_clock_lock(struct bt_ctf_clock *clock)
 		return;
 	}
 	clock->locked = 1;
+}
+
+void bt_ctf_clock_serialize(struct bt_ctf_clock *clock,
+		struct metadata_context *context)
+{
+	if (!clock || !context) {
+		return;
+	}
+
+	unsigned char *uuid = clock->uuid;
+	g_string_append(context->string, "clock {\n");
+	g_string_append_printf(context->string, "\tname = %s;\n",
+		clock->name->str);
+	g_string_append_printf(context->string,
+		"\tuuid = \"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x\";\n",
+		uuid[0], uuid[1], uuid[2], uuid[3],
+		uuid[4], uuid[5], uuid[6], uuid[7],
+		uuid[8], uuid[9], uuid[10], uuid[11],
+		uuid[12], uuid[13], uuid[14], uuid[15]);
+	g_string_append_printf(context->string, "\tdescription = \"%s\";\n",
+		clock->description->str);
+	g_string_append_printf(context->string, "\tfrequency = %"PRId64";\n",
+		clock->frequency);
+	g_string_append_printf(context->string, "\tprecision = %"PRId64";\n",
+		clock->precision);
+	g_string_append_printf(context->string, "\toffset_s = %"PRId64";\n",
+		clock->offset_s);
+	g_string_append_printf(context->string, "\toffset = %"PRId64";\n",
+		clock->offset);
+	g_string_append_printf(context->string, "\tabsolute = %s;\n",
+		clock->absolute ? "TRUE" : "FALSE");
+	g_string_append(context->string, "};\n\n");
 }
 
 static void bt_ctf_clock_destroy(struct bt_ctf_ref *ref)
