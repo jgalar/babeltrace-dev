@@ -30,35 +30,28 @@
  */
 
 #include <babeltrace/ctf-writer/ref-internal.h>
+#include <babeltrace/ctf-writer/event-types.h>
+#include <babeltrace/ctf-writer/event-fields.h>
 #include <babeltrace/babeltrace-internal.h>
 #include <glib.h>
-
-struct field_type_entry {
-	GQuark name;
-	struct bt_ctf_field_type *field_type;
-};
-
-struct field_entry {
-	GQuark name;
-	struct bt_ctf_field *field;
-};
 
 struct bt_ctf_event_class {
 	struct bt_ctf_ref ref_count;
 	GQuark name;
 	int id_set;
 	uint32_t id;
-	GHashTable *field_name_to_index;
-	GPtrArray *fields; /* Array of pointers to struct field_type_entry */
+	/* Structure type containing the event's context */
+	struct bt_ctf_field_type *context;
+	/* Structure type containing the event's fields */
+	struct bt_ctf_field_type *fields;
 	int locked;
 };
 
 struct bt_ctf_event {
 	struct bt_ctf_ref ref_count;
 	struct bt_ctf_event_class *event_class;
-	/* This hash table is owned by the event_class */
-	GHashTable *field_name_to_index;
-	GPtrArray *fields; /* Array of pointers to struct field_entry */
+	struct bt_ctf_field *context_payload;
+	struct bt_ctf_field *fields_payload;
 };
 
 BT_HIDDEN
