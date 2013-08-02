@@ -203,6 +203,46 @@ end:
 	return new_field;
 }
 
+int bt_ctf_field_structure_set_field(struct bt_ctf_field *field,
+		const char *name, struct bt_ctf_field *value)
+{
+	int ret = 0;
+	if (!field || !name ||
+		bt_ctf_field_type_get_type_id(field->type) !=
+			BT_CTF_FIELD_TYPE_ID_STRUCTURE) {
+		ret = -1;
+		goto end;
+	}
+
+	GQuark field_quark = g_quark_from_string(name);
+	struct bt_ctf_field_structure *structure = container_of(field,
+		struct bt_ctf_field_structure, parent);
+	struct bt_ctf_field_type_structure *structure_type = container_of(
+		field->type, struct bt_ctf_field_type_structure, parent);
+	struct bt_ctf_field_type *expected_field_type =
+		bt_ctf_field_type_structure_get_type(structure_type, name);
+	size_t index = (size_t)g_hash_table_lookup(
+		structure->field_name_to_index, GUINT_TO_POINTER(field_quark));
+
+	/*
+	 * Make sure value is of the appropriate type. This is currently
+	 * compared pointer-wise, but we should have equality operators
+	 */
+	if (expected_field_type != value->type) {
+		ret = -1;
+		goto end;
+	}
+
+	if (structure->fields->pdata[index]) {
+		bt_ctf_field_put(structure->fields->pdata[index]);
+	}
+
+	structure->fields->pdata[index] = value;
+	bt_ctf_field_get(value);
+end:
+	return ret;
+}
+
 struct bt_ctf_field *bt_ctf_field_array_get_field(struct bt_ctf_field *field,
 		uint64_t index)
 {

@@ -50,9 +50,18 @@ extern void bt_ctf_field_put(struct bt_ctf_field *field);
 extern int bt_ctf_field_sequence_set_length(struct bt_ctf_field *sequence,
 		struct bt_ctf_field *length_field);
 
-/* Creates and returns a field linked to the structure */
+/*
+ * Creates and returns a field linked to the structure.
+ * The returned field can be modified by the caller.
+ */
 extern struct bt_ctf_field *bt_ctf_field_structure_get_field(
 		struct bt_ctf_field *structure, const char *name);
+
+/*
+ * Set a field's value with an already allocated field instance.
+ */
+extern int bt_ctf_field_structure_set_field( struct bt_ctf_field *structure,
+		const char *name, struct bt_ctf_field *value);
 
 /* Creates and returns a field linked to the array */
 extern struct bt_ctf_field *bt_ctf_field_array_get_field(
