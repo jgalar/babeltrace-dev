@@ -57,7 +57,7 @@ enum bt_ctf_field_type_id {
 struct bt_ctf_field_type {
 	struct bt_ctf_ref ref_count;
 	enum bt_ctf_field_type_id field_type;
-	enum bt_ctf_byte_order endianness;
+	enum bt_ctf_byte_order byte_order;
 	unsigned int alignment;
 	type_lock_func lock;
 	type_serialize_func serialize;
@@ -106,7 +106,7 @@ struct bt_ctf_field_type_structure {
 
 struct bt_ctf_field_type_variant {
 	struct bt_ctf_field_type parent;
-	GQuark tag_name;
+	GString *tag_field_name;
 	GHashTable *field_name_to_index;
 	GPtrArray *fields; /* Array of pointers to struct structure_field */
 };
@@ -120,7 +120,7 @@ struct bt_ctf_field_type_array {
 struct bt_ctf_field_type_sequence {
 	struct bt_ctf_field_type parent;
 	struct bt_ctf_field_type *element_type;
-	GQuark length_field_name;
+	GString *length_field_name;
 };
 
 struct bt_ctf_field_type_string {

@@ -28,7 +28,9 @@
 
 #include <babeltrace/ctf-writer/writer.h>
 #include <babeltrace/ctf-writer/clock.h>
+#include <babeltrace/ctf-writer/clock-internal.h>
 #include <babeltrace/ctf-writer/writer-internal.h>
+#include <babeltrace/ctf-writer/event-types-internal.h>
 #include <babeltrace/ctf-writer/functor-internal.h>
 #include <babeltrace/ctf-writer/stream-internal.h>
 #include <babeltrace/ctf-writer/stream.h>
@@ -39,10 +41,14 @@
 #include <errno.h>
 #include <unistd.h>
 
+#define RESERVED_IDENTIFIER_SIZE 128
+#define RESERVED_METADATA_STRING_SIZE 4096
+
 static void environment_variable_destroy(struct environment_variable *var);
 static void bt_ctf_writer_destroy(struct bt_ctf_ref *ref);
+static int init_packet_header_type(struct bt_ctf_writer *writer);
 
-static const char * reserved_keywords_str[] = {"align", "callsite" "const",
+static const char * const reserved_keywords_str[] = {"align", "callsite" "const",
 	"char", "clock", "double", "enum", "env", "event", "floating_point",
 	"float", "integer", "int", "long", "short", "signed", "stream",
 	"string", "struct", "trace", "typealias", "typedef", "unsigned",
@@ -95,6 +101,13 @@ struct bt_ctf_writer *bt_ctf_writer_create(const char *path)
 		goto error_destroy;
 	}
 
+	/* Generate a trace UUID */
+	uuid_generate(writer->uuid);
+
+	if (init_packet_header_type(writer)) {
+		goto error_destroy;
+	}
+
 	return writer;
 
 error_destroy:
@@ -141,6 +154,8 @@ static void bt_ctf_writer_destroy(struct bt_ctf_ref *ref)
 		g_ptr_array_free(writer->stream_classes, TRUE);
 	}
 
+	bt_ctf_field_type_put(writer->packet_header_type);
+	bt_ctf_field_put(writer->packet_header);
 	g_free(writer);
 }
 
@@ -227,23 +242,99 @@ end:
 	return ret;
 }
 
+const char *get_byte_order_string(enum bt_ctf_byte_order byte_order)
+{
+	switch (byte_order) {
+	case BT_CTF_BYTE_ORDER_NATIVE:
+		return "native";
+	case BT_CTF_BYTE_ORDER_LITTLE_ENDIAN:
+		return "le";
+	case BT_CTF_BYTE_ORDER_BIG_ENDIAN:
+		return "be";
+	case BT_CTF_BYTE_ORDER_NETWORK:
+		return "network";
+	default:
+		return "unknown";
+	}
+}
+
+static void append_trace_metadata(struct bt_ctf_writer *writer,
+		struct metadata_context *context)
+{
+	g_string_append(context->string, "trace {\n");
+
+	g_string_append(context->string, "\tmajor = 1;\n");
+	g_string_append(context->string, "\tminor = 8;\n");
+
+	unsigned char *uuid = writer->uuid;
+	g_string_append_printf(context->string,
+		"\tuuid = \"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x\";\n",
+		uuid[0], uuid[1], uuid[2], uuid[3],
+		uuid[4], uuid[5], uuid[6], uuid[7],
+		uuid[8], uuid[9], uuid[10], uuid[11],
+		uuid[12], uuid[13], uuid[14], uuid[15]);
+	g_string_append_printf(context->string, "\tbyte_order = %s;\n",
+		get_byte_order_string(writer->byte_order));
+
+	g_string_append(context->string, "\tpacket.header := ");
+	context->current_indentation_level++;
+	g_string_assign(context->field_name, "");
+	bt_ctf_field_type_serialize(writer->packet_header_type, context);
+	context->current_indentation_level--;
+
+	g_string_append(context->string, "\n};\n\n");
+}
+
+static void append_env_field_metadata(struct environment_variable *var,
+		struct metadata_context *context)
+{
+	g_string_append_printf(context->string, "\t%s = \"%s\";\n",
+		var->name->str, var->value->str);
+}
+
+static void append_env_metadata(struct bt_ctf_writer *writer,
+		struct metadata_context *context)
+{
+	if (writer->environment->len == 0) {
+		return;
+	}
+
+	g_string_append(context->string, "env {\n");
+	g_ptr_array_foreach(writer->environment,
+		(GFunc)append_env_field_metadata, context);
+	g_string_append(context->string, "};\n\n");
+}
+
 char *bt_ctf_writer_get_metadata_string(struct bt_ctf_writer *writer)
 {
-	/* TODO */
+	struct metadata_context *context = g_new0(struct metadata_context, 1);
+	if (!context) {
+		goto end;
+	}
+
+	context->field_name = g_string_sized_new(RESERVED_IDENTIFIER_SIZE);
+	context->string = g_string_sized_new(RESERVED_METADATA_STRING_SIZE);
+	g_string_append(context->string, "/* CTF 1.8 */\n\n");
+	append_trace_metadata(writer, context);
+	append_env_metadata(writer, context);
+	g_ptr_array_foreach(writer->clocks, (GFunc)bt_ctf_clock_serialize, context);
+
+	printf("\nMetadata string:\n%s", context->string->str);
+end:
 	return NULL;
 }
 
-int bt_ctf_writer_set_endianness(struct bt_ctf_writer *writer,
-		enum bt_ctf_byte_order endianness)
+int bt_ctf_writer_set_byte_order(struct bt_ctf_writer *writer,
+		enum bt_ctf_byte_order byte_order)
 {
 	if (!writer || writer->locked ||
-	    endianness < BT_CTF_BYTE_ORDER_NATIVE ||
-	    endianness >= BT_CTF_BYTE_ORDER_END) {
+	    byte_order < BT_CTF_BYTE_ORDER_NATIVE ||
+	    byte_order >= BT_CTF_BYTE_ORDER_END) {
 		return -1;
 	}
 	/* This attribute can't change mid-trace */
 	if (!writer->locked) {
-		writer->endianness = endianness;
+		writer->byte_order = byte_order;
 	}
 	return 0;
 }
@@ -291,6 +382,46 @@ end:
 	return ret;
 }
 
+int init_packet_header_type(struct bt_ctf_writer *writer)
+{
+	int ret = 0;
+	struct bt_ctf_field_type *packet_header_type =
+		bt_ctf_field_type_structure_create();
+	struct bt_ctf_field_type *_uint32_t =
+		bt_ctf_field_type_integer_create(32);
+	struct bt_ctf_field_type *_uint8_t =
+		bt_ctf_field_type_integer_create(8);
+	struct bt_ctf_field_type *uuid_array_type =
+		bt_ctf_field_type_array_create(_uint8_t, 16);
+
+	if (!packet_header_type || !_uint32_t ||
+		!_uint8_t || !uuid_array_type) {
+		ret = -1;
+		goto error;
+	}
+
+	ret |= bt_ctf_field_type_set_alignment(_uint32_t, 8);
+	ret |= bt_ctf_field_type_set_alignment(_uint8_t, 8);
+	ret |= bt_ctf_field_type_structure_add_field(packet_header_type,
+		_uint32_t, "magic");
+	ret |= bt_ctf_field_type_structure_add_field(packet_header_type,
+		uuid_array_type, "uuid");
+	ret |= bt_ctf_field_type_structure_add_field(packet_header_type,
+		_uint32_t, "stream_id");
+	if (ret) {
+		goto error;
+	}
+
+	writer->packet_header_type = packet_header_type;
+	return 0;
+error:
+	bt_ctf_field_type_put(packet_header_type);
+	bt_ctf_field_type_put(_uint32_t);
+	bt_ctf_field_type_put(uuid_array_type);
+	bt_ctf_field_type_put(_uint8_t);
+	return ret;
+}
+
 static void environment_variable_destroy(struct environment_variable *var)
 {
 	g_string_free(var->name, TRUE);
@@ -313,6 +444,7 @@ void writer_init(void)
 		g_hash_table_add(reserved_keywords_set,
 		GINT_TO_POINTER(g_quark_from_string(reserved_keywords_str[i])));
 	}
+
 	init_done = 1;
 }
 

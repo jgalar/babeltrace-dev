@@ -31,22 +31,28 @@
 
 #include <babeltrace/ctf-writer/ref-internal.h>
 #include <babeltrace/ctf-writer/writer.h>
+#include <babeltrace/ctf-writer/event-types.h>
+#include <babeltrace/ctf-writer/event-fields.h>
 #include <babeltrace/babeltrace-internal.h>
 #include <glib.h>
 #include <dirent.h>
 #include <sys/types.h>
+#include <uuid/uuid.h>
 
 struct bt_ctf_writer {
 	struct bt_ctf_ref ref_count;
 	int locked; /* Protects attributes that can't be changed mid-trace */
 	GString *path;
-	enum bt_ctf_byte_order endianness;
+	uuid_t uuid;
+	enum bt_ctf_byte_order byte_order;
 	DIR *trace_dir;
 	int trace_dir_fd;
 	GPtrArray *environment; /* Array of pointers to environment_variable */
 	GPtrArray *clocks; /* Array of pointers to bt_ctf_clock */
-	GPtrArray *streams; /* Array of pointers to bt_ctf_stream */
 	GPtrArray *stream_classes; /* Array of pointers to bt_ctf_stream_class */
+	GPtrArray *streams; /* Array of pointers to bt_ctf_stream */
+	struct bt_ctf_field_type *packet_header_type;
+	struct bt_ctf_field *packet_header;
 	uint32_t next_stream_id;
 };
 
@@ -56,11 +62,15 @@ struct environment_variable {
 
 struct metadata_context {
 	GString *string;
-	unsigned int indentation_level;
+	GString *field_name;
+	unsigned int current_indentation_level;
 };
 
-/* Checks that the string is not a reserved keyword */
+/* Checks that the string does not contain a reserved keyword */
 BT_HIDDEN
 int validate_identifier(const char *string);
+
+BT_HIDDEN
+const char *get_byte_order_string(enum bt_ctf_byte_order byte_order);
 
 #endif /* _BABELTRACE_CTF_WRITER_INTERNAL_H */

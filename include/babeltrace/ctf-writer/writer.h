@@ -61,11 +61,12 @@ extern int bt_ctf_writer_add_environment_field(struct bt_ctf_writer *writer,
 extern int bt_ctf_writer_add_clock(struct bt_ctf_writer *writer,
 		struct bt_ctf_clock *clock);
 
+/* Caller assumes the ownership of the metadata string */
 extern char *bt_ctf_writer_get_metadata_string(struct bt_ctf_writer *writer);
 
 /* Defaults to the host's native endianness (BT_CTF_BYTE_ORDER_NATIVE) */
-extern int bt_ctf_writer_set_endianness(struct bt_ctf_writer *writer,
-		enum bt_ctf_byte_order endianness);
+extern int bt_ctf_writer_set_byte_order(struct bt_ctf_writer *writer,
+		enum bt_ctf_byte_order byte_order);
 
 #ifdef __cplusplus
 }

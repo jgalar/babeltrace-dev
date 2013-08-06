@@ -31,6 +31,7 @@
 #include <babeltrace/ctf-writer/writer-internal.h>
 #include <babeltrace/compiler.h>
 #include <float.h>
+#include <inttypes.h>
 
 struct range_overlap_query {
 	int64_t range_start, range_end;
@@ -146,7 +147,7 @@ static void bt_ctf_field_type_init(struct bt_ctf_field_type *type)
 	bt_ctf_ref_init(&type->ref_count, type_destroy_funcs[type->field_type]);
 	type->lock = type_lock_funcs[type->field_type];
 	type->serialize = type_serialize_funcs[type->field_type];
-	type->endianness = BT_CTF_BYTE_ORDER_NATIVE;
+	type->byte_order = BT_CTF_BYTE_ORDER_NATIVE;
 	type->alignment = 1;
 }
 
@@ -435,7 +436,7 @@ struct bt_ctf_field_type *bt_ctf_field_type_variant_create(const char *tag_name)
 	}
 
 	variant->parent.field_type = BT_CTF_FIELD_TYPE_ID_VARIANT;
-	variant->tag_name = g_quark_from_string(tag_name);
+	variant->tag_field_name = g_string_new(tag_name);
 	bt_ctf_field_type_init(&variant->parent);
 	variant->fields = g_ptr_array_new_with_free_func(
 		destroy_structure_field);
@@ -509,7 +510,7 @@ struct bt_ctf_field_type *bt_ctf_field_type_sequence_create(
 	bt_ctf_field_type_init(&sequence->parent);
 	bt_ctf_field_type_get(element_type);
 	sequence->element_type = element_type;
-	sequence->length_field_name = g_quark_from_string(length_field_name);
+	sequence->length_field_name = g_string_new(length_field_name);
 	return &sequence->parent;
 error:
 	return NULL;
@@ -572,7 +573,7 @@ int bt_ctf_field_type_set_byte_order(struct bt_ctf_field_type *type,
 	if (!type || type->locked) {
 		goto end;
 	}
-	type->endianness = byte_order;
+	type->byte_order = byte_order;
 end:
 	return ret;
 }
@@ -753,6 +754,7 @@ void bt_ctf_field_type_variant_destroy(struct bt_ctf_ref *ref)
 		struct bt_ctf_field_type_variant, parent);
 	g_ptr_array_free(variant->fields, TRUE);
 	g_hash_table_destroy(variant->field_name_to_index);
+	g_string_free(variant->tag_field_name, TRUE);
 	g_free(variant);
 }
 
@@ -777,6 +779,7 @@ void bt_ctf_field_type_sequence_destroy(struct bt_ctf_ref *ref)
 		container_of(ref, struct bt_ctf_field_type, ref_count),
 		struct bt_ctf_field_type_sequence, parent);
 	bt_ctf_field_type_put(sequence->element_type);
+	g_string_free(sequence->length_field_name, TRUE);
 	g_free(sequence);
 }
 
@@ -843,50 +846,233 @@ void bt_ctf_field_type_sequence_lock(struct bt_ctf_field_type *type)
 	bt_ctf_field_type_lock(sequence_type->element_type);
 }
 
+static const char *get_encoding_string(
+	enum bt_ctf_string_encoding encoding)
+{
+	switch (encoding) {
+	case BT_CTF_STRING_ENCODING_NONE:
+		return "none";
+	case BT_CTF_STRING_ENCODING_ASCII:
+		return "ASCII";
+	case BT_CTF_STRING_ENCODING_UTF8:
+		return "UTF8";
+	default:
+		return "unknown";
+	}
+}
+
+static const char *get_integer_base_string(enum bt_ctf_integer_base base)
+{
+	switch (base) {
+	case BT_CTF_INTEGER_BASE_DECIMAL:
+		return "decimal";
+	case BT_CTF_INTEGER_BASE_HEXADECIMAL:
+		return "hexadecimal";
+	case BT_CTF_INTEGER_BASE_OCTAL:
+		return "octal";
+	case BT_CTF_INTEGER_BASE_BINARY:
+		return "binary";
+	default:
+		return "unknown";
+	}
+}
+
 int bt_ctf_field_type_integer_serialize(struct bt_ctf_field_type *type,
 		struct metadata_context *context)
 {
-	return -1;
+	struct bt_ctf_field_type_integer *integer = container_of(type,
+		struct bt_ctf_field_type_integer, parent);
+	g_string_append_printf(context->string,
+		"integer { size = %i; align = %u; signed = %s; encoding = %s; base = %s; byte_order = %s; }",
+		integer->size, type->alignment,
+		(integer->_signed ? "true" : "false"),
+		get_encoding_string(integer->encoding),
+		get_integer_base_string(integer->base),
+		get_byte_order_string(type->byte_order));
+
+	if (context->field_name->len) {
+		g_string_append_printf(context->string, " %s",
+			context->field_name->str);
+	}
+
+	return 0;
 }
 
 int bt_ctf_field_type_enumeration_serialize(struct bt_ctf_field_type *type,
 		struct metadata_context *context)
 {
-	return -1;
+	int ret = 0;
+	struct bt_ctf_field_type_enumeration *enumeration = container_of(type,
+		struct bt_ctf_field_type_enumeration, parent);
+	g_string_append(context->string, "enum : ");
+	g_string_assign(context->field_name, "");
+	ret = bt_ctf_field_type_serialize(enumeration->container, context);
+	if (ret) {
+		goto end;
+	}
+
+	g_string_append(context->string, " { ");
+	for (size_t entry = 0; entry < enumeration->entries->len; entry++) {
+		struct enumeration_mapping *mapping =
+			enumeration->entries->pdata[entry];
+		if (mapping->range_start == mapping->range_end) {
+			g_string_append_printf(context->string, "%s = %"PRId64,
+				g_quark_to_string(mapping->string),
+				mapping->range_start);
+		} else {
+			g_string_append_printf(context->string,
+				"%s = %"PRId64" ... %"PRId64,
+				g_quark_to_string(mapping->string),
+				mapping->range_start, mapping->range_end);
+		}
+
+		g_string_append(context->string,
+			(entry != enumeration->entries->len - 1 ? ", " : " }"));
+	}
+end:
+	return ret;
 }
 
 int bt_ctf_field_type_floating_point_serialize(struct bt_ctf_field_type *type,
 		struct metadata_context *context)
 {
-	return -1;
+	struct bt_ctf_field_type_floating_point *floating_point = container_of(
+		type, struct bt_ctf_field_type_floating_point, parent);
+	g_string_append_printf(context->string,
+		"floating_point { exp_dig = %u; mant_dig = %u; byte_order = %s; align = %u; }",
+		floating_point->exponent_digit, floating_point->mantissa_digit,
+		get_byte_order_string(type->byte_order), type->alignment);
+	if (context->field_name->len) {
+		g_string_append_printf(context->string, " %s",
+			context->field_name->str);
+	}
+
+	return 0;
 }
 
 int bt_ctf_field_type_structure_serialize(struct bt_ctf_field_type *type,
 		struct metadata_context *context)
 {
-	return -1;
+	int ret = 0;
+	struct bt_ctf_field_type_structure *structure = container_of(type,
+		struct bt_ctf_field_type_structure, parent);
+	context->current_indentation_level++;
+	if (context->field_name->len) {
+		g_string_append_printf(context->string, "struct %s {\n",
+			context->field_name->str);
+	} else {
+		g_string_append(context->string, "struct {\n");
+	}
+
+	for (size_t i = 0; i < structure->fields->len; i++) {
+		for (unsigned int indent = 0;
+			indent < context->current_indentation_level; indent++) {
+			g_string_append_c(context->string, '\t');
+		}
+
+		struct structure_field *field = structure->fields->pdata[i];
+		const char *field_name = g_quark_to_string(field->name);
+		g_string_assign(context->field_name, field_name);
+		ret = bt_ctf_field_type_serialize(field->type, context);
+		if (ret) {
+			goto end;
+		}
+
+		g_string_append(context->string, ";\n");
+	}
+
+	context->current_indentation_level--;
+	g_string_assign(context->field_name, "");
+	for (unsigned int indent = 0;
+		indent < context->current_indentation_level; indent++) {
+		g_string_append_c(context->string, '\t');
+	}
+	g_string_append(context->string, "};");
+end:
+	return ret;
 }
 
 int bt_ctf_field_type_variant_serialize(struct bt_ctf_field_type *type,
 		struct metadata_context *context)
 {
-	return -1;
+	int ret = 0;
+	struct bt_ctf_field_type_variant *variant = container_of(
+		type, struct bt_ctf_field_type_variant, parent);
+	g_string_append_printf(context->string,
+		"variant <%s> {\n", variant->tag_field_name->str);
+	context->current_indentation_level++;
+	for (size_t i = 0; i < variant->fields->len; i++) {
+		struct structure_field *field = variant->fields->pdata[i];
+		g_string_assign(context->field_name,
+			g_quark_to_string(field->name));
+		for (unsigned int indent = 0;
+			indent < context->current_indentation_level; indent++) {
+			g_string_append_c(context->string, '\t');
+		}
+
+		ret = bt_ctf_field_type_serialize(field->type, context);
+		if (ret) {
+			goto end;
+		}
+
+		g_string_append(context->string, ";\n");
+	}
+
+	context->current_indentation_level--;
+	g_string_assign(context->field_name, "");
+	for (unsigned int indent = 0;
+		indent < context->current_indentation_level; indent++) {
+		g_string_append_c(context->string, '\t');
+	}
+	g_string_append(context->string, "};");
+end:
+	return ret;
 }
 
 int bt_ctf_field_type_array_serialize(struct bt_ctf_field_type *type,
 		struct metadata_context *context)
 {
-	return -1;
+	int ret = 0;
+	struct bt_ctf_field_type_array *array = container_of(type,
+		struct bt_ctf_field_type_array, parent);
+
+	ret = bt_ctf_field_type_serialize(array->element_type, context);
+	g_string_assign(context->field_name, "");
+	if (ret) {
+		goto end;
+	}
+
+	g_string_append_printf(context->string, "[%u]", array->length);
+end:
+	return ret;
 }
 
 int bt_ctf_field_type_sequence_serialize(struct bt_ctf_field_type *type,
 		struct metadata_context *context)
 {
-	return -1;
+	int ret = 0;
+	struct bt_ctf_field_type_sequence *sequence = container_of(
+		type, struct bt_ctf_field_type_sequence, parent);
+
+	ret = bt_ctf_field_type_serialize(sequence->element_type, context);
+	if (ret) {
+		goto end;
+	}
+
+	g_string_assign(context->field_name, "");
+	g_string_append_printf(context->string, "[%s]",
+		sequence->length_field_name->str);
+end:
+	return ret;
 }
 
 int bt_ctf_field_type_string_serialize(struct bt_ctf_field_type *type,
 		struct metadata_context *context)
 {
-	return -1;
+	struct bt_ctf_field_type_string *string = container_of(
+		type, struct bt_ctf_field_type_string, parent);
+	g_string_append_printf(context->string,
+		"string { encoding = %s }",
+		get_encoding_string(string->encoding));
+	return 0;
 }
