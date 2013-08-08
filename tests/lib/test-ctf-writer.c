@@ -192,6 +192,8 @@ int main(int argc, char **argv)
 	/* Should fail after instanciating a stream (locked)*/
 	ok(bt_ctf_stream_class_set_clock(stream_class, clock),
 		"Changes to a stream class that was already instanciated fail");
+	ok(bt_ctf_writer_add_stream(writer, stream1) == 0,
+		"Add a stream instance to the writer object");
 
 	struct bt_ctf_event *simple_event =
 		bt_ctf_event_create(simple_event_class);
