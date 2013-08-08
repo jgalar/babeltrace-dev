@@ -31,8 +31,12 @@
 
 #include <babeltrace/ctf-writer/ref-internal.h>
 #include <babeltrace/ctf-writer/clock.h>
+#include <babeltrace/ctf-writer/event-fields.h>
+#include <babeltrace/ctf-writer/event-types.h>
 #include <babeltrace/babeltrace-internal.h>
 #include <glib.h>
+
+typedef void(*flush_func)(struct bt_ctf_stream *, void *);
 
 struct bt_ctf_stream_class {
 	struct bt_ctf_ref ref_count;
@@ -41,12 +45,22 @@ struct bt_ctf_stream_class {
 	int id_set;
 	uint32_t id;
 	uint32_t next_event_id;
+	struct bt_ctf_field_type *event_header;
+	struct bt_ctf_field_type *packet_context;
+	struct bt_ctf_field_type *event_context;
 	int locked;
+};
+
+struct flush_callback {
+	flush_func func;
+	void *data;
 };
 
 struct bt_ctf_stream {
 	struct bt_ctf_ref ref_count;
 	struct bt_ctf_stream_class *stream_class;
+	struct bt_ctf_field *event_context_payload;
+	struct flush_callback flush;
 };
 
 BT_HIDDEN
@@ -54,6 +68,14 @@ void bt_ctf_stream_class_lock(struct bt_ctf_stream_class *stream_class);
 
 BT_HIDDEN
 int bt_ctf_stream_class_set_id(struct bt_ctf_stream_class *stream_class,
-	uint32_t id);
+		uint32_t id);
+
+BT_HIDDEN
+int bt_ctf_stream_class_serialize(struct bt_ctf_stream_class *stream_class,
+		struct metadata_context *context);
+
+BT_HIDDEN
+int bt_ctf_stream_set_flush_callback(struct bt_ctf_stream *stream,
+		flush_func callback, void *data);
 
 #endif /* _BABELTRACE_CTF_WRITER_STREAM_INTERNAL_H */

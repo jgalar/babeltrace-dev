@@ -318,6 +318,7 @@ int bt_ctf_field_type_enumeration_add_mapping(
 	*mapping = (struct enumeration_mapping){.range_start = range_start,
 		.range_end = range_end,	.string = mapping_name};
 	g_ptr_array_add(enumeration->entries, mapping);
+	ret = 0;
 end:
 	return ret;
 }
@@ -889,12 +890,6 @@ int bt_ctf_field_type_integer_serialize(struct bt_ctf_field_type *type,
 		get_encoding_string(integer->encoding),
 		get_integer_base_string(integer->base),
 		get_byte_order_string(type->byte_order));
-
-	if (context->field_name->len) {
-		g_string_append_printf(context->string, " %s",
-			context->field_name->str);
-	}
-
 	return 0;
 }
 
@@ -905,7 +900,6 @@ int bt_ctf_field_type_enumeration_serialize(struct bt_ctf_field_type *type,
 	struct bt_ctf_field_type_enumeration *enumeration = container_of(type,
 		struct bt_ctf_field_type_enumeration, parent);
 	g_string_append(context->string, "enum : ");
-	g_string_assign(context->field_name, "");
 	ret = bt_ctf_field_type_serialize(enumeration->container, context);
 	if (ret) {
 		goto end;
@@ -929,6 +923,12 @@ int bt_ctf_field_type_enumeration_serialize(struct bt_ctf_field_type *type,
 		g_string_append(context->string,
 			(entry != enumeration->entries->len - 1 ? ", " : " }"));
 	}
+
+	if (context->field_name->len) {
+		g_string_append_printf(context->string, " %s",
+			context->field_name->str);
+		g_string_assign(context->field_name, "");
+	}
 end:
 	return ret;
 }
@@ -942,11 +942,6 @@ int bt_ctf_field_type_floating_point_serialize(struct bt_ctf_field_type *type,
 		"floating_point { exp_dig = %u; mant_dig = %u; byte_order = %s; align = %u; }",
 		floating_point->exponent_digit, floating_point->mantissa_digit,
 		get_byte_order_string(type->byte_order), type->alignment);
-	if (context->field_name->len) {
-		g_string_append_printf(context->string, " %s",
-			context->field_name->str);
-	}
-
 	return 0;
 }
 
@@ -956,13 +951,11 @@ int bt_ctf_field_type_structure_serialize(struct bt_ctf_field_type *type,
 	int ret = 0;
 	struct bt_ctf_field_type_structure *structure = container_of(type,
 		struct bt_ctf_field_type_structure, parent);
+	GString *structure_field_name = context->field_name;
+	context->field_name = g_string_new("");
+
 	context->current_indentation_level++;
-	if (context->field_name->len) {
-		g_string_append_printf(context->string, "struct %s {\n",
-			context->field_name->str);
-	} else {
-		g_string_append(context->string, "struct {\n");
-	}
+	g_string_append(context->string, "struct {\n");
 
 	for (size_t i = 0; i < structure->fields->len; i++) {
 		for (unsigned int indent = 0;
@@ -971,24 +964,30 @@ int bt_ctf_field_type_structure_serialize(struct bt_ctf_field_type *type,
 		}
 
 		struct structure_field *field = structure->fields->pdata[i];
-		const char *field_name = g_quark_to_string(field->name);
-		g_string_assign(context->field_name, field_name);
+		g_string_assign(context->field_name,
+			g_quark_to_string(field->name));
 		ret = bt_ctf_field_type_serialize(field->type, context);
 		if (ret) {
 			goto end;
 		}
 
+		if (context->field_name->len) {
+			g_string_append_printf(context->string, " %s",
+				context->field_name->str);
+		}
 		g_string_append(context->string, ";\n");
 	}
 
 	context->current_indentation_level--;
-	g_string_assign(context->field_name, "");
 	for (unsigned int indent = 0;
 		indent < context->current_indentation_level; indent++) {
 		g_string_append_c(context->string, '\t');
 	}
-	g_string_append(context->string, "};");
+
+	g_string_append_printf(context->string, "} align(%u)", type->alignment);
 end:
+	g_string_free(context->field_name, TRUE);
+	context->field_name = structure_field_name;
 	return ret;
 }
 
@@ -998,6 +997,9 @@ int bt_ctf_field_type_variant_serialize(struct bt_ctf_field_type *type,
 	int ret = 0;
 	struct bt_ctf_field_type_variant *variant = container_of(
 		type, struct bt_ctf_field_type_variant, parent);
+	GString *variant_field_name = context->field_name;
+	context->field_name = g_string_new("");
+
 	g_string_append_printf(context->string,
 		"variant <%s> {\n", variant->tag_field_name->str);
 	context->current_indentation_level++;
@@ -1010,22 +1012,30 @@ int bt_ctf_field_type_variant_serialize(struct bt_ctf_field_type *type,
 			g_string_append_c(context->string, '\t');
 		}
 
+		g_string_assign(context->field_name,
+			g_quark_to_string(field->name));
 		ret = bt_ctf_field_type_serialize(field->type, context);
 		if (ret) {
 			goto end;
 		}
 
-		g_string_append(context->string, ";\n");
+		if (context->field_name->len) {
+			g_string_append_printf(context->string, " %s;",
+				context->field_name->str);
+		}
+		g_string_append_c(context->string, '\n');
 	}
 
 	context->current_indentation_level--;
-	g_string_assign(context->field_name, "");
 	for (unsigned int indent = 0;
 		indent < context->current_indentation_level; indent++) {
 		g_string_append_c(context->string, '\t');
 	}
-	g_string_append(context->string, "};");
+
+	g_string_append(context->string, "}");
 end:
+	g_string_free(context->field_name, TRUE);
+	context->field_name = variant_field_name;
 	return ret;
 }
 
@@ -1037,12 +1047,17 @@ int bt_ctf_field_type_array_serialize(struct bt_ctf_field_type *type,
 		struct bt_ctf_field_type_array, parent);
 
 	ret = bt_ctf_field_type_serialize(array->element_type, context);
-	g_string_assign(context->field_name, "");
 	if (ret) {
 		goto end;
 	}
 
-	g_string_append_printf(context->string, "[%u]", array->length);
+	if (context->field_name->len) {
+		g_string_append_printf(context->string, " %s[%u]",
+			context->field_name->str, array->length);
+		g_string_assign(context->field_name, "");
+	} else {
+		g_string_append_printf(context->string, "[%u]", array->length);
+	}
 end:
 	return ret;
 }
@@ -1059,9 +1074,15 @@ int bt_ctf_field_type_sequence_serialize(struct bt_ctf_field_type *type,
 		goto end;
 	}
 
-	g_string_assign(context->field_name, "");
-	g_string_append_printf(context->string, "[%s]",
-		sequence->length_field_name->str);
+	if (context->field_name->len) {
+		g_string_append_printf(context->string, " %s[%s]",
+			context->field_name->str,
+			sequence->length_field_name->str);
+		g_string_assign(context->field_name, "");
+	} else {
+		g_string_append_printf(context->string, "[%s]",
+			sequence->length_field_name->str);
+	}
 end:
 	return ret;
 }

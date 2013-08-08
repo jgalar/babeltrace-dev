@@ -39,6 +39,16 @@
 #include <sys/types.h>
 #include <uuid/uuid.h>
 
+enum field_type_alias {
+	FIELD_TYPE_ALIAS_UINT5_T = 0,
+	FIELD_TYPE_ALIAS_UINT8_T,
+	FIELD_TYPE_ALIAS_UINT16_T,
+	FIELD_TYPE_ALIAS_UINT27_T,
+	FIELD_TYPE_ALIAS_UINT32_T,
+	FIELD_TYPE_ALIAS_UINT64_T,
+	FIELD_TYPE_ALIAS_END
+};
+
 struct bt_ctf_writer {
 	struct bt_ctf_ref ref_count;
 	int locked; /* Protects attributes that can't be changed mid-trace */
@@ -72,5 +82,8 @@ int validate_identifier(const char *string);
 
 BT_HIDDEN
 const char *get_byte_order_string(enum bt_ctf_byte_order byte_order);
+
+BT_HIDDEN
+struct bt_ctf_field_type *get_field_type(enum field_type_alias alias);
 
 #endif /* _BABELTRACE_CTF_WRITER_INTERNAL_H */

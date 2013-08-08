@@ -40,6 +40,8 @@ struct bt_ctf_event_class {
 	GQuark name;
 	int id_set;
 	uint32_t id;
+	int stream_id_set;
+	uint32_t stream_id;
 	/* Structure type containing the event's context */
 	struct bt_ctf_field_type *context;
 	/* Structure type containing the event's fields */
@@ -59,6 +61,14 @@ void bt_ctf_event_class_lock(struct bt_ctf_event_class *event_class);
 
 BT_HIDDEN
 int bt_ctf_event_class_set_id(struct bt_ctf_event_class *event_class,
-	uint32_t id);
+		uint32_t id);
+
+BT_HIDDEN
+int bt_ctf_event_class_set_stream_id(struct bt_ctf_event_class *event_class,
+		uint32_t id);
+
+BT_HIDDEN
+int bt_ctf_event_class_serialize(struct bt_ctf_event_class *event_class,
+		struct metadata_context *context);
 
 #endif /* _BABELTRACE_CTF_WRITER_EVENT_INTERNAL_H */

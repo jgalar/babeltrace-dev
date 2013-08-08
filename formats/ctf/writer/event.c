@@ -185,13 +185,65 @@ void bt_ctf_event_class_lock(struct bt_ctf_event_class *event_class)
 int bt_ctf_event_class_set_id(struct bt_ctf_event_class *event_class,
 		uint32_t id)
 {
-	int ret = event_class->id_set;
-	if (event_class->id_set) {
+	int ret = 0;
+	if (event_class->id_set && (id != event_class->id)) {
+		ret = -1;
 		goto end;
 	}
 
 	event_class->id = id;
 	event_class->id_set = 1;
 end:
+	return ret;
+}
+
+int bt_ctf_event_class_set_stream_id(struct bt_ctf_event_class *event_class,
+		uint32_t id)
+{
+	int ret = 0;
+	if (event_class->stream_id_set && (id != event_class->stream_id)) {
+		ret = -1;
+		goto end;
+	}
+
+	event_class->stream_id = id;
+	event_class->stream_id_set = 1;
+end:
+	return ret;
+}
+
+int bt_ctf_event_class_serialize(struct bt_ctf_event_class *event_class,
+		struct metadata_context *context)
+{
+	int ret = 0;
+	context->current_indentation_level = 1;
+	g_string_assign(context->field_name, "");
+	g_string_append_printf(context->string, "event {\n\tname = \"%s\";\n\tid = %u;\n\tstream_id = %u;\n",
+		g_quark_to_string(event_class->name),
+		event_class->id,
+		event_class->stream_id);
+
+	if (event_class->context) {
+		g_string_append(context->string, "\tcontext := ");
+		ret = bt_ctf_field_type_serialize(event_class->context,
+			context);
+		if (ret) {
+			goto end;
+		}
+		g_string_append(context->string, ";\n");
+	}
+
+	if (event_class->fields) {
+		g_string_append(context->string, "\tfields := ");
+		ret = bt_ctf_field_type_serialize(event_class->fields, context);
+		if (ret) {
+			goto end;
+		}
+		g_string_append(context->string, ";\n");
+	}
+
+	g_string_append(context->string, "};\n");
+end:
+	context->current_indentation_level = 0;
 	return ret;
 }

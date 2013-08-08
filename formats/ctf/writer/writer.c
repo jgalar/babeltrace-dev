@@ -48,14 +48,32 @@ static void environment_variable_destroy(struct environment_variable *var);
 static void bt_ctf_writer_destroy(struct bt_ctf_ref *ref);
 static int init_packet_header_type(struct bt_ctf_writer *writer);
 
-static const char * const reserved_keywords_str[] = {"align", "callsite" "const",
-	"char", "clock", "double", "enum", "env", "event", "floating_point",
-	"float", "integer", "int", "long", "short", "signed", "stream",
-	"string", "struct", "trace", "typealias", "typedef", "unsigned",
-	"variant", "void" "_Bool", "_Complex", "_Imaginary"};
+static const char * const reserved_keywords_str[] = {"align", "callsite",
+	"const", "char", "clock", "double", "enum", "env", "event",
+	"floating_point", "float", "integer", "int", "long", "short", "signed",
+	"stream", "string", "struct", "trace", "typealias", "typedef",
+	"unsigned", "variant", "void" "_Bool", "_Complex", "_Imaginary"};
+
+static const unsigned int field_type_aliases_alignments[] = {
+	[FIELD_TYPE_ALIAS_UINT5_T] = 1,
+	[FIELD_TYPE_ALIAS_UINT8_T ... FIELD_TYPE_ALIAS_UINT16_T] = 8,
+	[FIELD_TYPE_ALIAS_UINT27_T] = 1,
+	[FIELD_TYPE_ALIAS_UINT32_T ... FIELD_TYPE_ALIAS_UINT64_T] = 8
+};
+
+static const unsigned int field_type_aliases_sizes[] = {
+	[FIELD_TYPE_ALIAS_UINT5_T] = 5,
+	[FIELD_TYPE_ALIAS_UINT8_T] = 8,
+	[FIELD_TYPE_ALIAS_UINT16_T] = 16,
+	[FIELD_TYPE_ALIAS_UINT27_T] = 27,
+	[FIELD_TYPE_ALIAS_UINT32_T] = 32,
+	[FIELD_TYPE_ALIAS_UINT64_T] = 64
+};
+
 static GHashTable *reserved_keywords_set;
+static GPtrArray *field_type_aliases;
 static int init_done;
-static int reserved_refcount;
+static int global_data_refcount;
 
 struct bt_ctf_writer *bt_ctf_writer_create(const char *path)
 {
@@ -282,7 +300,7 @@ static void append_trace_metadata(struct bt_ctf_writer *writer,
 	bt_ctf_field_type_serialize(writer->packet_header_type, context);
 	context->current_indentation_level--;
 
-	g_string_append(context->string, "\n};\n\n");
+	g_string_append(context->string, ";\n};\n\n");
 }
 
 static void append_env_field_metadata(struct environment_variable *var,
@@ -307,6 +325,8 @@ static void append_env_metadata(struct bt_ctf_writer *writer,
 
 char *bt_ctf_writer_get_metadata_string(struct bt_ctf_writer *writer)
 {
+	char *metadata;
+	int err = 0;
 	struct metadata_context *context = g_new0(struct metadata_context, 1);
 	if (!context) {
 		goto end;
@@ -317,11 +337,22 @@ char *bt_ctf_writer_get_metadata_string(struct bt_ctf_writer *writer)
 	g_string_append(context->string, "/* CTF 1.8 */\n\n");
 	append_trace_metadata(writer, context);
 	append_env_metadata(writer, context);
-	g_ptr_array_foreach(writer->clocks, (GFunc)bt_ctf_clock_serialize, context);
+	g_ptr_array_foreach(writer->clocks,
+		(GFunc)bt_ctf_clock_serialize, context);
 
-	printf("\nMetadata string:\n%s", context->string->str);
+	for (size_t i = 0; i < writer->stream_classes->len; i++) {
+		err = bt_ctf_stream_class_serialize(
+			writer->stream_classes->pdata[i], context);
+		if (err) {
+			goto end;
+		}
+	}
 end:
-	return NULL;
+	printf("\nMetadata string:\n%s", context->string->str);
+	metadata = err ? NULL : context->string->str;
+	g_string_free(context->string, err ? TRUE : FALSE);
+	g_free(context);
+	return metadata;
 }
 
 int bt_ctf_writer_set_byte_order(struct bt_ctf_writer *writer,
@@ -382,26 +413,32 @@ end:
 	return ret;
 }
 
+struct bt_ctf_field_type *get_field_type(enum field_type_alias alias)
+{
+	if (alias < 0 || alias >= FIELD_TYPE_ALIAS_END) {
+		return NULL;
+	}
+	return field_type_aliases->pdata[alias];
+}
+
 int init_packet_header_type(struct bt_ctf_writer *writer)
 {
 	int ret = 0;
+
+	struct bt_ctf_field_type *_uint32_t =
+		get_field_type(FIELD_TYPE_ALIAS_UINT32_T);
+	struct bt_ctf_field_type *_uint8_t =
+		get_field_type(FIELD_TYPE_ALIAS_UINT8_T);
 	struct bt_ctf_field_type *packet_header_type =
 		bt_ctf_field_type_structure_create();
-	struct bt_ctf_field_type *_uint32_t =
-		bt_ctf_field_type_integer_create(32);
-	struct bt_ctf_field_type *_uint8_t =
-		bt_ctf_field_type_integer_create(8);
 	struct bt_ctf_field_type *uuid_array_type =
 		bt_ctf_field_type_array_create(_uint8_t, 16);
 
-	if (!packet_header_type || !_uint32_t ||
-		!_uint8_t || !uuid_array_type) {
+	if (!packet_header_type || !uuid_array_type) {
 		ret = -1;
-		goto error;
+		goto end;
 	}
 
-	ret |= bt_ctf_field_type_set_alignment(_uint32_t, 8);
-	ret |= bt_ctf_field_type_set_alignment(_uint8_t, 8);
 	ret |= bt_ctf_field_type_structure_add_field(packet_header_type,
 		_uint32_t, "magic");
 	ret |= bt_ctf_field_type_structure_add_field(packet_header_type,
@@ -409,16 +446,18 @@ int init_packet_header_type(struct bt_ctf_writer *writer)
 	ret |= bt_ctf_field_type_structure_add_field(packet_header_type,
 		_uint32_t, "stream_id");
 	if (ret) {
-		goto error;
+		goto end;
 	}
 
 	writer->packet_header_type = packet_header_type;
-	return 0;
-error:
-	bt_ctf_field_type_put(packet_header_type);
-	bt_ctf_field_type_put(_uint32_t);
+	ret = 0;
+
+end:
 	bt_ctf_field_type_put(uuid_array_type);
-	bt_ctf_field_type_put(_uint8_t);
+	if (ret) {
+		bt_ctf_field_type_put(packet_header_type);
+	}
+
 	return ret;
 }
 
@@ -432,7 +471,7 @@ static void environment_variable_destroy(struct environment_variable *var)
 static __attribute__((constructor))
 void writer_init(void)
 {
-	reserved_refcount++;
+	global_data_refcount++;
 	if (init_done) {
 		return;
 	}
@@ -445,13 +484,32 @@ void writer_init(void)
 		GINT_TO_POINTER(g_quark_from_string(reserved_keywords_str[i])));
 	}
 
+	field_type_aliases = g_ptr_array_new_with_free_func(
+		(GDestroyNotify) bt_ctf_field_type_put);
+	for (size_t i = 0; i < FIELD_TYPE_ALIAS_END; i++) {
+		unsigned int alignment = field_type_aliases_alignments[i];
+		unsigned int size = field_type_aliases_sizes[i];
+		struct bt_ctf_field_type *field_type =
+			bt_ctf_field_type_integer_create(size);
+		bt_ctf_field_type_set_alignment(field_type, alignment);
+		g_ptr_array_add(field_type_aliases, field_type);
+
+		if (!field_type) {
+			fprintf(stderr, "[error] field type alias initialization failed.\n");
+		} else {
+			/* These type definitions are immutable */
+			bt_ctf_field_type_lock(field_type);
+		}
+	}
+
 	init_done = 1;
 }
 
 static __attribute__((destructor))
 void writer_finalize(void)
 {
-	if (--reserved_refcount == 0) {
+	if (--global_data_refcount == 0) {
 		g_hash_table_destroy(reserved_keywords_set);
+		g_ptr_array_free(field_type_aliases, TRUE);
 	}
 }
