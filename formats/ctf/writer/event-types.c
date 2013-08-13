@@ -1093,7 +1093,7 @@ int bt_ctf_field_type_string_serialize(struct bt_ctf_field_type *type,
 	struct bt_ctf_field_type_string *string = container_of(
 		type, struct bt_ctf_field_type_string, parent);
 	g_string_append_printf(context->string,
-		"string { encoding = %s }",
+		"string { encoding = %s; }",
 		get_encoding_string(string->encoding));
 	return 0;
 }
