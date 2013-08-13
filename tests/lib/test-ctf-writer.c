@@ -269,30 +269,68 @@ int main(int argc, char **argv)
 	struct bt_ctf_field_type *int_16_type =
 		bt_ctf_field_type_integer_create(16);
 	bt_ctf_field_type_integer_set_signed(int_16_type, 1);
+	struct bt_ctf_field_type *uint_8_type =
+		bt_ctf_field_type_integer_create(8);
+	struct bt_ctf_field_type *sequence_type =
+		bt_ctf_field_type_sequence_create(int_16_type, "seq_len");
+	ok(sequence_type, "Create a sequence of int16_t type");
+
+	struct bt_ctf_field_type *string_type =
+		bt_ctf_field_type_string_create();
+	ok(string_type, "Create a string type");
+	ok(bt_ctf_field_type_string_set_encoding(string_type,
+		BT_CTF_STRING_ENCODING_NONE),
+		"Reject invalid \"None\" string encoding");
+	ok(bt_ctf_field_type_string_set_encoding(string_type,
+		42),
+		"Reject invalid string encoding");
+	ok(bt_ctf_field_type_string_set_encoding(string_type,
+		BT_CTF_STRING_ENCODING_ASCII) == 0,
+		"Set string encoding to ASCII");
+	struct bt_ctf_field_type *structure_seq_type =
+		bt_ctf_field_type_structure_create();
+	ok(structure_seq_type, "Create a structure type");
+	ok(bt_ctf_field_type_structure_add_field(structure_seq_type,
+		uint_8_type, "seq_len") == 0,
+		"Add a uint8_t type to a structure");
+	ok(bt_ctf_field_type_structure_add_field(structure_seq_type,
+		sequence_type, "a_sequence") == 0,
+		"Add a sequence type to a structure");
+	struct bt_ctf_field_type *composite_structure_type =
+		bt_ctf_field_type_structure_create();
+	ok(bt_ctf_field_type_structure_add_field(composite_structure_type,
+		string_type, "a_string") == 0,
+		"Add a string type to a structure");
+	ok(bt_ctf_field_type_structure_add_field(composite_structure_type,
+		structure_seq_type, "inner_structure") == 0,
+		"Add a structure type to a structure");
 
 	ok(bt_ctf_event_class_create("clock") == NULL,
 		"Reject creation of an event class with an illegal name");
-	struct bt_ctf_event_class *simple_event_class =
-		bt_ctf_event_class_create("Simple Event");
-	ok(simple_event_class, "Create an event class");
-	ok(bt_ctf_event_class_add_field(simple_event_class, uint_12_type, ""),
+	struct bt_ctf_event_class *event_class =
+		bt_ctf_event_class_create("A Test Event");
+	ok(event_class, "Create an event class");
+	ok(bt_ctf_event_class_add_field(event_class, uint_12_type, ""),
 		"Reject addition of a field with an empty name to an event");
-	ok(bt_ctf_event_class_add_field(simple_event_class, NULL, "an_integer"),
+	ok(bt_ctf_event_class_add_field(event_class, NULL, "an_integer"),
 		"Reject addition of a field with a NULL type to an event");
-	ok(bt_ctf_event_class_add_field(simple_event_class, uint_12_type,
+	ok(bt_ctf_event_class_add_field(event_class, uint_12_type,
 		"int"),
 		"Reject addition of a type with an illegal name to an event");
-	ok(bt_ctf_event_class_add_field(simple_event_class, uint_12_type,
+	ok(bt_ctf_event_class_add_field(event_class, uint_12_type,
 		"uint_12") == 0,
 		"Add field of type unsigned integer to an event");
-	ok(bt_ctf_event_class_add_field(simple_event_class, int_16_type,
+	ok(bt_ctf_event_class_add_field(event_class, int_16_type,
 		"int_16") == 0, "Add field of type signed integer to an event");
+	ok(bt_ctf_event_class_add_field(event_class, composite_structure_type,
+		"complex_structure") == 0,
+		"Add composite structure to an event");
 
 	/* Add event class to the stream class */
 	ok(bt_ctf_stream_class_add_event_class(stream_class, NULL),
 		"Reject addition of NULL event class to a stream class");
 	ok(bt_ctf_stream_class_add_event_class(stream_class,
-		simple_event_class) == 0, "Add an event class to stream class");
+		event_class) == 0, "Add an event class to stream class");
 
 	/* Instanciate a stream and an event */
 	struct bt_ctf_stream *stream1 = bt_ctf_stream_create(stream_class);
@@ -303,14 +341,15 @@ int main(int argc, char **argv)
 	ok(bt_ctf_writer_add_stream(writer, stream1) == 0,
 		"Add a stream instance to the writer object");
 
-	struct bt_ctf_event *simple_event =
-		bt_ctf_event_create(simple_event_class);
-	ok(simple_event, "Instanciate an event class");
+	struct bt_ctf_event *event =
+		bt_ctf_event_create(event_class);
+	ok(event, "Instanciate an event class");
 
 	struct bt_ctf_field *int_16 = bt_ctf_field_create(int_16_type);
 	ok(int_16, "Instanciate a signed 16-bit integer");
 	struct bt_ctf_field *uint_12 = bt_ctf_field_create(uint_12_type);
 	ok(uint_12, "Instanciate an unsigned 12-bit integer");
+
 	/* Can't modify types after instanciating them */
 	ok(bt_ctf_field_type_integer_set_base(uint_12_type,
 		BT_CTF_INTEGER_BASE_DECIMAL),
@@ -345,12 +384,12 @@ int main(int argc, char **argv)
 	bt_ctf_field_unsigned_integer_set_value(uint_12, 1295);
 
 	/* Set event payload */
-	ok(bt_ctf_event_set_payload(simple_event, "uint_12", uint_12) == 0,
+	ok(bt_ctf_event_set_payload(event, "uint_12", uint_12) == 0,
 		"Set an event field payload");
-	ok(bt_ctf_event_set_payload(simple_event, "uint_12", uint_12) == 0,
+	ok(bt_ctf_event_set_payload(event, "uint_12", uint_12) == 0,
 		"Change an event's existing payload");
-	bt_ctf_event_set_payload(simple_event, "int_16", int_16);
-	ok(bt_ctf_event_set_payload(simple_event, "int_16", uint_12),
+	bt_ctf_event_set_payload(event, "int_16", int_16);
+	ok(bt_ctf_event_set_payload(event, "int_16", uint_12),
 		"Reject event payloads of incorrect type");
 
 	char *metadata_string = bt_ctf_writer_get_metadata_string(writer);
@@ -358,7 +397,7 @@ int main(int argc, char **argv)
 
 	validate_metadata_string(argv[1], metadata_string);
 
-	ok(bt_ctf_stream_push_event(stream1, simple_event) == 0,
+	ok(bt_ctf_stream_push_event(stream1, event) == 0,
 		"Push event to trace stream");
 	ok(bt_ctf_stream_flush(stream1) == 0,
 		"Flush trace stream");
@@ -367,10 +406,15 @@ int main(int argc, char **argv)
 	bt_ctf_clock_put(clock);
 	bt_ctf_field_put(int_16);
 	bt_ctf_stream_class_put(stream_class);
-	bt_ctf_event_class_put(simple_event_class);
+	bt_ctf_event_class_put(event_class);
 	bt_ctf_field_type_put(uint_12_type);
+	bt_ctf_field_type_put(uint_8_type);
+	bt_ctf_field_type_put(sequence_type);
+	bt_ctf_field_type_put(string_type);
+	bt_ctf_field_type_put(structure_seq_type);
+	bt_ctf_field_type_put(composite_structure_type);
 	bt_ctf_field_type_put(int_16_type);
-	bt_ctf_event_put(simple_event);
+	bt_ctf_event_put(event);
 	bt_ctf_writer_put(writer);
 	bt_ctf_stream_put(stream1);
 	free(metadata_string);
