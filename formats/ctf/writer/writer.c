@@ -264,13 +264,12 @@ const char *get_byte_order_string(enum bt_ctf_byte_order byte_order)
 {
 	switch (byte_order) {
 	case BT_CTF_BYTE_ORDER_NATIVE:
-		return "native";
+		return G_BYTE_ORDER == G_LITTLE_ENDIAN ? "le" : "be";
 	case BT_CTF_BYTE_ORDER_LITTLE_ENDIAN:
 		return "le";
 	case BT_CTF_BYTE_ORDER_BIG_ENDIAN:
-		return "be";
 	case BT_CTF_BYTE_ORDER_NETWORK:
-		return "network";
+		return "be";
 	default:
 		return "unknown";
 	}
