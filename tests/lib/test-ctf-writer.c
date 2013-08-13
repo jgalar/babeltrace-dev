@@ -104,20 +104,33 @@ void validate_metadata_string(char *parser_path, char *metadata_string)
 	if (ret) {
 		char *line;
 		size_t len = METADATA_LINE_SIZE;
-		FILE *parser_output_fp = fdopen(parser_output_fd, "r");
+		FILE *metadata_fp, *parser_output_fp;
 
+		metadata_fp = fdopen(metadata_fd, "r");
+		if (!metadata_fp) {
+			perror("fdopen on metadata_fd");
+			goto end;
+		}
+
+		parser_output_fp = fdopen(parser_output_fd, "r");
 		if (!parser_output_fp) {
 			perror("fdopen on parser_output_fd");
 			goto end;
 		}
 
-		rewind(parser_output_fp);
+		rewind(metadata_fp);
 		line = malloc(len);
 		/* Output the metadata and parser output as diagnostic */
+		while (getline(&line, &len, metadata_fp) > 0) {
+			printf("# %s", line);
+		}
+
+		rewind(parser_output_fp);
 		while (getline(&line, &len, parser_output_fp) > 0) {
 			printf("# %s", line);
 		}
 
+		fclose(metadata_fp);
 		fclose(parser_output_fp);
 	}
 

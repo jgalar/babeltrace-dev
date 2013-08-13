@@ -347,7 +347,6 @@ char *bt_ctf_writer_get_metadata_string(struct bt_ctf_writer *writer)
 		}
 	}
 end:
-	printf("\nMetadata string:\n%s", context->string->str);
 	metadata = err ? NULL : context->string->str;
 	g_string_free(context->string, err ? TRUE : FALSE);
 	g_free(context);
