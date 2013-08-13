@@ -33,11 +33,106 @@
 #include <limits.h>
 #include <string.h>
 #include <assert.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 #include "tap.h"
 
+#define METADATA_LINE_SIZE 512
+
+void validate_metadata_string(char *parser_path, char *metadata_string)
+{
+	int ret = 0;
+	char parser_output_path[] = "/tmp/parser_output_XXXXXX";
+	char metadata_path[] = "/tmp/metadata_XXXXXX";
+	const size_t metadata_len = strlen(metadata_string);
+	int parser_output_fd = mkstemp(parser_output_path);
+	int metadata_fd = mkstemp(metadata_path);
+
+	unlink(parser_output_path);
+	unlink(metadata_path);
+
+	if (parser_output_fd == -1 || metadata_fd == -1) {
+		printf("# Failed create temporary files for metadata parsing.\n");
+		ret = -1;
+		goto end;
+	}
+
+	if (write(metadata_fd, metadata_string, metadata_len) != metadata_len) {
+		perror("# write of metadata");
+		ret = -1;
+		goto end;
+	}
+
+	ret = lseek(metadata_fd, 0, SEEK_SET);
+	if (ret < 0) {
+		perror("# lseek on metadata_fd\n");
+		goto end;
+	}
+
+	pid_t pid = fork();
+	if (pid) {
+		int status = 0;
+		waitpid(pid, &status, 0);
+		ret = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+	} else {
+		/* ctf-parser-test expects a metadata string on stdin. */
+		ret = dup2(metadata_fd, STDIN_FILENO);
+		if (ret < 0) {
+			perror("# dup2 metadata_fd to STDIN");
+			goto end;
+		}
+
+		ret = dup2(parser_output_fd, STDOUT_FILENO);
+		if (ret < 0) {
+			perror("# dup2 parser_output_fd to STDOUT");
+			goto end;
+		}
+
+		ret = dup2(parser_output_fd, STDERR_FILENO);
+		if (ret < 0) {
+			perror("# dup2 parser_output_fd to STDERR");
+			goto end;
+		}
+
+		execl(parser_path, "ctf-parser-test", NULL);
+		perror("# Could not launch the ctf metadata parser process");
+		exit(-1);
+	}
+	ok(ret == 0, "Metadata string is valid");
+
+	if (ret) {
+		char *line;
+		size_t len = METADATA_LINE_SIZE;
+		FILE *parser_output_fp = fdopen(parser_output_fd, "r");
+
+		if (!parser_output_fp) {
+			perror("fdopen on parser_output_fd");
+			goto end;
+		}
+
+		rewind(parser_output_fp);
+		line = malloc(len);
+		/* Output the metadata and parser output as diagnostic */
+		while (getline(&line, &len, parser_output_fp) > 0) {
+			printf("# %s", line);
+		}
+
+		fclose(parser_output_fp);
+	}
+
+end:
+	close(parser_output_fd);
+	close(metadata_fd);
+}
+
 int main(int argc, char **argv)
 {
+	if (argc < 2) {
+		printf("Usage: tests-ctf-writer path_to_ctf_parser_test\n");
+		exit(-1);
+	}
+
 	plan_no_plan();
 
 	struct bt_ctf_writer *writer =
@@ -247,6 +342,8 @@ int main(int argc, char **argv)
 
 	char *metadata_string = bt_ctf_writer_get_metadata_string(writer);
 	ok(metadata_string, "Get metadata string");
+
+	validate_metadata_string(argv[1], metadata_string);
 
 	ok(bt_ctf_stream_push_event(stream1, simple_event) == 0,
 		"Push event to trace stream");
