@@ -227,7 +227,7 @@ void bt_ctf_clock_serialize(struct bt_ctf_clock *clock,
 		uuid[12], uuid[13], uuid[14], uuid[15]);
 	g_string_append_printf(context->string, "\tdescription = \"%s\";\n",
 		clock->description->str);
-	g_string_append_printf(context->string, "\tfrequency = %"PRId64";\n",
+	g_string_append_printf(context->string, "\tfreq = %"PRId64";\n",
 		clock->frequency);
 	g_string_append_printf(context->string, "\tprecision = %"PRId64";\n",
 		clock->precision);
