@@ -31,11 +31,13 @@
 
 #include <babeltrace/ctf-writer/ref-internal.h>
 #include <babeltrace/ctf-writer/event-fields.h>
+#include <babeltrace/babeltrace-internal.h>
 #include <glib.h>
 
 struct bt_ctf_field {
 	struct bt_ctf_ref ref_count;
 	struct bt_ctf_field_type *type;
+	int payload_set;
 };
 
 struct bt_ctf_field_integer {
@@ -82,5 +84,8 @@ struct bt_ctf_field_string {
 	struct bt_ctf_field parent;
 	GString *payload;
 };
+
+BT_HIDDEN
+int bt_ctf_field_validate(struct bt_ctf_field *field);
 
 #endif /* _BABELTRACE_CTF_WRITER_EVENT_FIELDS_INTERNAL_H */

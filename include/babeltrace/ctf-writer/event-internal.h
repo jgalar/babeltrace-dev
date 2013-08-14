@@ -71,4 +71,7 @@ BT_HIDDEN
 int bt_ctf_event_class_serialize(struct bt_ctf_event_class *event_class,
 		struct metadata_context *context);
 
+BT_HIDDEN
+int bt_ctf_event_validate(struct bt_ctf_event *event);
+
 #endif /* _BABELTRACE_CTF_WRITER_EVENT_INTERNAL_H */
