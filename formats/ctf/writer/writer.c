@@ -324,8 +324,7 @@ static void append_env_metadata(struct bt_ctf_writer *writer,
 
 char *bt_ctf_writer_get_metadata_string(struct bt_ctf_writer *writer)
 {
-	char *metadata;
-	int err = 0;
+	char *metadata = NULL;
 	struct metadata_context *context = g_new0(struct metadata_context, 1);
 	if (!context) {
 		goto end;
@@ -340,15 +339,19 @@ char *bt_ctf_writer_get_metadata_string(struct bt_ctf_writer *writer)
 		(GFunc)bt_ctf_clock_serialize, context);
 
 	for (size_t i = 0; i < writer->stream_classes->len; i++) {
-		err = bt_ctf_stream_class_serialize(
+		int err = bt_ctf_stream_class_serialize(
 			writer->stream_classes->pdata[i], context);
 		if (err) {
-			goto end;
+			goto error;
 		}
 	}
+
+	metadata = context->string->str;
+	g_string_free(context->string, FALSE);
 end:
-	metadata = err ? NULL : context->string->str;
-	g_string_free(context->string, err ? TRUE : FALSE);
+	return metadata;
+error:
+	g_string_free(context->string, TRUE);
 	g_free(context);
 	return metadata;
 }
@@ -413,7 +416,7 @@ end:
 
 struct bt_ctf_field_type *get_field_type(enum field_type_alias alias)
 {
-	if (alias < 0 || alias >= FIELD_TYPE_ALIAS_END) {
+	if (alias >= FIELD_TYPE_ALIAS_END) {
 		return NULL;
 	}
 	return field_type_aliases->pdata[alias];

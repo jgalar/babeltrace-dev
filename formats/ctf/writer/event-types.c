@@ -212,7 +212,7 @@ int bt_ctf_field_type_integer_set_signed(struct bt_ctf_field_type *type,
 	if (is_signed && integer->size <= 1) {
 		goto end;
 	}
-	integer->_signed = is_signed ? 1 : 0;
+	integer->_signed = !!is_signed;
 	ret = 0;
 end:
 	return ret;

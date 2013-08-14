@@ -251,13 +251,13 @@ end:
 int bt_ctf_event_validate(struct bt_ctf_event *event)
 {
 	/* Make sure each field's payload has been set */
-	int ret = bt_ctf_event_validate(event->fields_payload);
+	int ret = bt_ctf_field_validate(event->fields_payload);
 	if (ret) {
 		goto end;
 	}
 
 	if (event->event_class->context) {
-		ret = bt_ctf_event_validate(event->context_payload);
+		ret = bt_ctf_field_validate(event->context_payload);
 	}
 end:
 	return ret;

@@ -45,9 +45,16 @@ void validate_metadata_string(char *parser_path, char *metadata_string)
 	int ret = 0;
 	char parser_output_path[] = "/tmp/parser_output_XXXXXX";
 	char metadata_path[] = "/tmp/metadata_XXXXXX";
-	const size_t metadata_len = strlen(metadata_string);
-	int parser_output_fd = mkstemp(parser_output_path);
-	int metadata_fd = mkstemp(metadata_path);
+	size_t metadata_len;
+	int parser_output_fd = -1, metadata_fd = -1;
+
+	if (!metadata_string) {
+		goto result;
+	}
+
+	metadata_len = strlen(metadata_string);
+	parser_output_fd = mkstemp(parser_output_path);
+	metadata_fd = mkstemp(metadata_path);
 
 	unlink(parser_output_path);
 	unlink(metadata_path);
@@ -55,19 +62,19 @@ void validate_metadata_string(char *parser_path, char *metadata_string)
 	if (parser_output_fd == -1 || metadata_fd == -1) {
 		printf("# Failed create temporary files for metadata parsing.\n");
 		ret = -1;
-		goto end;
+		goto result;
 	}
 
 	if (write(metadata_fd, metadata_string, metadata_len) != metadata_len) {
 		perror("# write of metadata");
 		ret = -1;
-		goto end;
+		goto result;
 	}
 
 	ret = lseek(metadata_fd, 0, SEEK_SET);
 	if (ret < 0) {
 		perror("# lseek on metadata_fd\n");
-		goto end;
+		goto result;
 	}
 
 	pid_t pid = fork();
@@ -80,46 +87,48 @@ void validate_metadata_string(char *parser_path, char *metadata_string)
 		ret = dup2(metadata_fd, STDIN_FILENO);
 		if (ret < 0) {
 			perror("# dup2 metadata_fd to STDIN");
-			goto end;
+			goto result;
 		}
 
 		ret = dup2(parser_output_fd, STDOUT_FILENO);
 		if (ret < 0) {
 			perror("# dup2 parser_output_fd to STDOUT");
-			goto end;
+			goto result;
 		}
 
 		ret = dup2(parser_output_fd, STDERR_FILENO);
 		if (ret < 0) {
 			perror("# dup2 parser_output_fd to STDERR");
-			goto end;
+			goto result;
 		}
 
 		execl(parser_path, "ctf-parser-test", NULL);
 		perror("# Could not launch the ctf metadata parser process");
 		exit(-1);
 	}
+result:
 	ok(ret == 0, "Metadata string is valid");
 
-	if (ret) {
+	if (ret && metadata_string && metadata_fd > 0 && parser_output_fd > 0) {
 		char *line;
 		size_t len = METADATA_LINE_SIZE;
-		FILE *metadata_fp, *parser_output_fp;
+		FILE *metadata_fp = NULL, *parser_output_fp = NULL;
 
 		metadata_fp = fdopen(metadata_fd, "r");
 		if (!metadata_fp) {
 			perror("fdopen on metadata_fd");
-			goto end;
+			goto close_fp;
 		}
 
 		parser_output_fp = fdopen(parser_output_fd, "r");
 		if (!parser_output_fp) {
 			perror("fdopen on parser_output_fd");
-			goto end;
+			goto close_fp;
 		}
 
-		rewind(metadata_fp);
 		line = malloc(len);
+		rewind(metadata_fp);
+
 		/* Output the metadata and parser output as diagnostic */
 		while (getline(&line, &len, metadata_fp) > 0) {
 			printf("# %s", line);
@@ -130,11 +139,12 @@ void validate_metadata_string(char *parser_path, char *metadata_string)
 			printf("# %s", line);
 		}
 
+		free(line);
+	close_fp:
 		fclose(metadata_fp);
 		fclose(parser_output_fp);
 	}
 
-end:
 	close(parser_output_fd);
 	close(metadata_fd);
 }

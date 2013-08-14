@@ -169,7 +169,7 @@ int bt_ctf_clock_set_is_absolute(struct bt_ctf_clock *clock, int is_absolute)
 		ret = -1;
 		goto end;
 	}
-	clock->absolute = is_absolute ? 1 : 0;
+	clock->absolute = !!is_absolute;
 end:
 	return ret;
 }
