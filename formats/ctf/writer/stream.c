@@ -320,7 +320,6 @@ int bt_ctf_stream_push_event(struct bt_ctf_stream *stream,
 		struct bt_ctf_event *event)
 {
 	int ret = 0;
-
 	if (!stream || !event) {
 		ret = -1;
 		goto end;

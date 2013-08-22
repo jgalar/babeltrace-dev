@@ -35,6 +35,7 @@ extern "C" {
 
 struct bt_ctf_writer;
 struct bt_ctf_stream;
+struct bt_ctf_stream_class;
 struct bt_ctf_clock;
 
 enum bt_ctf_byte_order {
@@ -51,8 +52,9 @@ extern void bt_ctf_writer_get(struct bt_ctf_writer *writer);
 
 extern void bt_ctf_writer_put(struct bt_ctf_writer *writer);
 
-extern int bt_ctf_writer_add_stream(struct bt_ctf_writer *writer,
-		struct bt_ctf_stream *stream);
+extern struct bt_ctf_stream *bt_ctf_writer_create_stream(
+		struct bt_ctf_writer *writer,
+		struct bt_ctf_stream_class *stream_class);
 
 extern int bt_ctf_writer_add_environment_field(struct bt_ctf_writer *writer,
 		const char *name,

@@ -338,13 +338,12 @@ int main(int argc, char **argv)
 		event_class) == 0, "Add an event class to stream class");
 
 	/* Instanciate a stream and an event */
-	struct bt_ctf_stream *stream1 = bt_ctf_stream_create(stream_class);
-	ok(stream1, "Instanciate a stream class");
+	struct bt_ctf_stream *stream1 = bt_ctf_writer_create_stream(writer,
+		stream_class);
+	ok(stream1, "Instanciate a stream class from writer");
 	/* Should fail after instanciating a stream (locked)*/
 	ok(bt_ctf_stream_class_set_clock(stream_class, clock),
 		"Changes to a stream class that was already instanciated fail");
-	ok(bt_ctf_writer_add_stream(writer, stream1) == 0,
-		"Add a stream instance to the writer object");
 
 	struct bt_ctf_event *event =
 		bt_ctf_event_create(event_class);
