@@ -38,28 +38,28 @@
 
 static void bt_ctf_stream_destroy(struct bt_ctf_ref *ref);
 static void bt_ctf_stream_class_destroy(struct bt_ctf_ref *ref);
-static int init_event_header(struct bt_ctf_stream_class *stream_class);
-static int init_packet_context(struct bt_ctf_stream_class *stream_class);
+static int init_event_header(struct bt_ctf_stream_class *stream_class,
+		enum bt_ctf_byte_order byte_order);
+static int init_packet_context(struct bt_ctf_stream_class *stream_class,
+		enum bt_ctf_byte_order byte_order);
 
-struct bt_ctf_stream_class *bt_ctf_stream_class_create(void)
+struct bt_ctf_stream_class *bt_ctf_stream_class_create(const char *name)
 {
-	struct bt_ctf_stream_class *stream_class =  g_new0(struct
-		bt_ctf_stream_class, 1);
+	struct bt_ctf_stream_class *stream_class = NULL;
+
+	if (!name || !strlen(name)) {
+		goto error;
+	}
+
+	stream_class = g_new0(struct bt_ctf_stream_class, 1);
 	if (!stream_class) {
 		goto error;
 	}
 
+	stream_class->name = g_string_new(name);
 	stream_class->event_classes = g_ptr_array_new_with_free_func(
 		(GDestroyNotify)bt_ctf_event_class_put);
 	if (!stream_class->event_classes) {
-		goto error_destroy;
-	}
-
-	if (init_event_header(stream_class)) {
-		goto error_destroy;
-	}
-
-	if (init_packet_context(stream_class)) {
 		goto error_destroy;
 	}
 
@@ -165,6 +165,15 @@ end:
 	return ret;
 }
 
+int bt_ctf_stream_class_set_byte_order(struct bt_ctf_stream_class *stream_class,
+	enum bt_ctf_byte_order byte_order)
+{
+	int ret = 0;
+	ret |= init_packet_context(stream_class, byte_order);
+	ret |= init_event_header(stream_class, byte_order);
+	return ret;
+}
+
 int bt_ctf_stream_class_serialize(struct bt_ctf_stream_class *stream_class,
 		struct metadata_context *context)
 {
@@ -184,14 +193,16 @@ int bt_ctf_stream_class_serialize(struct bt_ctf_stream_class *stream_class,
 	}
 
 	g_string_append(context->string, ";\n\n\tpacket.context := ");
-	ret = bt_ctf_field_type_serialize(stream_class->packet_context, context);
+	ret = bt_ctf_field_type_serialize(stream_class->packet_context,
+		context);
 	if (ret) {
 		goto end;
 	}
 
 	if (stream_class->event_context) {
 		g_string_append(context->string, ";\n\n\tevent.context := ");
-		ret = bt_ctf_field_type_serialize(stream_class->event_context, context);
+		ret = bt_ctf_field_type_serialize(stream_class->event_context,
+			context);
 		if (ret) {
 			goto end;
 		}
@@ -236,6 +247,10 @@ void bt_ctf_stream_class_destroy(struct bt_ctf_ref *ref)
 		g_ptr_array_free(stream_class->event_classes, TRUE);
 	}
 
+	if (stream_class->name) {
+		g_string_free(stream_class->name, TRUE);
+	}
+
 	bt_ctf_field_type_put(stream_class->event_header);
 	bt_ctf_field_type_put(stream_class->packet_context);
 	bt_ctf_field_type_put(stream_class->event_context);
@@ -256,9 +271,13 @@ struct bt_ctf_stream *bt_ctf_stream_create(
 	}
 
 	bt_ctf_ref_init(&stream->ref_count, bt_ctf_stream_destroy);
-	bt_ctf_stream_class_get(stream_class);
+	stream->pos.fd = -1;
+	stream->id = stream_class->next_stream_id++;
 	stream->stream_class = stream_class;
+	bt_ctf_stream_class_get(stream_class);
 	bt_ctf_stream_class_lock(stream_class);
+	stream->events = g_ptr_array_new_with_free_func(
+		(GDestroyNotify)bt_ctf_event_put);
 end:
 	return stream;
 }
@@ -277,6 +296,20 @@ end:
 	return ret;
 }
 
+int bt_ctf_stream_set_fd(struct bt_ctf_stream *stream, int fd)
+{
+	int ret = 0;
+	if (stream->pos.fd != -1) {
+		ret = -1;
+		goto end;
+	}
+
+	ctf_init_pos(&stream->pos, NULL, fd, O_RDWR);
+	stream->pos.fd = fd;
+end:
+	return ret;
+}
+
 void bt_ctf_stream_push_discarded_events(struct bt_ctf_stream *stream,
 		uint64_t event_count)
 {
@@ -286,19 +319,45 @@ void bt_ctf_stream_push_discarded_events(struct bt_ctf_stream *stream,
 int bt_ctf_stream_push_event(struct bt_ctf_stream *stream,
 		struct bt_ctf_event *event)
 {
-	return -1;
+	int ret = 0;
+
+	if (!stream || !event) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = bt_ctf_event_validate(event);
+	if (ret) {
+		ret = -1;
+		goto end;
+	}
+
+	bt_ctf_event_get(event);
+	g_ptr_array_add(stream->events, event);
+end:
+	return ret;
 }
 
 int bt_ctf_stream_flush(struct bt_ctf_stream *stream)
 {
-	int ret = -1;
+	int ret = 0;
 	if (!stream) {
+		ret = -1;
+		goto end;
+	}
+
+	if (!stream->events->len) {
 		goto end;
 	}
 
 	if (stream->flush.func) {
 		stream->flush.func(stream, stream->flush.data);
 	}
+
+	/* Flush! Serialize events... */
+
+	g_ptr_array_set_size(stream->events, 0);
+	stream->flushed_packet_count++;
 end:
 	return ret;
 }
@@ -327,79 +386,60 @@ void bt_ctf_stream_destroy(struct bt_ctf_ref *ref)
 
 	struct bt_ctf_stream *stream = container_of(ref,
 		struct bt_ctf_stream, ref_count);
+	ctf_fini_pos(&stream->pos);
+	close(stream->pos.fd);
 	bt_ctf_stream_class_put(stream->stream_class);
 	bt_ctf_field_put(stream->event_context_payload);
+	g_ptr_array_free(stream->events, TRUE);
 	g_free(stream);
 }
 
-int init_event_header(struct bt_ctf_stream_class *stream_class)
+int init_event_header(struct bt_ctf_stream_class *stream_class,
+		enum bt_ctf_byte_order byte_order)
 {
 	int ret = 0;
 
 	/* We create the large event header proposed in the CTF specification */
 	struct bt_ctf_field_type *event_header =
 		bt_ctf_field_type_structure_create();
-	struct bt_ctf_field_type *_uint16_t =
-		get_field_type(FIELD_TYPE_ALIAS_UINT16_T);
 	struct bt_ctf_field_type *_uint32_t =
 		get_field_type(FIELD_TYPE_ALIAS_UINT32_T);
 	struct bt_ctf_field_type *_uint64_t =
 		get_field_type(FIELD_TYPE_ALIAS_UINT64_T);
-	struct bt_ctf_field_type *v_variant =
-		bt_ctf_field_type_variant_create("id");
-	struct bt_ctf_field_type *id_enum =
-		bt_ctf_field_type_enumeration_create(_uint16_t);
-	struct bt_ctf_field_type *compact_structure =
-		bt_ctf_field_type_structure_create();
-	struct bt_ctf_field_type *extended_structure =
-		bt_ctf_field_type_structure_create();
-
-	if (!event_header || !v_variant || !id_enum) {
+	if (!event_header) {
 		ret = -1;
 		goto end;
 	}
 
-	ret |= bt_ctf_field_type_enumeration_add_mapping(id_enum, "compact", 0,
-		65534);
-	ret |= bt_ctf_field_type_enumeration_add_mapping(id_enum, "extended",
-		65535, 65535);
-	ret |= bt_ctf_field_type_structure_add_field(event_header, id_enum,
-		"id");
-	ret |= bt_ctf_field_type_structure_add_field(compact_structure,
-		_uint32_t, "timestamp");
-	ret |= bt_ctf_field_type_structure_add_field(extended_structure,
+	ret |= bt_ctf_field_type_set_byte_order(_uint32_t, byte_order);
+	ret |= bt_ctf_field_type_set_byte_order(_uint64_t, byte_order);
+	ret |= bt_ctf_field_type_structure_add_field(event_header,
 		_uint32_t, "id");
-	ret |= bt_ctf_field_type_structure_add_field(extended_structure,
+	ret |= bt_ctf_field_type_structure_add_field(event_header,
 		_uint64_t, "timestamp");
-	ret |= bt_ctf_field_type_variant_add_field(v_variant,
-		compact_structure, "compact");
-	ret |= bt_ctf_field_type_variant_add_field(v_variant,
-		extended_structure, "extended");
-	ret |= bt_ctf_field_type_structure_add_field(event_header, v_variant,
-		"v");
-
 	if (ret) {
 		bt_ctf_field_type_put(event_header);
 		goto end;
 	}
+
 	stream_class->event_header = event_header;
 end:
-	bt_ctf_field_type_put(v_variant);
-	bt_ctf_field_type_put(id_enum);
-	bt_ctf_field_type_put(compact_structure);
-	bt_ctf_field_type_put(extended_structure);
+	bt_ctf_field_type_put(_uint32_t);
+	bt_ctf_field_type_put(_uint64_t);
 	return ret;
 }
 
-int init_packet_context(struct bt_ctf_stream_class *stream_class)
+int init_packet_context(struct bt_ctf_stream_class *stream_class,
+		enum bt_ctf_byte_order byte_order)
 {
 	int ret = 0;
 
-	/* We create the packet context proposed in the CTF specification */
+	/*
+	 * We create a stream packet context proposed in the CTF
+	 * specification
+	 */
 	struct bt_ctf_field_type *packet_context =
 		bt_ctf_field_type_structure_create();
-	struct bt_ctf_field_type *_uint32_t =
-		get_field_type(FIELD_TYPE_ALIAS_UINT32_T);
 	struct bt_ctf_field_type *_uint64_t =
 		get_field_type(FIELD_TYPE_ALIAS_UINT64_T);
 
@@ -408,6 +448,7 @@ int init_packet_context(struct bt_ctf_stream_class *stream_class)
 		goto end;
 	}
 
+	ret |= bt_ctf_field_type_set_byte_order(_uint64_t, byte_order);
 	ret |= bt_ctf_field_type_structure_add_field(packet_context,
 		_uint64_t, "timestamp_begin");
 	ret |= bt_ctf_field_type_structure_add_field(packet_context,
@@ -418,8 +459,6 @@ int init_packet_context(struct bt_ctf_stream_class *stream_class)
 		_uint64_t, "packet_size");
 	ret |= bt_ctf_field_type_structure_add_field(packet_context,
 		_uint64_t, "events_discarded");
-	ret |= bt_ctf_field_type_structure_add_field(packet_context,
-		_uint32_t, "cpu_id");
 
 	if (ret) {
 		bt_ctf_field_type_put(packet_context);
@@ -427,5 +466,6 @@ int init_packet_context(struct bt_ctf_stream_class *stream_class)
 	}
 	stream_class->packet_context = packet_context;
 end:
+	bt_ctf_field_type_put(_uint64_t);
 	return ret;
 }

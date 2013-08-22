@@ -240,6 +240,11 @@ void bt_ctf_clock_serialize(struct bt_ctf_clock *clock,
 	g_string_append(context->string, "};\n\n");
 }
 
+uint64_t bt_ctf_clock_get_time(struct bt_ctf_clock *clock)
+{
+	return clock ? clock->time : 0;
+}
+
 static void bt_ctf_clock_destroy(struct bt_ctf_ref *ref)
 {
 	if (!ref) {

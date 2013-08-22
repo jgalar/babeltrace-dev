@@ -64,6 +64,23 @@ static int bt_ctf_field_variant_validate(struct bt_ctf_field *field);
 static int bt_ctf_field_array_validate(struct bt_ctf_field *field);
 static int bt_ctf_field_sequence_validate(struct bt_ctf_field *field);
 
+static int bt_ctf_field_integer_serialize(struct bt_ctf_field *,
+		struct ctf_stream_pos *);
+static int bt_ctf_field_enumeration_serialize(struct bt_ctf_field *,
+		struct ctf_stream_pos *);
+static int bt_ctf_field_floating_point_serialize(struct bt_ctf_field *,
+		struct ctf_stream_pos *);
+static int bt_ctf_field_structure_serialize(struct bt_ctf_field *,
+		struct ctf_stream_pos *);
+static int bt_ctf_field_variant_serialize(struct bt_ctf_field *,
+		struct ctf_stream_pos *);
+static int bt_ctf_field_array_serialize(struct bt_ctf_field *,
+		struct ctf_stream_pos *);
+static int bt_ctf_field_sequence_serialize(struct bt_ctf_field *,
+		struct ctf_stream_pos *);
+static int bt_ctf_field_string_serialize(struct bt_ctf_field *,
+		struct ctf_stream_pos *);
+
 static struct bt_ctf_field *(*field_create_funcs[])(
 	struct bt_ctf_field_type *) =
 {
@@ -101,6 +118,20 @@ static int (*field_validate_funcs[])(struct bt_ctf_field *) =
 	[BT_CTF_FIELD_TYPE_ID_ARRAY] = bt_ctf_field_array_validate,
 	[BT_CTF_FIELD_TYPE_ID_SEQUENCE] = bt_ctf_field_sequence_validate,
 	[BT_CTF_FIELD_TYPE_ID_STRING] = bt_ctf_field_generic_validate
+};
+
+static int (*field_serialize_funcs[])(struct bt_ctf_field *,
+		struct ctf_stream_pos *) =
+{
+	[BT_CTF_FIELD_TYPE_ID_INTEGER] = bt_ctf_field_integer_serialize,
+	[BT_CTF_FIELD_TYPE_ID_ENUMERATION] = bt_ctf_field_enumeration_serialize,
+	[BT_CTF_FIELD_TYPE_ID_FLOATING_POINT] =
+		bt_ctf_field_floating_point_serialize,
+	[BT_CTF_FIELD_TYPE_ID_STRUCTURE] = bt_ctf_field_structure_serialize,
+	[BT_CTF_FIELD_TYPE_ID_VARIANT] = bt_ctf_field_variant_serialize,
+	[BT_CTF_FIELD_TYPE_ID_ARRAY] = bt_ctf_field_array_serialize,
+	[BT_CTF_FIELD_TYPE_ID_SEQUENCE] = bt_ctf_field_sequence_serialize,
+	[BT_CTF_FIELD_TYPE_ID_STRING] = bt_ctf_field_string_serialize
 };
 
 struct bt_ctf_field *bt_ctf_field_create(struct bt_ctf_field_type *type)
@@ -384,8 +415,8 @@ int bt_ctf_field_signed_integer_set_value(struct bt_ctf_field *field,
 	}
 
 	unsigned int size = integer_type->size;
-	int64_t min_value = -(1 << (size - 1));
-	int64_t max_value = (1 << (size - 1)) - 1;
+	int64_t min_value = -((int64_t)1 << (size - 1));
+	int64_t max_value = ((int64_t)1 << (size - 1)) - 1;
 	if (value < min_value || value > max_value) {
 		goto end;
 	}
@@ -414,7 +445,7 @@ int bt_ctf_field_unsigned_integer_set_value(struct bt_ctf_field *field,
 	}
 
 	unsigned int size = integer_type->size;
-	int64_t max_value = (1 << size) - 1;
+	uint64_t max_value = ((uint64_t)1 << size) - 1;
 	if (value > max_value) {
 		goto end;
 	}
@@ -470,6 +501,23 @@ int bt_ctf_field_validate(struct bt_ctf_field *field)
 
 	type_id = bt_ctf_field_type_get_type_id(field->type);
 	ret = field_validate_funcs[type_id](field);
+end:
+	return ret;
+}
+
+int bt_ctf_field_serialize(struct bt_ctf_field *field,
+		struct ctf_stream_pos *pos)
+{
+	int ret = 0;
+	enum bt_ctf_field_type_id type_id;
+
+	if (!field) {
+		ret = -1;
+		goto end;
+	}
+
+	type_id = bt_ctf_field_type_get_type_id(field->type);
+	ret = field_serialize_funcs[type_id](field, pos);
 end:
 	return ret;
 }
@@ -768,4 +816,52 @@ int bt_ctf_field_sequence_validate(struct bt_ctf_field *field)
 	}
 end:
 	return ret;
+}
+
+int bt_ctf_field_integer_serialize(struct bt_ctf_field * field,
+		struct ctf_stream_pos *pos)
+{
+	return -1;
+}
+
+int bt_ctf_field_enumeration_serialize(struct bt_ctf_field *field,
+		struct ctf_stream_pos *pos)
+{
+	return -1;
+}
+
+int bt_ctf_field_floating_point_serialize(struct bt_ctf_field *field,
+		struct ctf_stream_pos *pos)
+{
+	return -1;
+}
+
+int bt_ctf_field_structure_serialize(struct bt_ctf_field *field,
+		struct ctf_stream_pos *pos)
+{
+	return -1;
+}
+
+int bt_ctf_field_variant_serialize(struct bt_ctf_field *field,
+		struct ctf_stream_pos *pos)
+{
+	return -1;
+}
+
+int bt_ctf_field_array_serialize(struct bt_ctf_field *field,
+		struct ctf_stream_pos *pos)
+{
+	return -1;
+}
+
+int bt_ctf_field_sequence_serialize(struct bt_ctf_field *field,
+		struct ctf_stream_pos *pos)
+{
+	return -1;
+}
+
+int bt_ctf_field_string_serialize(struct bt_ctf_field *field,
+		struct ctf_stream_pos *pos)
+{
+	return -1;
 }

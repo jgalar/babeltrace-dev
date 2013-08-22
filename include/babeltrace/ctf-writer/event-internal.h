@@ -33,6 +33,7 @@
 #include <babeltrace/ctf-writer/event-types.h>
 #include <babeltrace/ctf-writer/event-fields.h>
 #include <babeltrace/babeltrace-internal.h>
+#include <babeltrace/ctf/types.h>
 #include <glib.h>
 
 struct bt_ctf_event_class {
@@ -73,5 +74,9 @@ int bt_ctf_event_class_serialize(struct bt_ctf_event_class *event_class,
 
 BT_HIDDEN
 int bt_ctf_event_validate(struct bt_ctf_event *event);
+
+BT_HIDDEN
+int bt_ctf_event_serialize(struct bt_ctf_event *event,
+		struct ctf_stream_pos *pos);
 
 #endif /* _BABELTRACE_CTF_WRITER_EVENT_INTERNAL_H */

@@ -570,8 +570,9 @@ end:
 int bt_ctf_field_type_set_byte_order(struct bt_ctf_field_type *type,
 		enum bt_ctf_byte_order byte_order)
 {
-	int ret = -1;
+	int ret = 0;
 	if (!type || type->locked) {
+		ret = -1;
 		goto end;
 	}
 	type->byte_order = byte_order;

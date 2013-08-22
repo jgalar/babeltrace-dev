@@ -55,14 +55,14 @@ struct bt_ctf_writer {
 	GString *path;
 	uuid_t uuid;
 	enum bt_ctf_byte_order byte_order;
-	DIR *trace_dir;
 	int trace_dir_fd;
+	int metadata_fd;
 	GPtrArray *environment; /* Array of pointers to environment_variable */
 	GPtrArray *clocks; /* Array of pointers to bt_ctf_clock */
 	GPtrArray *stream_classes; /* Array of pointers to bt_ctf_stream_class */
 	GPtrArray *streams; /* Array of pointers to bt_ctf_stream */
-	struct bt_ctf_field_type *packet_header_type;
-	struct bt_ctf_field *packet_header;
+	struct bt_ctf_field_type *trace_packet_header_type;
+	struct bt_ctf_field *trace_packet_header;
 	uint32_t next_stream_id;
 };
 

@@ -262,3 +262,9 @@ int bt_ctf_event_validate(struct bt_ctf_event *event)
 end:
 	return ret;
 }
+
+int bt_ctf_event_serialize(struct bt_ctf_event *field,
+		struct ctf_stream_pos *pos)
+{
+	return -1;
+}

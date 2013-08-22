@@ -39,7 +39,7 @@ struct bt_ctf_stream_class;
 struct bt_ctf_stream;
 struct bt_ctf_clock;
 
-extern struct bt_ctf_stream_class *bt_ctf_stream_class_create(void);
+extern struct bt_ctf_stream_class *bt_ctf_stream_class_create(const char *name);
 
 extern int bt_ctf_stream_class_set_clock(struct bt_ctf_stream_class *stream_class,
 		struct bt_ctf_clock *clock);

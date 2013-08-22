@@ -32,6 +32,7 @@
 #include <babeltrace/ctf-writer/ref-internal.h>
 #include <babeltrace/ctf-writer/event-fields.h>
 #include <babeltrace/babeltrace-internal.h>
+#include <babeltrace/ctf/types.h>
 #include <glib.h>
 
 struct bt_ctf_field {
@@ -87,5 +88,9 @@ struct bt_ctf_field_string {
 
 BT_HIDDEN
 int bt_ctf_field_validate(struct bt_ctf_field *field);
+
+BT_HIDDEN
+int bt_ctf_field_serialize(struct bt_ctf_field *field,
+		struct ctf_stream_pos *pos);
 
 #endif /* _BABELTRACE_CTF_WRITER_EVENT_FIELDS_INTERNAL_H */

@@ -35,45 +35,31 @@
 #include <assert.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h>
+#include <dirent.h>
 
 #include "tap.h"
 
 #define METADATA_LINE_SIZE 512
 
-void validate_metadata_string(char *parser_path, char *metadata_string)
+void validate_metadata(char *parser_path, char *metadata_path)
 {
 	int ret = 0;
 	char parser_output_path[] = "/tmp/parser_output_XXXXXX";
-	char metadata_path[] = "/tmp/metadata_XXXXXX";
-	size_t metadata_len;
 	int parser_output_fd = -1, metadata_fd = -1;
 
-	if (!metadata_string) {
+	if (!metadata_path) {
 		goto result;
 	}
 
-	metadata_len = strlen(metadata_string);
 	parser_output_fd = mkstemp(parser_output_path);
-	metadata_fd = mkstemp(metadata_path);
+	metadata_fd = open(metadata_path, O_RDONLY);
 
 	unlink(parser_output_path);
-	unlink(metadata_path);
 
 	if (parser_output_fd == -1 || metadata_fd == -1) {
 		printf("# Failed create temporary files for metadata parsing.\n");
 		ret = -1;
-		goto result;
-	}
-
-	if (write(metadata_fd, metadata_string, metadata_len) != metadata_len) {
-		perror("# write of metadata");
-		ret = -1;
-		goto result;
-	}
-
-	ret = lseek(metadata_fd, 0, SEEK_SET);
-	if (ret < 0) {
-		perror("# lseek on metadata_fd\n");
 		goto result;
 	}
 
@@ -109,7 +95,7 @@ void validate_metadata_string(char *parser_path, char *metadata_string)
 result:
 	ok(ret == 0, "Metadata string is valid");
 
-	if (ret && metadata_string && metadata_fd > 0 && parser_output_fd > 0) {
+	if (ret && metadata_fd > 0 && parser_output_fd > 0) {
 		char *line;
 		size_t len = METADATA_LINE_SIZE;
 		FILE *metadata_fp = NULL, *parser_output_fp = NULL;
@@ -151,6 +137,9 @@ result:
 
 int main(int argc, char **argv)
 {
+	char trace_path[] = "/tmp/ctfwriter_XXXXXX";
+	char metadata_path[sizeof(trace_path) + 9];
+
 	if (argc < 2) {
 		printf("Usage: tests-ctf-writer path_to_ctf_parser_test\n");
 		exit(-1);
@@ -158,8 +147,14 @@ int main(int argc, char **argv)
 
 	plan_no_plan();
 
+	if (!mkdtemp(trace_path)) {
+		perror("# perror");
+	}
+	strcpy(metadata_path, trace_path);
+	strcat(metadata_path + sizeof(trace_path) - 1, "/metadata");
+
 	struct bt_ctf_writer *writer =
-		bt_ctf_writer_create("/home/decapsuleur/EfficiOS/TestTrace");
+		bt_ctf_writer_create(trace_path);
 	ok(writer, "bt_ctf_create succeeds in creating trace with path");
 
 	/* Add environment context to the trace */
@@ -246,7 +241,7 @@ int main(int argc, char **argv)
 		"Verify a clock can't be added twice to a writer instance");
 
 	/* Define a stream class and field types */
-	struct bt_ctf_stream_class *stream_class = bt_ctf_stream_class_create();
+	struct bt_ctf_stream_class *stream_class = bt_ctf_stream_class_create("test_stream");
 	ok(stream_class, "Create stream class");
 	ok(bt_ctf_stream_class_set_clock(stream_class, clock) == 0,
 		"Set a stream class' clock");
@@ -398,14 +393,15 @@ int main(int argc, char **argv)
 		"Set an event field payload");
 	ok(bt_ctf_event_set_payload(event, "uint_12", uint_12) == 0,
 		"Change an event's existing payload");
-	bt_ctf_event_set_payload(event, "int_16", int_16);
 	ok(bt_ctf_event_set_payload(event, "int_16", uint_12),
 		"Reject event payloads of incorrect type");
+	bt_ctf_event_set_payload(event, "int_16", int_16);
 
 	char *metadata_string = bt_ctf_writer_get_metadata_string(writer);
 	ok(metadata_string, "Get metadata string");
 
-	validate_metadata_string(argv[1], metadata_string);
+	bt_ctf_writer_flush_metadata(writer);
+	validate_metadata(argv[1], metadata_path);
 
 	ok(bt_ctf_stream_push_event(stream1, event) == 0,
 		"Push event to trace stream");
@@ -428,6 +424,23 @@ int main(int argc, char **argv)
 	bt_ctf_writer_put(writer);
 	bt_ctf_stream_put(stream1);
 	free(metadata_string);
+
+	/* Remove all trace files and delete temporary trace directory */
+	DIR *trace_dir = opendir(trace_path);
+	if (!trace_dir) {
+		perror("# opendir");
+		return -1;
+	}
+
+	struct dirent *entry;
+	while ((entry = readdir(trace_dir))) {
+		if (entry->d_type == DT_REG) {
+			unlinkat(dirfd(trace_dir), entry->d_name, 0);
+		}
+	}
+
+	rmdir(trace_path);
+	closedir(trace_dir);
 
 	return 0;
 }

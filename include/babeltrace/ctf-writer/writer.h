@@ -64,6 +64,13 @@ extern int bt_ctf_writer_add_clock(struct bt_ctf_writer *writer,
 /* Caller assumes the ownership of the metadata string */
 extern char *bt_ctf_writer_get_metadata_string(struct bt_ctf_writer *writer);
 
+/*
+ * Flush the trace's metadata to the metadata file.
+ * Note that the metadata will be flushed automatically when the Writer instance
+ * is released (last call to bt_ctf_writer_put).
+ */
+extern void bt_ctf_writer_flush_metadata(struct bt_ctf_writer *writer);
+
 /* Defaults to the host's native endianness (BT_CTF_BYTE_ORDER_NATIVE) */
 extern int bt_ctf_writer_set_byte_order(struct bt_ctf_writer *writer,
 		enum bt_ctf_byte_order byte_order);

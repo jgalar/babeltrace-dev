@@ -31,6 +31,7 @@
 #include <babeltrace/ctf-writer/clock-internal.h>
 #include <babeltrace/ctf-writer/writer-internal.h>
 #include <babeltrace/ctf-writer/event-types-internal.h>
+#include <babeltrace/ctf-writer/event-fields-internal.h>
 #include <babeltrace/ctf-writer/functor-internal.h>
 #include <babeltrace/ctf-writer/stream-internal.h>
 #include <babeltrace/ctf-writer/stream.h>
@@ -40,13 +41,19 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <inttypes.h>
 
 #define RESERVED_IDENTIFIER_SIZE 128
 #define RESERVED_METADATA_STRING_SIZE 4096
 
 static void environment_variable_destroy(struct environment_variable *var);
 static void bt_ctf_writer_destroy(struct bt_ctf_ref *ref);
-static int init_packet_header_type(struct bt_ctf_writer *writer);
+static int init_trace_packet_header(struct bt_ctf_writer *writer);
+static int create_stream_file(struct bt_ctf_writer *writer,
+		struct bt_ctf_stream *stream);
+static void stream_flush_cb(struct bt_ctf_stream *stream,
+		struct bt_ctf_writer *writer);
 
 static const char * const reserved_keywords_str[] = {"align", "callsite",
 	"const", "char", "clock", "double", "enum", "env", "event",
@@ -71,41 +78,43 @@ static const unsigned int field_type_aliases_sizes[] = {
 };
 
 static GHashTable *reserved_keywords_set;
-static GPtrArray *field_type_aliases;
 static int init_done;
 static int global_data_refcount;
 
 struct bt_ctf_writer *bt_ctf_writer_create(const char *path)
 {
-	struct bt_ctf_writer *writer = g_new0(struct bt_ctf_writer, 1);
+	struct bt_ctf_writer *writer = NULL;
+	if (!path) {
+		goto error;
+	}
+
+	writer = g_new0(struct bt_ctf_writer, 1);
 	if (!writer) {
 		goto error;
 	}
-	writer->trace_dir_fd = -1;
-	bt_ctf_ref_init(&writer->ref_count, bt_ctf_writer_destroy);
 
-	if (path) {
-		int ret;
-		writer->path = g_string_new(path);
-		if (!writer->path) {
-			goto error_destroy;
-		}
-		ret = mkdir(path, S_IRWXU|S_IRWXG);
-		if (ret && errno != EEXIST) {
-			perror("mkdir");
-			goto error_destroy;
-		}
-		writer->trace_dir = opendir(path);
-		if (!writer->trace_dir) {
-			perror("opendir");
-			goto error_destroy;
-		}
-		writer->trace_dir_fd = dirfd(writer->trace_dir);
-		if (writer->trace_dir_fd < 0) {
-			perror("dirfd");
-			goto error_destroy;
-		}
+	bt_ctf_ref_init(&writer->ref_count, bt_ctf_writer_destroy);
+	writer->path = g_string_new(path);
+	if (!writer->path) {
+		goto error_destroy;
 	}
+
+	/* Create trace directory if necessary and open a metadata file */
+	if (g_mkdir_with_parents(path, S_IRWXU | S_IRWXG)) {
+		perror("g_mkdir_with_parents");
+		goto error_destroy;
+	}
+
+	writer->trace_dir_fd = open(path, O_RDONLY | O_DIRECTORY,
+		S_IRWXU | S_IRWXG);
+	if (writer->trace_dir_fd < 0) {
+		perror("open");
+		goto error_destroy;
+	}
+
+	writer->metadata_fd = openat(writer->trace_dir_fd, "metadata",
+		O_WRONLY | O_CREAT | O_TRUNC,
+		S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	writer->environment = g_ptr_array_new_with_free_func(
 		(GDestroyNotify)environment_variable_destroy);
 	writer->clocks = g_ptr_array_new_with_free_func(
@@ -121,19 +130,17 @@ struct bt_ctf_writer *bt_ctf_writer_create(const char *path)
 
 	/* Generate a trace UUID */
 	uuid_generate(writer->uuid);
-
-	if (init_packet_header_type(writer)) {
+	if (init_trace_packet_header(writer)) {
 		goto error_destroy;
 	}
 
 	return writer;
-
 error_destroy:
+	unlinkat(writer->trace_dir_fd, "metadata", 0);
 	bt_ctf_writer_destroy(&writer->ref_count);
 	writer = NULL;
 error:
-	return writer;
-
+return writer;
 }
 
 static void bt_ctf_writer_destroy(struct bt_ctf_ref *ref)
@@ -143,17 +150,18 @@ static void bt_ctf_writer_destroy(struct bt_ctf_ref *ref)
 	}
 	struct bt_ctf_writer *writer = container_of(ref, struct bt_ctf_writer,
 		ref_count);
+	bt_ctf_writer_flush_metadata(writer);
 
 	if (writer->path) {
 		g_string_free(writer->path, TRUE);
 	}
 
-	if (writer->trace_dir_fd != -1) {
+	if (writer->trace_dir_fd > 0) {
 		close(writer->trace_dir_fd);
 	}
 
-	if (writer->trace_dir) {
-		closedir(writer->trace_dir);
+	if (writer->metadata_fd > 0) {
+		close(writer->metadata_fd);
 	}
 
 	if (writer->environment) {
@@ -172,8 +180,8 @@ static void bt_ctf_writer_destroy(struct bt_ctf_ref *ref)
 		g_ptr_array_free(writer->stream_classes, TRUE);
 	}
 
-	bt_ctf_field_type_put(writer->packet_header_type);
-	bt_ctf_field_put(writer->packet_header);
+	bt_ctf_field_type_put(writer->trace_packet_header_type);
+	bt_ctf_field_put(writer->trace_packet_header);
 	g_free(writer);
 }
 
@@ -181,11 +189,18 @@ int bt_ctf_writer_add_stream(struct bt_ctf_writer *writer,
 		struct bt_ctf_stream *stream)
 {
 	int ret = -1;
+	int stream_class_found = 0;
+	int stream_fd;
 	if (!writer || !stream) {
 		goto end;
 	}
 
-	int stream_class_found = 0;
+	for (size_t i = 0; i < writer->stream_classes->len; i++) {
+		if (writer->streams->pdata[i] == stream) {
+			goto end;
+		}
+	}
+
 	for (size_t i = 0; i < writer->stream_classes->len; i++) {
 		if (writer->stream_classes->pdata[i] == stream->stream_class) {
 			stream_class_found = 1;
@@ -194,7 +209,7 @@ int bt_ctf_writer_add_stream(struct bt_ctf_writer *writer,
 
 	if (!stream_class_found) {
 		if (bt_ctf_stream_class_set_id(stream->stream_class,
-					       writer->next_stream_id++)) {
+			writer->next_stream_id++)) {
 			goto end;
 		}
 
@@ -202,8 +217,22 @@ int bt_ctf_writer_add_stream(struct bt_ctf_writer *writer,
 		g_ptr_array_add(writer->stream_classes, stream->stream_class);
 	}
 
+	stream_fd = create_stream_file(writer, stream);
+	if (stream_fd < 0 || bt_ctf_stream_set_fd(stream, stream_fd)) {
+		goto end;
+	}
+
+	bt_ctf_stream_set_flush_callback(stream, (flush_func)stream_flush_cb,
+		writer);
+	ret = bt_ctf_stream_class_set_byte_order(stream->stream_class,
+		writer->byte_order);
+	if (ret) {
+		goto end;
+	}
+
 	bt_ctf_stream_get(stream);
 	g_ptr_array_add(writer->streams, stream);
+	writer->locked = 1;
 	ret = 0;
 end:
 	return ret;
@@ -296,7 +325,7 @@ static void append_trace_metadata(struct bt_ctf_writer *writer,
 	g_string_append(context->string, "\tpacket.header := ");
 	context->current_indentation_level++;
 	g_string_assign(context->field_name, "");
-	bt_ctf_field_type_serialize(writer->packet_header_type, context);
+	bt_ctf_field_type_serialize(writer->trace_packet_header_type, context);
 	context->current_indentation_level--;
 
 	g_string_append(context->string, ";\n};\n\n");
@@ -325,7 +354,13 @@ static void append_env_metadata(struct bt_ctf_writer *writer,
 char *bt_ctf_writer_get_metadata_string(struct bt_ctf_writer *writer)
 {
 	char *metadata = NULL;
-	struct metadata_context *context = g_new0(struct metadata_context, 1);
+	struct metadata_context *context = NULL;
+
+	if (!writer) {
+		goto end;
+	}
+
+	context = g_new0(struct metadata_context, 1);
 	if (!context) {
 		goto end;
 	}
@@ -356,17 +391,41 @@ error:
 	return metadata;
 }
 
+void bt_ctf_writer_flush_metadata(struct bt_ctf_writer *writer)
+{
+	int ret;
+	char *metadata_string = NULL;
+	if (!writer) {
+		return;
+	}
+
+	metadata_string = bt_ctf_writer_get_metadata_string(writer);
+	if (!metadata_string) {
+		return;
+	}
+
+	lseek(writer->metadata_fd, 0, SEEK_SET);
+	ftruncate(writer->metadata_fd, 0);
+	ret = write(writer->metadata_fd, metadata_string,
+		strlen(metadata_string));
+	if (ret < 0) {
+		perror("write");
+	}
+	free(metadata_string);
+}
+
 int bt_ctf_writer_set_byte_order(struct bt_ctf_writer *writer,
 		enum bt_ctf_byte_order byte_order)
 {
 	if (!writer || writer->locked ||
-	    byte_order < BT_CTF_BYTE_ORDER_NATIVE ||
-	    byte_order >= BT_CTF_BYTE_ORDER_END) {
+		byte_order < BT_CTF_BYTE_ORDER_NATIVE ||
+		byte_order >= BT_CTF_BYTE_ORDER_END) {
 		return -1;
 	}
-	/* This attribute can't change mid-trace */
+
 	if (!writer->locked) {
 		writer->byte_order = byte_order;
+		init_trace_packet_header(writer);
 	}
 	return 0;
 }
@@ -419,44 +478,84 @@ struct bt_ctf_field_type *get_field_type(enum field_type_alias alias)
 	if (alias >= FIELD_TYPE_ALIAS_END) {
 		return NULL;
 	}
-	return field_type_aliases->pdata[alias];
+
+	unsigned int alignment = field_type_aliases_alignments[alias];
+	unsigned int size = field_type_aliases_sizes[alias];
+	struct bt_ctf_field_type *field_type =
+		bt_ctf_field_type_integer_create(size);
+	bt_ctf_field_type_set_alignment(field_type, alignment);
+	return field_type;
 }
 
-int init_packet_header_type(struct bt_ctf_writer *writer)
+int init_trace_packet_header(struct bt_ctf_writer *writer)
 {
 	int ret = 0;
-
+	struct bt_ctf_field *trace_packet_header = NULL,
+		*magic = NULL, *uuid_array = NULL;
 	struct bt_ctf_field_type *_uint32_t =
 		get_field_type(FIELD_TYPE_ALIAS_UINT32_T);
 	struct bt_ctf_field_type *_uint8_t =
 		get_field_type(FIELD_TYPE_ALIAS_UINT8_T);
-	struct bt_ctf_field_type *packet_header_type =
+	struct bt_ctf_field_type *trace_packet_header_type =
 		bt_ctf_field_type_structure_create();
 	struct bt_ctf_field_type *uuid_array_type =
 		bt_ctf_field_type_array_create(_uint8_t, 16);
 
-	if (!packet_header_type || !uuid_array_type) {
+	if (!trace_packet_header_type || !uuid_array_type) {
 		ret = -1;
 		goto end;
 	}
 
-	ret |= bt_ctf_field_type_structure_add_field(packet_header_type,
+	ret |= bt_ctf_field_type_set_byte_order(_uint32_t, writer->byte_order);
+	ret |= bt_ctf_field_type_structure_add_field(trace_packet_header_type,
 		_uint32_t, "magic");
-	ret |= bt_ctf_field_type_structure_add_field(packet_header_type,
+	ret |= bt_ctf_field_type_structure_add_field(trace_packet_header_type,
 		uuid_array_type, "uuid");
-	ret |= bt_ctf_field_type_structure_add_field(packet_header_type,
+	ret |= bt_ctf_field_type_structure_add_field(trace_packet_header_type,
 		_uint32_t, "stream_id");
 	if (ret) {
 		goto end;
 	}
 
-	writer->packet_header_type = packet_header_type;
-	ret = 0;
+	trace_packet_header = bt_ctf_field_create(trace_packet_header_type);
+	if (!trace_packet_header) {
+		ret = -1;
+		goto end;
+	}
 
+	magic = bt_ctf_field_structure_get_field(trace_packet_header, "magic");
+	ret = bt_ctf_field_unsigned_integer_set_value(magic, 0xC1FC1FC1);
+	bt_ctf_field_put(magic);
+	if (ret) {
+		goto end;
+	}
+
+	uuid_array = bt_ctf_field_structure_get_field(trace_packet_header,
+		"uuid");
+	for (size_t i = 0; i < 16; i++) {
+		struct bt_ctf_field *uuid_element =
+			bt_ctf_field_array_get_field(uuid_array, i);
+		ret = bt_ctf_field_unsigned_integer_set_value(uuid_element,
+			writer->uuid[i]);
+		bt_ctf_field_put(uuid_element);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	bt_ctf_field_type_put(writer->trace_packet_header_type);
+	bt_ctf_field_put(writer->trace_packet_header);
+	writer->trace_packet_header_type = trace_packet_header_type;
+	writer->trace_packet_header = trace_packet_header;
 end:
 	bt_ctf_field_type_put(uuid_array_type);
+	bt_ctf_field_type_put(_uint32_t);
+	bt_ctf_field_type_put(_uint8_t);
+	bt_ctf_field_put(magic);
+	bt_ctf_field_put(uuid_array);
 	if (ret) {
-		bt_ctf_field_type_put(packet_header_type);
+		bt_ctf_field_type_put(trace_packet_header_type);
+		bt_ctf_field_put(trace_packet_header);
 	}
 
 	return ret;
@@ -467,6 +566,44 @@ static void environment_variable_destroy(struct environment_variable *var)
 	g_string_free(var->name, TRUE);
 	g_string_free(var->value, TRUE);
 	g_free(var);
+}
+
+int create_stream_file(struct bt_ctf_writer *writer,
+		struct bt_ctf_stream *stream)
+{
+	int fd;
+	GString *filename = g_string_new(stream->stream_class->name->str);
+	g_string_append_printf(filename, "_%"PRIu32, stream->id);
+	fd = openat(writer->trace_dir_fd, filename->str,
+		O_RDWR | O_CREAT | O_TRUNC,
+		S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	g_string_free(filename, TRUE);
+	return fd;
+}
+
+void stream_flush_cb(struct bt_ctf_stream *stream, struct bt_ctf_writer *writer)
+{
+	/* Start a new packet in the stream */
+	if (stream->flushed_packet_count) {
+		/* ctf_init_pos has already initialized the first packet */
+		ctf_packet_seek(&stream->pos.parent, 0, SEEK_CUR);
+	}
+
+	struct bt_ctf_field *stream_id = bt_ctf_field_structure_get_field(
+		writer->trace_packet_header, "stream_id");
+	bt_ctf_field_unsigned_integer_set_value(stream_id, stream->id);
+	bt_ctf_field_put(stream_id);
+
+	/* Write the trace_packet_header */
+	bt_ctf_field_serialize(writer->trace_packet_header, &stream->pos);
+}
+
+void init_alias_types_array(GPtrArray *field_type_aliases,
+		enum bt_ctf_byte_order byte_order)
+{
+	for (size_t i = 0; i < FIELD_TYPE_ALIAS_END; i++) {
+
+	}
 }
 
 static __attribute__((constructor))
@@ -485,24 +622,6 @@ void writer_init(void)
 		GINT_TO_POINTER(g_quark_from_string(reserved_keywords_str[i])));
 	}
 
-	field_type_aliases = g_ptr_array_new_with_free_func(
-		(GDestroyNotify) bt_ctf_field_type_put);
-	for (size_t i = 0; i < FIELD_TYPE_ALIAS_END; i++) {
-		unsigned int alignment = field_type_aliases_alignments[i];
-		unsigned int size = field_type_aliases_sizes[i];
-		struct bt_ctf_field_type *field_type =
-			bt_ctf_field_type_integer_create(size);
-		bt_ctf_field_type_set_alignment(field_type, alignment);
-		g_ptr_array_add(field_type_aliases, field_type);
-
-		if (!field_type) {
-			fprintf(stderr, "[error] field type alias initialization failed.\n");
-		} else {
-			/* These type definitions are immutable */
-			bt_ctf_field_type_lock(field_type);
-		}
-	}
-
 	init_done = 1;
 }
 
@@ -511,6 +630,5 @@ void writer_finalize(void)
 {
 	if (--global_data_refcount == 0) {
 		g_hash_table_destroy(reserved_keywords_set);
-		g_ptr_array_free(field_type_aliases, TRUE);
 	}
 }
