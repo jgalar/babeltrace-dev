@@ -138,11 +138,13 @@ static int (*field_serialize_funcs[])(struct bt_ctf_field *,
 struct bt_ctf_field *bt_ctf_field_create(struct bt_ctf_field_type *type)
 {
 	struct bt_ctf_field *field = NULL;
+	enum bt_ctf_field_type_id type_id;
+
 	if (!type) {
 		goto error;
 	}
 
-	enum bt_ctf_field_type_id type_id = bt_ctf_field_type_get_type_id(type);
+	type_id = bt_ctf_field_type_get_type_id(type);
 	if (type_id <= BT_CTF_FIELD_TYPE_ID_UNKNOWN ||
 		type_id >= NR_BT_CTF_FIELD_TYPE_ID_TYPES) {
 		goto error;
@@ -180,6 +182,11 @@ int bt_ctf_field_sequence_set_length(struct bt_ctf_field *field,
 		struct bt_ctf_field *length_field)
 {
 	int ret = -1;
+	struct bt_ctf_field_type_integer *length_type;
+	struct bt_ctf_field_integer *length;
+	struct bt_ctf_field_sequence *sequence;
+	uint64_t sequence_length;
+
 	if (!field || !length_field) {
 		goto end;
 	}
@@ -188,17 +195,16 @@ int bt_ctf_field_sequence_set_length(struct bt_ctf_field *field,
 		goto end;
 	}
 
-	struct bt_ctf_field_type_integer *length_type = container_of(
-		length_field->type, struct bt_ctf_field_type_integer, parent);
+	length_type = container_of(length_field->type,
+		struct bt_ctf_field_type_integer, parent);
 	if (length_type->_signed) {
 		goto end;
 	}
 
-	struct bt_ctf_field_integer *length = container_of(length_field,
-		struct bt_ctf_field_integer, parent);
-	uint64_t sequence_length = length->payload._unsigned;
-	struct bt_ctf_field_sequence *sequence = container_of(field,
-		struct bt_ctf_field_sequence, parent);
+	length = container_of(length_field, struct bt_ctf_field_integer,
+		parent);
+	sequence_length = length->payload._unsigned;
+	sequence = container_of(field, struct bt_ctf_field_sequence, parent);
 	if (sequence->elements) {
 		g_ptr_array_free(sequence->elements, TRUE);
 		bt_ctf_field_put(sequence->length);
@@ -222,21 +228,25 @@ struct bt_ctf_field *bt_ctf_field_structure_get_field(
 		struct bt_ctf_field *field, const char *name)
 {
 	struct bt_ctf_field *new_field = NULL;
+	GQuark field_quark;
+	struct bt_ctf_field_structure *structure;
+	struct bt_ctf_field_type_structure *structure_type;
+	struct bt_ctf_field_type *field_type;
+	size_t index;
+
 	if (!field || !name ||
 		bt_ctf_field_type_get_type_id(field->type) !=
 			BT_CTF_FIELD_TYPE_ID_STRUCTURE) {
 		goto end;
 	}
 
-	GQuark field_quark = g_quark_from_string(name);
-	struct bt_ctf_field_structure *structure = container_of(field,
-		struct bt_ctf_field_structure, parent);
-	struct bt_ctf_field_type_structure *structure_type = container_of(
-		field->type, struct bt_ctf_field_type_structure, parent);
-	struct bt_ctf_field_type *field_type =
-		bt_ctf_field_type_structure_get_type(structure_type, name);
-	size_t index = (size_t)g_hash_table_lookup(
-		structure->field_name_to_index, GUINT_TO_POINTER(field_quark));
+	field_quark = g_quark_from_string(name);
+	structure = container_of(field, struct bt_ctf_field_structure, parent);
+	structure_type = container_of(field->type,
+		struct bt_ctf_field_type_structure, parent);
+	field_type = bt_ctf_field_type_structure_get_type(structure_type, name);
+	index = (size_t)g_hash_table_lookup(structure->field_name_to_index,
+		GUINT_TO_POINTER(field_quark));
 	if (structure->fields->pdata[index]) {
 		new_field = structure->fields->pdata[index];
 		goto end;
@@ -257,6 +267,12 @@ int bt_ctf_field_structure_set_field(struct bt_ctf_field *field,
 		const char *name, struct bt_ctf_field *value)
 {
 	int ret = 0;
+	GQuark field_quark;
+	struct bt_ctf_field_structure *structure;
+	struct bt_ctf_field_type_structure *structure_type;
+	struct bt_ctf_field_type *expected_field_type;
+	size_t index;
+
 	if (!field || !name ||
 		bt_ctf_field_type_get_type_id(field->type) !=
 			BT_CTF_FIELD_TYPE_ID_STRUCTURE) {
@@ -264,15 +280,14 @@ int bt_ctf_field_structure_set_field(struct bt_ctf_field *field,
 		goto end;
 	}
 
-	GQuark field_quark = g_quark_from_string(name);
-	struct bt_ctf_field_structure *structure = container_of(field,
-		struct bt_ctf_field_structure, parent);
-	struct bt_ctf_field_type_structure *structure_type = container_of(
-		field->type, struct bt_ctf_field_type_structure, parent);
-	struct bt_ctf_field_type *expected_field_type =
-		bt_ctf_field_type_structure_get_type(structure_type, name);
-	size_t index = (size_t)g_hash_table_lookup(
-		structure->field_name_to_index, GUINT_TO_POINTER(field_quark));
+	field_quark = g_quark_from_string(name);
+	structure = container_of(field, struct bt_ctf_field_structure, parent);
+	structure_type = container_of(field->type,
+		struct bt_ctf_field_type_structure, parent);
+	expected_field_type = bt_ctf_field_type_structure_get_type(
+		structure_type, name);
+	index = (size_t)g_hash_table_lookup(structure->field_name_to_index,
+		GUINT_TO_POINTER(field_quark));
 
 	/*
 	 * Make sure value is of the appropriate type. This is currently
@@ -297,21 +312,23 @@ struct bt_ctf_field *bt_ctf_field_array_get_field(struct bt_ctf_field *field,
 		uint64_t index)
 {
 	struct bt_ctf_field *new_field = NULL;
+	struct bt_ctf_field_array *array;
+	struct bt_ctf_field_type_array *array_type;
+	struct bt_ctf_field_type *field_type;
+
 	if (!field || bt_ctf_field_type_get_type_id(field->type) !=
 		BT_CTF_FIELD_TYPE_ID_ARRAY) {
 		goto end;
 	}
 
-	struct bt_ctf_field_array *array = container_of(field,
-		struct bt_ctf_field_array, parent);
+	array = container_of(field, struct bt_ctf_field_array, parent);
 	if (index >= array->elements->len) {
 		goto end;
 	}
 
-	struct bt_ctf_field_type_array *array_type = container_of(field->type,
-		struct bt_ctf_field_type_array, parent);
-	struct bt_ctf_field_type *field_type =
-		bt_ctf_field_type_array_get_element_type(array_type);
+	array_type = container_of(field->type, struct bt_ctf_field_type_array,
+		parent);
+	field_type = bt_ctf_field_type_array_get_element_type(array_type);
 	if (array->elements->pdata[(size_t)index]) {
 		new_field = array->elements->pdata[(size_t)index];
 		goto end;
@@ -328,21 +345,23 @@ struct bt_ctf_field *bt_ctf_field_sequence_get_field(struct bt_ctf_field *field,
 		uint64_t index)
 {
 	struct bt_ctf_field *new_field = NULL;
+	struct bt_ctf_field_sequence *sequence;
+	struct bt_ctf_field_type_sequence *sequence_type;
+	struct bt_ctf_field_type *field_type;
+
 	if (!field || bt_ctf_field_type_get_type_id(field->type) !=
 		BT_CTF_FIELD_TYPE_ID_SEQUENCE) {
 		goto end;
 	}
 
-	struct bt_ctf_field_sequence *sequence = container_of(field,
-		struct bt_ctf_field_sequence, parent);
+	sequence = container_of(field, struct bt_ctf_field_sequence, parent);
 	if (!sequence->elements || sequence->elements->len <= index) {
 		goto end;
 	}
 
-	struct bt_ctf_field_type_sequence *sequence_type = container_of(
-		field->type, struct bt_ctf_field_type_sequence, parent);
-	struct bt_ctf_field_type *field_type =
-		bt_ctf_field_type_sequence_get_element_type(sequence_type);
+	sequence_type = container_of(field->type,
+		struct bt_ctf_field_type_sequence, parent);
+	field_type = bt_ctf_field_type_sequence_get_element_type(sequence_type);
 	if (sequence->elements->pdata[(size_t)index]) {
 		new_field = sequence->elements->pdata[(size_t)index];
 		goto end;
@@ -365,6 +384,7 @@ struct bt_ctf_field *bt_ctf_field_variant_get_field(struct bt_ctf_field *field,
 	struct bt_ctf_field_type *field_type;
 	struct bt_ctf_field_integer *tag_enum_integer;
 	int64_t tag_enum_value;
+
 	if (!field || !tag_field || !tag_field->payload_set ||
 		bt_ctf_field_type_get_type_id(field->type) !=
 			BT_CTF_FIELD_TYPE_ID_VARIANT ||
@@ -433,26 +453,31 @@ int bt_ctf_field_signed_integer_set_value(struct bt_ctf_field *field,
 		int64_t value)
 {
 	int ret = -1;
+	struct bt_ctf_field_integer *integer;
+	struct bt_ctf_field_type_integer *integer_type;
+	unsigned int size;
+	int64_t min_value, max_value;
+
 	if (!field ||
 		bt_ctf_field_type_get_type_id(field->type) !=
 			BT_CTF_FIELD_TYPE_ID_INTEGER) {
 		goto end;
 	}
 
-	struct bt_ctf_field_integer *integer = container_of(field,
-		struct bt_ctf_field_integer, parent);
-	struct bt_ctf_field_type_integer *integer_type = container_of(
-		field->type, struct bt_ctf_field_type_integer, parent);
+	integer = container_of(field, struct bt_ctf_field_integer, parent);
+	integer_type = container_of(field->type,
+		struct bt_ctf_field_type_integer, parent);
 	if (!integer_type->_signed) {
 		goto end;
 	}
 
-	unsigned int size = integer_type->size;
-	int64_t min_value = -((int64_t)1 << (size - 1));
-	int64_t max_value = ((int64_t)1 << (size - 1)) - 1;
+	size = integer_type->size;
+	min_value = -((int64_t)1 << (size - 1));
+	max_value = ((int64_t)1 << (size - 1)) - 1;
 	if (value < min_value || value > max_value) {
 		goto end;
 	}
+
 	integer->payload._signed = value;
 	integer->parent.payload_set = 1;
 	ret = 0;
@@ -464,22 +489,26 @@ int bt_ctf_field_unsigned_integer_set_value(struct bt_ctf_field *field,
 		uint64_t value)
 {
 	int ret = -1;
+	struct bt_ctf_field_integer *integer;
+	struct bt_ctf_field_type_integer *integer_type;
+	unsigned int size;
+	uint64_t max_value;
+
 	if (!field ||
 		bt_ctf_field_type_get_type_id(field->type) !=
 			BT_CTF_FIELD_TYPE_ID_INTEGER) {
 		goto end;
 	}
 
-	struct bt_ctf_field_integer *integer = container_of(field,
-		struct bt_ctf_field_integer, parent);
-	struct bt_ctf_field_type_integer *integer_type = container_of(
-		field->type, struct bt_ctf_field_type_integer, parent);
+	integer = container_of(field, struct bt_ctf_field_integer, parent);
+	integer_type = container_of(field->type,
+		struct bt_ctf_field_type_integer, parent);
 	if (integer_type->_signed) {
 		goto end;
 	}
 
-	unsigned int size = integer_type->size;
-	uint64_t max_value = ((uint64_t)1 << size) - 1;
+	size = integer_type->size;
+	max_value = ((uint64_t)1 << size) - 1;
 	if (value > max_value) {
 		goto end;
 	}
@@ -494,14 +523,16 @@ int bt_ctf_field_floating_point_set_value(struct bt_ctf_field *field,
 		long double value)
 {
 	int ret = 0;
+	struct bt_ctf_field_floating_point *floating_point;
+
 	if (!field ||
 		bt_ctf_field_type_get_type_id(field->type) !=
 			BT_CTF_FIELD_TYPE_ID_FLOATING_POINT) {
 		ret = -1;
 		goto end;
 	}
-	struct bt_ctf_field_floating_point *floating_point = container_of(
-		field, struct bt_ctf_field_floating_point, parent);
+	floating_point = container_of(field, struct bt_ctf_field_floating_point,
+		parent);
 	floating_point->payload = value;
 	floating_point->parent.payload_set = 1;
 end:
@@ -512,14 +543,16 @@ int bt_ctf_field_string_set_value(struct bt_ctf_field *field,
 		const char *value)
 {
 	int ret = 0;
+	struct bt_ctf_field_string *string;
+
 	if (!field || !value ||
 		bt_ctf_field_type_get_type_id(field->type) !=
 			BT_CTF_FIELD_TYPE_ID_STRING) {
 		ret = -1;
 		goto end;
 	}
-	struct bt_ctf_field_string *string = container_of(field,
-		struct bt_ctf_field_string, parent);
+
+	string = container_of(field, struct bt_ctf_field_string, parent);
 	string->payload = g_string_new(value);
 	string->parent.payload_set = 1;
 end:
@@ -563,10 +596,7 @@ struct bt_ctf_field *bt_ctf_field_integer_create(struct bt_ctf_field_type *type)
 {
 	struct bt_ctf_field_integer *integer = g_new0(
 		struct bt_ctf_field_integer, 1);
-	if (!integer) {
-		return NULL;
-	}
-	return &integer->parent;
+	return integer ? &integer->parent : NULL;
 }
 
 struct bt_ctf_field *bt_ctf_field_enumeration_create(
@@ -574,10 +604,7 @@ struct bt_ctf_field *bt_ctf_field_enumeration_create(
 {
 	struct bt_ctf_field_enumeration *enumeration = g_new0(
 		struct bt_ctf_field_enumeration, 1);
-	if (!enumeration) {
-		return NULL;
-	}
-	return &enumeration->parent;
+	return enumeration ? &enumeration->parent : NULL;
 }
 
 struct bt_ctf_field *bt_ctf_field_floating_point_create(
@@ -585,10 +612,7 @@ struct bt_ctf_field *bt_ctf_field_floating_point_create(
 {
 	struct bt_ctf_field_floating_point *floating_point = g_new0(
 		struct bt_ctf_field_floating_point, 1);
-	if (!floating_point) {
-		return NULL;
-	}
-	return &floating_point->parent;
+	return floating_point ? &floating_point->parent : NULL;
 }
 
 struct bt_ctf_field *bt_ctf_field_structure_create(
@@ -599,6 +623,7 @@ struct bt_ctf_field *bt_ctf_field_structure_create(
 	struct bt_ctf_field_structure *structure = g_new0(
 		struct bt_ctf_field_structure, 1);
 	struct bt_ctf_field *field = NULL;
+
 	if (!structure || !structure_type->fields->len) {
 		goto end;
 	}
@@ -617,23 +642,21 @@ struct bt_ctf_field *bt_ctf_field_variant_create(struct bt_ctf_field_type *type)
 {
 	struct bt_ctf_field_variant *variant = g_new0(
 		struct bt_ctf_field_variant, 1);
-	if (!variant) {
-		return NULL;
-	}
-	return &variant->parent;
+	return variant ? &variant->parent : NULL;
 }
 
 struct bt_ctf_field *bt_ctf_field_array_create(struct bt_ctf_field_type *type)
 {
-	struct bt_ctf_field_array *array = g_new0(
-		struct bt_ctf_field_array, 1);
+	struct bt_ctf_field_array *array = g_new0(struct bt_ctf_field_array, 1);
+	struct bt_ctf_field_type_array *array_type;
+	unsigned int array_length;
+
 	if (!array || !type) {
 		goto error;
 	}
 
-	struct bt_ctf_field_type_array *array_type = container_of(type,
-		 struct bt_ctf_field_type_array, parent);
-	unsigned int array_length = array_type->length;
+	array_type = container_of(type, struct bt_ctf_field_type_array, parent);
+	array_length = array_type->length;
 	array->elements = g_ptr_array_new_full(array_length,
 		(GDestroyNotify)bt_ctf_field_put);
 	if (!array->elements) {
@@ -652,31 +675,29 @@ struct bt_ctf_field *bt_ctf_field_sequence_create(
 {
 	struct bt_ctf_field_sequence *sequence = g_new0(
 		struct bt_ctf_field_sequence, 1);
-	if (!sequence) {
-		return NULL;
-	}
-	return &sequence->parent;
+	return sequence ? &sequence->parent : NULL;
 }
 
 struct bt_ctf_field *bt_ctf_field_string_create(struct bt_ctf_field_type *type)
 {
 	struct bt_ctf_field_string *string = g_new0(
 		struct bt_ctf_field_string, 1);
-	if (!string) {
-		return NULL;
-	}
-	return &string->parent;
+	return string ? &string->parent : NULL;
 }
 
 void bt_ctf_field_destroy(struct bt_ctf_ref *ref)
 {
+	struct bt_ctf_field *field;
+	struct bt_ctf_field_type *type;
+	enum bt_ctf_field_type_id type_id;
+
 	if (!ref) {
 		return;
 	}
-	struct bt_ctf_field *field = container_of(ref, struct bt_ctf_field,
-		ref_count);
-	struct bt_ctf_field_type *type = field->type;
-	enum bt_ctf_field_type_id type_id = bt_ctf_field_type_get_type_id(type);
+
+	field = container_of(ref, struct bt_ctf_field, ref_count);
+	type = field->type;
+	type_id = bt_ctf_field_type_get_type_id(type);
 	if (type_id <= BT_CTF_FIELD_TYPE_ID_UNKNOWN ||
 		type_id >= NR_BT_CTF_FIELD_TYPE_ID_TYPES) {
 		return;
@@ -690,52 +711,65 @@ void bt_ctf_field_destroy(struct bt_ctf_ref *ref)
 
 void bt_ctf_field_integer_destroy(struct bt_ctf_field *field)
 {
+	struct bt_ctf_field_integer *integer;
+
 	if (!field) {
 		return;
 	}
-	struct bt_ctf_field_integer *integer = container_of(field,
-		struct bt_ctf_field_integer, parent);
+
+	integer = container_of(field, struct bt_ctf_field_integer, parent);
 	g_free(integer);
 }
 
 void bt_ctf_field_enumeration_destroy(struct bt_ctf_field *field)
 {
+	struct bt_ctf_field_enumeration *enumeration;
+
 	if (!field) {
 		return;
 	}
-	struct bt_ctf_field_enumeration *enumeration = container_of(field,
-		struct bt_ctf_field_enumeration, parent);
+
+	enumeration = container_of(field, struct bt_ctf_field_enumeration,
+		parent);
+	bt_ctf_field_put(enumeration->payload);
 	g_free(enumeration);
 }
 
 void bt_ctf_field_floating_point_destroy(struct bt_ctf_field *field)
 {
+	struct bt_ctf_field_floating_point *floating_point;
+
 	if (!field) {
 		return;
 	}
-	struct bt_ctf_field_floating_point *floating_point = container_of(field,
-		struct bt_ctf_field_floating_point, parent);
+
+	floating_point = container_of(field, struct bt_ctf_field_floating_point,
+		parent);
 	g_free(floating_point);
 }
 
 void bt_ctf_field_structure_destroy(struct bt_ctf_field *field)
 {
+	struct bt_ctf_field_structure *structure;
+
 	if (!field) {
 		return;
 	}
-	struct bt_ctf_field_structure *structure = container_of(field,
-		struct bt_ctf_field_structure, parent);
+
+	structure = container_of(field, struct bt_ctf_field_structure, parent);
 	g_ptr_array_free(structure->fields, TRUE);
 	g_free(structure);
 }
 
 void bt_ctf_field_variant_destroy(struct bt_ctf_field *field)
 {
+	struct bt_ctf_field_variant *variant;
+
 	if (!field) {
 		return;
 	}
-	struct bt_ctf_field_variant *variant = container_of(field,
-		struct bt_ctf_field_variant, parent);
+
+	variant = container_of(field, struct bt_ctf_field_variant, parent);
 	bt_ctf_field_put(variant->tag);
 	bt_ctf_field_put(variant->payload);
 	g_free(variant);
@@ -743,22 +777,26 @@ void bt_ctf_field_variant_destroy(struct bt_ctf_field *field)
 
 void bt_ctf_field_array_destroy(struct bt_ctf_field *field)
 {
+	struct bt_ctf_field_array *array;
+
 	if (!field) {
 		return;
 	}
-	struct bt_ctf_field_array *array = container_of(field,
-		struct bt_ctf_field_array, parent);
+
+	array = container_of(field, struct bt_ctf_field_array, parent);
 	g_ptr_array_free(array->elements, TRUE);
 	g_free(array);
 }
 
 void bt_ctf_field_sequence_destroy(struct bt_ctf_field *field)
 {
+	struct bt_ctf_field_sequence *sequence;
+
 	if (!field) {
 		return;
 	}
-	struct bt_ctf_field_sequence *sequence = container_of(field,
-		struct bt_ctf_field_sequence, parent);
+
+	sequence = container_of(field, struct bt_ctf_field_sequence, parent);
 	g_ptr_array_free(sequence->elements, TRUE);
 	bt_ctf_field_put(sequence->length);
 	g_free(sequence);
@@ -785,6 +823,7 @@ int bt_ctf_field_enumeration_validate(struct bt_ctf_field *field)
 {
 	int ret;
 	struct bt_ctf_field_enumeration *enumeration;
+
 	if (!field) {
 		ret = -1;
 		goto end;
@@ -805,13 +844,14 @@ end:
 int bt_ctf_field_structure_validate(struct bt_ctf_field *field)
 {
 	int ret = 0;
+	struct bt_ctf_field_structure * structure;
+
 	if (!field) {
 		ret = -1;
 		goto end;
 	}
 
-	struct bt_ctf_field_structure * structure = container_of(
-		field, struct bt_ctf_field_structure, parent);
+	structure = container_of(field, struct bt_ctf_field_structure, parent);
 	for (size_t i = 0; i < structure->fields->len; i++) {
 		ret = bt_ctf_field_validate(structure->fields->pdata[i]);
 		if (ret) {
@@ -825,13 +865,14 @@ end:
 int bt_ctf_field_variant_validate(struct bt_ctf_field *field)
 {
 	int ret = 0;
+	struct bt_ctf_field_variant *variant;
+
 	if (!field) {
 		ret = -1;
 		goto end;
 	}
 
-	struct bt_ctf_field_variant *variant = container_of(field,
-		struct bt_ctf_field_variant, parent);
+	variant = container_of(field, struct bt_ctf_field_variant, parent);
 	ret = bt_ctf_field_validate(variant->payload);
 end:
 	return ret;
@@ -840,13 +881,14 @@ end:
 int bt_ctf_field_array_validate(struct bt_ctf_field *field)
 {
 	int ret = 0;
+	struct bt_ctf_field_array *array;
+
 	if (!field) {
 		ret = -1;
 		goto end;
 	}
 
-	struct bt_ctf_field_array *array = container_of(field,
-		struct bt_ctf_field_array, parent);
+	array = container_of(field, struct bt_ctf_field_array, parent);
 	for (size_t i = 0; i < array->elements->len; i++) {
 		ret = bt_ctf_field_validate(array->elements->pdata[i]);
 		if (ret) {
@@ -860,13 +902,14 @@ end:
 int bt_ctf_field_sequence_validate(struct bt_ctf_field *field)
 {
 	int ret = 0;
+	struct bt_ctf_field_sequence *sequence;
+
 	if (!field) {
 		ret = -1;
 		goto end;
 	}
 
-	struct bt_ctf_field_sequence *sequence = container_of(field,
-		struct bt_ctf_field_sequence, parent);
+	sequence = container_of(field, struct bt_ctf_field_sequence, parent);
 	for (size_t i = 0; i < sequence->elements->len; i++) {
 		ret = bt_ctf_field_validate(sequence->elements->pdata[i]);
 		if (ret) {
