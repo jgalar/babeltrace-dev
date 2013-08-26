@@ -104,6 +104,7 @@ extern int bt_ctf_field_type_structure_add_field(
 		const char *field_name);
 
 extern struct bt_ctf_field_type *bt_ctf_field_type_variant_create(
+		struct bt_ctf_field_type *enum_tag,
 		const char *tag_name);
 
 extern int bt_ctf_field_type_variant_add_field(

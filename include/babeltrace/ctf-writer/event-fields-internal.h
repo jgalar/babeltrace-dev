@@ -50,7 +50,7 @@ struct bt_ctf_field_integer {
 
 struct bt_ctf_field_enumeration {
 	struct bt_ctf_field parent;
-	int64_t payload;
+	struct bt_ctf_field *payload;
 };
 
 struct bt_ctf_field_floating_point {
@@ -85,6 +85,13 @@ struct bt_ctf_field_string {
 	struct bt_ctf_field parent;
 	GString *payload;
 };
+
+/*
+ * Set a field's value with an already allocated field instance.
+ */
+BT_HIDDEN
+int bt_ctf_field_structure_set_field( struct bt_ctf_field *structure,
+		const char *name, struct bt_ctf_field *value);
 
 BT_HIDDEN
 int bt_ctf_field_validate(struct bt_ctf_field *field);

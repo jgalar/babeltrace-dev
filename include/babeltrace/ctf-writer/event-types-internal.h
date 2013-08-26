@@ -106,7 +106,8 @@ struct bt_ctf_field_type_structure {
 
 struct bt_ctf_field_type_variant {
 	struct bt_ctf_field_type parent;
-	GString *tag_field_name;
+	GString *tag_name;
+	struct bt_ctf_field_type_enumeration *tag;
 	GHashTable *field_name_to_index;
 	GPtrArray *fields; /* Array of pointers to struct structure_field */
 };
@@ -149,9 +150,8 @@ struct bt_ctf_field_type *bt_ctf_field_type_sequence_get_element_type(
 		struct bt_ctf_field_type_sequence *sequence);
 
 BT_HIDDEN
-struct bt_ctf_field_type *bt_ctf_field_type_variant_get_type(
-		struct bt_ctf_field_type_variant *variant,
-		struct bt_ctf_field_type_enumeration *enumeration, int64_t tag);
+struct bt_ctf_field_type *bt_ctf_field_type_variant_get_field_type(
+		struct bt_ctf_field_type_variant *variant, int64_t tag_value);
 
 BT_HIDDEN
 int bt_ctf_field_type_serialize(struct bt_ctf_field_type *type,

@@ -424,25 +424,30 @@ end:
 	return ret;
 }
 
-struct bt_ctf_field_type *bt_ctf_field_type_variant_create(const char *tag_name)
+struct bt_ctf_field_type *bt_ctf_field_type_variant_create(
+	struct bt_ctf_field_type *enum_tag, const char *tag_name)
 {
-	struct bt_ctf_field_type_variant *variant = NULL;
-	if (validate_identifier(tag_name)) {
+	struct bt_ctf_field_type_variant *variant_type = NULL;
+	if (!enum_tag || validate_identifier(tag_name) ||
+		enum_tag->field_type != BT_CTF_FIELD_TYPE_ID_ENUMERATION) {
 		goto error;
 	}
 
-	variant = g_new0(struct bt_ctf_field_type_variant, 1);
-	if (!variant) {
+	variant_type = g_new0(struct bt_ctf_field_type_variant, 1);
+	if (!variant_type) {
 		goto error;
 	}
 
-	variant->parent.field_type = BT_CTF_FIELD_TYPE_ID_VARIANT;
-	variant->tag_field_name = g_string_new(tag_name);
-	bt_ctf_field_type_init(&variant->parent);
-	variant->fields = g_ptr_array_new_with_free_func(
+	variant_type->parent.field_type = BT_CTF_FIELD_TYPE_ID_VARIANT;
+	variant_type->tag_name = g_string_new(tag_name);
+	bt_ctf_field_type_init(&variant_type->parent);
+	variant_type->field_name_to_index = g_hash_table_new(NULL, NULL);
+	variant_type->fields = g_ptr_array_new_with_free_func(
 		destroy_structure_field);
-	variant->field_name_to_index = g_hash_table_new(NULL, NULL);
-	return &variant->parent;
+	bt_ctf_field_type_get(enum_tag);
+	variant_type->tag = container_of(enum_tag,
+		struct bt_ctf_field_type_enumeration, parent);
+	return &variant_type->parent;
 error:
 	return NULL;
 }
@@ -451,20 +456,34 @@ int bt_ctf_field_type_variant_add_field(struct bt_ctf_field_type *type,
 		struct bt_ctf_field_type *field_type,
 		const char *field_name)
 {
-	int ret = -1;
+	int ret = 0;
+	int name_found = 0;
+	struct bt_ctf_field_type_variant *variant;
+	GQuark field_name_quark = g_quark_from_string(field_name);
+
 	if (!type || !field_type || type->locked ||
 		validate_identifier(field_name) ||
 		type->field_type != BT_CTF_FIELD_TYPE_ID_VARIANT) {
+		ret = -1;
 		goto end;
 	}
 
-	struct bt_ctf_field_type_variant *variant = container_of(type,
-		struct bt_ctf_field_type_variant, parent);
-	if (add_structure_field(variant->fields, variant->field_name_to_index,
-		field_type, field_name)) {
+	variant = container_of(type, struct bt_ctf_field_type_variant, parent);
+	/* Make sure this name is present in the enum tag */
+	for (size_t i = 0; i < variant->tag->entries->len; i++) {
+		struct enumeration_mapping *mapping =
+			g_ptr_array_index(variant->tag->entries, i);
+		if (mapping->string == field_name_quark) {
+			name_found = 1;
+			break;
+		}
+	}
+
+	if (!name_found || add_structure_field(variant->fields,
+		variant->field_name_to_index, field_type, field_name)) {
+		ret = -1;
 		goto end;
 	}
-	ret = 0;
 end:
 	return ret;
 }
@@ -652,34 +671,30 @@ struct bt_ctf_field_type *bt_ctf_field_type_sequence_get_element_type(
 	return sequence->element_type;
 }
 
-struct bt_ctf_field_type *bt_ctf_field_type_variant_get_type(
+struct bt_ctf_field_type *bt_ctf_field_type_variant_get_field_type(
 		struct bt_ctf_field_type_variant *variant,
-		struct bt_ctf_field_type_enumeration *enumeration,
-		int64_t tag)
+		int64_t tag_value)
 {
 	struct bt_ctf_field_type *type = NULL;
-
-	struct range_overlap_query query = {.range_start = tag,
-		.range_end = tag, .mapping_name = 0, .overlaps = 0};
-	g_ptr_array_foreach(enumeration->entries, check_ranges_overlap, &query);
+	GQuark field_name_quark;
+	gpointer index;
+	struct structure_field *field_entry;
+	struct range_overlap_query query = {.range_start = tag_value,
+		.range_end = tag_value, .mapping_name = 0, .overlaps = 0};
+	g_ptr_array_foreach(variant->tag->entries, check_ranges_overlap,
+		&query);
 	if (!query.overlaps) {
 		goto end;
 	}
-	GQuark name_quark = query.mapping_name;
 
-	/* May return 0 (a valid index); the quark must be checked */
-	size_t index = (size_t) g_hash_table_lookup(
-		variant->field_name_to_index,
-		GUINT_TO_POINTER(name_quark));
-	if (index > variant->fields->len) {
+	field_name_quark = query.mapping_name;
+	if (!g_hash_table_lookup_extended(variant->field_name_to_index,
+		GUINT_TO_POINTER(field_name_quark), NULL, &index)) {
 		goto end;
 	}
 
-	struct structure_field *field_entry = g_ptr_array_index(
-		variant->fields, index);
-	if (field_entry->name == name_quark) {
-		type = field_entry->type;
-	}
+	field_entry = g_ptr_array_index(variant->fields, (size_t)index);
+	type = field_entry->type;
 end:
 	return type;
 }
@@ -756,7 +771,8 @@ void bt_ctf_field_type_variant_destroy(struct bt_ctf_ref *ref)
 		struct bt_ctf_field_type_variant, parent);
 	g_ptr_array_free(variant->fields, TRUE);
 	g_hash_table_destroy(variant->field_name_to_index);
-	g_string_free(variant->tag_field_name, TRUE);
+	g_string_free(variant->tag_name, TRUE);
+	bt_ctf_field_type_put(&variant->tag->parent);
 	g_free(variant);
 }
 
@@ -1002,7 +1018,7 @@ int bt_ctf_field_type_variant_serialize(struct bt_ctf_field_type *type,
 	context->field_name = g_string_new("");
 
 	g_string_append_printf(context->string,
-		"variant <%s> {\n", variant->tag_field_name->str);
+		"variant <%s> {\n", variant->tag_name->str);
 	context->current_indentation_level++;
 	for (size_t i = 0; i < variant->fields->len; i++) {
 		struct structure_field *field = variant->fields->pdata[i];

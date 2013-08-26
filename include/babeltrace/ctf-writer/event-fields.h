@@ -29,11 +29,11 @@
  * SOFTWARE.
  */
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
 
 struct bt_ctf_event_class;
 struct bt_ctf_event;
@@ -47,21 +47,12 @@ extern void bt_ctf_field_get(struct bt_ctf_field *field);
 
 extern void bt_ctf_field_put(struct bt_ctf_field *field);
 
-extern int bt_ctf_field_sequence_set_length(struct bt_ctf_field *sequence,
-		struct bt_ctf_field *length_field);
-
 /*
  * Creates and returns a field linked to the structure.
  * The returned field can be modified by the caller.
  */
 extern struct bt_ctf_field *bt_ctf_field_structure_get_field(
 		struct bt_ctf_field *structure, const char *name);
-
-/*
- * Set a field's value with an already allocated field instance.
- */
-extern int bt_ctf_field_structure_set_field( struct bt_ctf_field *structure,
-		const char *name, struct bt_ctf_field *value);
 
 /* Creates and returns a field linked to the array */
 extern struct bt_ctf_field *bt_ctf_field_array_get_field(
@@ -71,9 +62,25 @@ extern struct bt_ctf_field *bt_ctf_field_array_get_field(
 extern struct bt_ctf_field *bt_ctf_field_sequence_get_field(
 		struct bt_ctf_field *sequence, uint64_t index);
 
+extern int bt_ctf_field_sequence_set_length(struct bt_ctf_field *sequence,
+		struct bt_ctf_field *length_field);
+
 /* Creates and returns a field linked to the variant */
 extern struct bt_ctf_field *bt_ctf_field_variant_get_field(
 		struct bt_ctf_field *variant, struct bt_ctf_field *tag);
+
+extern struct bt_ctf_field *bt_ctf_field_enumeration_get_container(
+		struct bt_ctf_field *enumeration);
+
+/*
+ * Integer values may be set using this generic function regardless
+ * of the integer's signedness. If the value may need the signed
+ * or unsigned 64-bits full range, use the specialized
+ * bt_ctf_field_unsigned_integer_set_value and
+ * bt_ctf_field_signed_integer_set_value functions.
+ */
+extern int bt_ctf_field_integer_set_value(struct bt_ctf_field *integer,
+		int64_t value);
 
 extern int bt_ctf_field_signed_integer_set_value(struct bt_ctf_field *integer,
 		int64_t value);
