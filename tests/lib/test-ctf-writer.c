@@ -204,11 +204,7 @@ int main(int argc, char **argv)
 	ok(bt_ctf_clock_create("signed") == NULL, "Illegal clock name rejected");
 	struct bt_ctf_clock *clock = bt_ctf_clock_create(clock_name);
 	ok(clock, "Clock created sucessfully");
-	ok(strcmp(clock_name, bt_ctf_clock_get_name(clock)) == 0,
-		"Check bt_ctf_clock_get_name return value");
 	bt_ctf_clock_set_description(clock, clock_description);
-	ok(strcmp(clock_description, bt_ctf_clock_get_description(clock)) == 0,
-		"Check bt_ctf_clock_get_description return value");
 
 	const uint64_t frequency = 1000000000;
 	const uint64_t offset_s = 1351530929945824323;
@@ -217,23 +213,13 @@ int main(int argc, char **argv)
 
 	ok(bt_ctf_clock_set_frequency(clock, frequency) == 0,
 		"Set clock frequency");
-	ok(bt_ctf_clock_get_frequency(clock) == frequency,
-		"Check bt_ctf_clock_get_frequency return value");
 	ok(bt_ctf_clock_set_offset_s(clock, offset_s) == 0,
 		"Set clock offset (seconds)");
-	ok(bt_ctf_clock_get_offset_s(clock) == offset_s,
-		"Check bt_ctf_clock_get_offset_s return value");
 	ok(bt_ctf_clock_set_offset(clock, offset) == 0, "Set clock offset");
-	ok(bt_ctf_clock_get_offset(clock) == offset,
-		"Check bt_ctf_clock_get_offset return value");
 	ok(bt_ctf_clock_set_precision(clock, precision) == 0,
 		"Set clock precision");
-	ok(bt_ctf_clock_get_precision(clock) == precision,
-		"Check bt_ctf_clock_get_precision return value");
 	ok(bt_ctf_clock_set_is_absolute(clock, 0xFF) == 0,
 		"Set clock absolute property");
-	ok(bt_ctf_clock_is_absolute(clock),
-		"Check bt_ctf_clock_is_absolute return value");
 
 	ok(bt_ctf_writer_add_clock(writer, clock) == 0,
 		"Add clock to writer instance");
@@ -337,6 +323,13 @@ int main(int argc, char **argv)
 	ok(bt_ctf_stream_class_add_event_class(stream_class,
 		event_class) == 0, "Add an event class to stream class");
 
+	/* Create and add a simple event class */
+	struct bt_ctf_event_class *simple_event_class =
+		bt_ctf_event_class_create("Simple Event");
+	bt_ctf_event_class_add_field(simple_event_class, uint_12_type,
+		"integer_field");
+	bt_ctf_stream_class_add_event_class(stream_class, simple_event_class);
+
 	/* Instanciate a stream and an event */
 	struct bt_ctf_stream *stream1 = bt_ctf_writer_create_stream(writer,
 		stream_class);
@@ -348,6 +341,8 @@ int main(int argc, char **argv)
 	struct bt_ctf_event *event =
 		bt_ctf_event_create(event_class);
 	ok(event, "Instanciate an event class");
+	struct bt_ctf_event *simple_event =
+		bt_ctf_event_create(simple_event_class);
 
 	struct bt_ctf_field *int_16 = bt_ctf_field_create(int_16_type);
 	ok(int_16, "Instanciate a signed 16-bit integer");
@@ -396,14 +391,18 @@ int main(int argc, char **argv)
 		"Reject event payloads of incorrect type");
 	bt_ctf_event_set_payload(event, "int_16", int_16);
 
+	struct bt_ctf_field *integer_field = bt_ctf_field_create(uint_12_type);
+	bt_ctf_field_unsigned_integer_set_value(integer_field, 42);
+	bt_ctf_event_set_payload(simple_event, "integer_field", integer_field);
+
 	char *metadata_string = bt_ctf_writer_get_metadata_string(writer);
 	ok(metadata_string, "Get metadata string");
 
 	bt_ctf_writer_flush_metadata(writer);
 	validate_metadata(argv[1], metadata_path);
 
-	ok(bt_ctf_stream_push_event(stream1, event) == 0,
-		"Push event to trace stream");
+	ok(bt_ctf_stream_push_event(stream1, simple_event) == 0,
+		"Push simple event to trace stream");
 	ok(bt_ctf_stream_flush(stream1) == 0,
 		"Flush trace stream");
 
