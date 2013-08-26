@@ -84,6 +84,7 @@ static int global_data_refcount;
 struct bt_ctf_writer *bt_ctf_writer_create(const char *path)
 {
 	struct bt_ctf_writer *writer = NULL;
+
 	if (!path) {
 		goto error;
 	}
@@ -145,13 +146,14 @@ return writer;
 
 static void bt_ctf_writer_destroy(struct bt_ctf_ref *ref)
 {
+	struct bt_ctf_writer *writer;
+
 	if (!ref) {
 		return;
 	}
-	struct bt_ctf_writer *writer = container_of(ref, struct bt_ctf_writer,
-		ref_count);
-	bt_ctf_writer_flush_metadata(writer);
 
+	writer = container_of(ref, struct bt_ctf_writer, ref_count);
+	bt_ctf_writer_flush_metadata(writer);
 	if (writer->path) {
 		g_string_free(writer->path, TRUE);
 	}
@@ -244,11 +246,13 @@ int bt_ctf_writer_add_environment_field(struct bt_ctf_writer *writer,
 		const char *name,
 		const char *value)
 {
+	struct environment_variable *var;
+
 	if (!writer || !name || !value) {
 		goto end;
 	}
-	struct environment_variable *var = g_new0(
-		struct environment_variable, 1);
+
+	var = g_new0(struct environment_variable, 1);
 	if (!var) {
 		goto end;
 	}
@@ -258,6 +262,7 @@ int bt_ctf_writer_add_environment_field(struct bt_ctf_writer *writer,
 	if (!var->name || !var->value) {
 		goto error;
 	}
+
 	g_ptr_array_add(writer->environment, var);
 	return 0;
 
@@ -273,18 +278,20 @@ int bt_ctf_writer_add_clock(struct bt_ctf_writer *writer,
 		struct bt_ctf_clock *clock)
 {
 	int ret = 0;
+	struct search_query query = { .value = clock, .found = 0 };
+
 	if (!writer || !clock) {
 		ret = -1;
 		goto end;
 	}
 
 	/* Check for duplicate clocks */
-	struct search_query query = { .value = clock, .found = 0 };
 	g_ptr_array_foreach(writer->clocks, value_exists, &query);
 	if (query.found) {
 		ret = -1;
 		goto end;
 	}
+
 	bt_ctf_clock_get(clock);
 	g_ptr_array_add(writer->clocks, clock);
 end:
@@ -397,6 +404,7 @@ void bt_ctf_writer_flush_metadata(struct bt_ctf_writer *writer)
 {
 	int ret;
 	char *metadata_string = NULL;
+
 	if (!writer) {
 		return;
 	}
@@ -413,23 +421,28 @@ void bt_ctf_writer_flush_metadata(struct bt_ctf_writer *writer)
 	if (ret < 0) {
 		perror("write");
 	}
+
 	free(metadata_string);
 }
 
 int bt_ctf_writer_set_byte_order(struct bt_ctf_writer *writer,
 		enum bt_ctf_byte_order byte_order)
 {
+	int ret = 0;
+
 	if (!writer || writer->locked ||
 		byte_order < BT_CTF_BYTE_ORDER_NATIVE ||
 		byte_order >= BT_CTF_BYTE_ORDER_END) {
-		return -1;
+		ret = -1;
+		goto end;
 	}
 
 	if (!writer->locked) {
 		writer->byte_order = byte_order;
 		init_trace_packet_header(writer);
 	}
-	return 0;
+end:
+	return ret;
 }
 
 void bt_ctf_writer_get(struct bt_ctf_writer *writer)
@@ -437,6 +450,7 @@ void bt_ctf_writer_get(struct bt_ctf_writer *writer)
 	if (!writer) {
 		return;
 	}
+
 	bt_ctf_ref_get(&writer->ref_count);
 }
 
@@ -445,31 +459,36 @@ void bt_ctf_writer_put(struct bt_ctf_writer *writer)
 	if (!writer) {
 		return;
 	}
+
 	bt_ctf_ref_put(&writer->ref_count);
 }
 
 int validate_identifier(const char *input_string)
 {
-	int ret = -1;
+	int ret = 0;
 	char *string = NULL;
+	char *save_ptr, *token;
+
 	if (!input_string || input_string[0] == '\0') {
+		ret = -1;
 		goto end;
 	}
 
 	string = strdup(input_string);
 	if (!string) {
+		ret = -1;
 		goto end;
 	}
 
-	char *save_ptr, *token = strtok_r(string, " ", &save_ptr);
+	token = strtok_r(string, " ", &save_ptr);
 	while (token) {
 		if (g_hash_table_contains(reserved_keywords_set,
 			GINT_TO_POINTER(g_quark_from_string(token)))) {
 			goto end;
 		}
+
 		token = strtok_r(NULL, " ", &save_ptr);
 	}
-	ret = 0;
 end:
 	free(string);
 	return ret;
@@ -477,14 +496,16 @@ end:
 
 struct bt_ctf_field_type *get_field_type(enum field_type_alias alias)
 {
+	unsigned int alignment, size;
+	struct bt_ctf_field_type *field_type;
+
 	if (alias >= FIELD_TYPE_ALIAS_END) {
 		return NULL;
 	}
 
-	unsigned int alignment = field_type_aliases_alignments[alias];
-	unsigned int size = field_type_aliases_sizes[alias];
-	struct bt_ctf_field_type *field_type =
-		bt_ctf_field_type_integer_create(size);
+	alignment = field_type_aliases_alignments[alias];
+	size = field_type_aliases_sizes[alias];
+	field_type = bt_ctf_field_type_integer_create(size);
 	bt_ctf_field_type_set_alignment(field_type, alignment);
 	return field_type;
 }
@@ -575,6 +596,7 @@ int create_stream_file(struct bt_ctf_writer *writer,
 {
 	int fd;
 	GString *filename = g_string_new(stream->stream_class->name->str);
+
 	g_string_append_printf(filename, "_%"PRIu32, stream->id);
 	fd = openat(writer->trace_dir_fd, filename->str,
 		O_RDWR | O_CREAT | O_TRUNC,
@@ -585,13 +607,15 @@ int create_stream_file(struct bt_ctf_writer *writer,
 
 void stream_flush_cb(struct bt_ctf_stream *stream, struct bt_ctf_writer *writer)
 {
+	struct bt_ctf_field *stream_id;
+
 	/* Start a new packet in the stream */
 	if (stream->flushed_packet_count) {
 		/* ctf_init_pos has already initialized the first packet */
 		ctf_packet_seek(&stream->pos.parent, 0, SEEK_CUR);
 	}
 
-	struct bt_ctf_field *stream_id = bt_ctf_field_structure_get_field(
+	stream_id = bt_ctf_field_structure_get_field(
 		writer->trace_packet_header, "stream_id");
 	bt_ctf_field_unsigned_integer_set_value(stream_id, stream->id);
 	bt_ctf_field_put(stream_id);
@@ -600,25 +624,18 @@ void stream_flush_cb(struct bt_ctf_stream *stream, struct bt_ctf_writer *writer)
 	bt_ctf_field_serialize(writer->trace_packet_header, &stream->pos);
 }
 
-void init_alias_types_array(GPtrArray *field_type_aliases,
-		enum bt_ctf_byte_order byte_order)
-{
-	for (size_t i = 0; i < FIELD_TYPE_ALIAS_END; i++) {
-
-	}
-}
-
 static __attribute__((constructor))
 void writer_init(void)
 {
+	const size_t reserved_keywords_count =
+		sizeof(reserved_keywords_str) / sizeof(char *);
+
 	global_data_refcount++;
 	if (init_done) {
 		return;
 	}
-	reserved_keywords_set = g_hash_table_new(g_direct_hash, g_direct_equal);
 
-	const size_t reserved_keywords_count =
-		sizeof(reserved_keywords_str) / sizeof(char *);
+	reserved_keywords_set = g_hash_table_new(g_direct_hash, g_direct_equal);
 	for (size_t i = 0; i < reserved_keywords_count; i++) {
 		g_hash_table_add(reserved_keywords_set,
 		GINT_TO_POINTER(g_quark_from_string(reserved_keywords_str[i])));

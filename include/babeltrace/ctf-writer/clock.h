@@ -43,44 +43,36 @@ extern void bt_ctf_clock_get(struct bt_ctf_clock *clock);
 
 extern void bt_ctf_clock_put(struct bt_ctf_clock *clock);
 
-extern const char *bt_ctf_clock_get_name(struct bt_ctf_clock *clock);
-
-/* Optional */
-extern const char *bt_ctf_clock_get_description(struct bt_ctf_clock *clock);
 extern int bt_ctf_clock_set_description(struct bt_ctf_clock *clock,
 		const char *desc);
 
-/* Optional, Frequency in Hz, defaults to 1000000000 Hz (1ns) */
-extern uint64_t bt_ctf_clock_get_frequency(struct bt_ctf_clock *clock);
+/* Frequency in Hz, defaults to 1000000000 Hz (1ns) */
 extern int bt_ctf_clock_set_frequency(struct bt_ctf_clock *clock,
 		uint64_t freq);
 
-/* Optional, Precision in clock ticks, defaults to 1 */
-extern uint64_t bt_ctf_clock_get_precision(struct bt_ctf_clock *clock);
+/* Precision in clock ticks, defaults to 1 */
 extern int bt_ctf_clock_set_precision(struct bt_ctf_clock *clock,
 		uint64_t precision);
 
-/* Optional, offset in seconds from POSIX.1 Epoch, 1970-01-01, defaults to 0 */
-extern uint64_t bt_ctf_clock_get_offset_s(struct bt_ctf_clock *clock);
+/* Offset in seconds from POSIX.1 Epoch, 1970-01-01, defaults to 0 */
 extern int bt_ctf_clock_set_offset_s(struct bt_ctf_clock *clock,
 		uint64_t offset_s);
 
-/* Optional, offset in clock ticks from Epoch + offset_s, defaults to 0 */
-extern uint64_t bt_ctf_clock_get_offset(struct bt_ctf_clock *clock);
+/* Offset in clock ticks from Epoch + offset_s, defaults to 0 */
 extern int bt_ctf_clock_set_offset(struct bt_ctf_clock *clock,
 		uint64_t offset);
 
 /*
- * Optional, absolute if the clock is a global reference across the trace's
+ * Absolute if the clock is a global reference across the trace's
  * other clocks. Defaults to FALSE.
  */
-extern int bt_ctf_clock_is_absolute(struct bt_ctf_clock *clock);
 extern int bt_ctf_clock_set_is_absolute(struct bt_ctf_clock *clock,
 		int is_absolute);
 
 /*
  * Set the current time in nanoseconds since the clock's origin (offset
  * attributes)
+ * The clock's value will be sampled as events are pushed to a stream.
  */
 extern int bt_ctf_clock_set_time(struct bt_ctf_clock *clock, uint64_t time);
 
