@@ -43,9 +43,7 @@ struct bt_ctf_field {
 
 struct bt_ctf_field_integer {
 	struct bt_ctf_field parent;
-	union {
-		int64_t _signed, _unsigned;
-	} payload;
+	struct definition_integer definition;
 };
 
 struct bt_ctf_field_enumeration {

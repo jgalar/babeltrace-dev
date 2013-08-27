@@ -35,29 +35,17 @@
 #include <babeltrace/ctf-writer/writer.h>
 #include <babeltrace/ctf-writer/writer-internal.h>
 #include <babeltrace/babeltrace-internal.h>
+#include <babeltrace/types.h>
+#include <babeltrace/ctf/events.h>
 #include <glib.h>
 
 typedef void(*type_lock_func)(struct bt_ctf_field_type *);
 typedef int(*type_serialize_func)(struct bt_ctf_field_type *,
 		struct metadata_context *);
 
-enum bt_ctf_field_type_id {
-	BT_CTF_FIELD_TYPE_ID_UNKNOWN = 0,
-	BT_CTF_FIELD_TYPE_ID_INTEGER,
-	BT_CTF_FIELD_TYPE_ID_ENUMERATION,
-	BT_CTF_FIELD_TYPE_ID_FLOATING_POINT,
-	BT_CTF_FIELD_TYPE_ID_STRUCTURE,
-	BT_CTF_FIELD_TYPE_ID_VARIANT,
-	BT_CTF_FIELD_TYPE_ID_ARRAY,
-	BT_CTF_FIELD_TYPE_ID_SEQUENCE,
-	BT_CTF_FIELD_TYPE_ID_STRING,
-	NR_BT_CTF_FIELD_TYPE_ID_TYPES
-};
-
 struct bt_ctf_field_type {
 	struct bt_ctf_ref ref_count;
-	enum bt_ctf_field_type_id field_type;
-	enum bt_ctf_byte_order byte_order;
+	enum ctf_type_id type_id;
 	unsigned int alignment;
 	type_lock_func lock;
 	type_serialize_func serialize;
@@ -70,10 +58,7 @@ struct bt_ctf_field_type {
 
 struct bt_ctf_field_type_integer {
 	struct bt_ctf_field_type parent;
-	int _signed;
-	unsigned int size;
-	enum bt_ctf_integer_base base;
-	enum bt_ctf_string_encoding encoding;
+	struct declaration_integer declaration;
 };
 
 struct enumeration_mapping {
@@ -89,8 +74,7 @@ struct bt_ctf_field_type_enumeration {
 
 struct bt_ctf_field_type_floating_point {
 	struct bt_ctf_field_type parent;
-	unsigned int exponent_digit;
-	unsigned int mantissa_digit;
+	struct declaration_float declaration;
 };
 
 struct structure_field {
@@ -126,14 +110,14 @@ struct bt_ctf_field_type_sequence {
 
 struct bt_ctf_field_type_string {
 	struct bt_ctf_field_type parent;
-	enum bt_ctf_string_encoding encoding;
+	enum ctf_string_encoding encoding;
 };
 
 BT_HIDDEN
 void bt_ctf_field_type_lock(struct bt_ctf_field_type *type);
 
 BT_HIDDEN
-enum bt_ctf_field_type_id bt_ctf_field_type_get_type_id(
+enum ctf_type_id bt_ctf_field_type_get_type_id(
 		struct bt_ctf_field_type *type);
 
 BT_HIDDEN

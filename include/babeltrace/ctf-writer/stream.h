@@ -41,7 +41,8 @@ struct bt_ctf_clock;
 
 extern struct bt_ctf_stream_class *bt_ctf_stream_class_create(const char *name);
 
-extern int bt_ctf_stream_class_set_clock(struct bt_ctf_stream_class *stream_class,
+extern int bt_ctf_stream_class_set_clock(
+		struct bt_ctf_stream_class *stream_class,
 		struct bt_ctf_clock *clock);
 
 /* Add an event class to the stream */
@@ -56,18 +57,22 @@ extern void bt_ctf_stream_class_put(struct bt_ctf_stream_class *stream_class);
 
 /*
  * Insert event_count discarded/dropped events in stream before the next
- * event
+ * event.
  */
 extern void bt_ctf_stream_push_discarded_events(struct bt_ctf_stream *stream,
 		uint64_t event_count);
 
-/* The event's timestamp will be its associated clock's value */
+/*
+ * The stream's associated clock will be sampled during the call to
+ * bt_ctf_stream_push_event(). The event shall not be modified after
+ * after being pushed to a stream.
+ */
 extern int bt_ctf_stream_push_event(struct bt_ctf_stream *stream,
 		struct bt_ctf_event *event);
 
-/* 
- * Close the current packet. The next event pushed will be placed in a new
- * packet.
+/*
+ * Close the current packet. The events pushed after a call to this function
+ * will be placed in a new packet.
  */
 extern int bt_ctf_stream_flush(struct bt_ctf_stream *stream);
 

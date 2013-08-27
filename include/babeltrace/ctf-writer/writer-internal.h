@@ -54,7 +54,7 @@ struct bt_ctf_writer {
 	int locked; /* Protects attributes that can't be changed mid-trace */
 	GString *path;
 	uuid_t uuid;
-	enum bt_ctf_byte_order byte_order;
+	int byte_order;
 	int trace_dir_fd;
 	int metadata_fd;
 	GPtrArray *environment; /* Array of pointers to environment_variable */
@@ -81,7 +81,7 @@ BT_HIDDEN
 int validate_identifier(const char *string);
 
 BT_HIDDEN
-const char *get_byte_order_string(enum bt_ctf_byte_order byte_order);
+const char *get_byte_order_string(int byte_order);
 
 BT_HIDDEN
 struct bt_ctf_field_type *get_field_type(enum field_type_alias alias);

@@ -333,6 +333,7 @@ int bt_ctf_stream_push_event(struct bt_ctf_stream *stream,
 		struct bt_ctf_event *event)
 {
 	int ret = 0;
+	uint64_t timestamp;
 
 	if (!stream || !event) {
 		ret = -1;
@@ -341,7 +342,12 @@ int bt_ctf_stream_push_event(struct bt_ctf_stream *stream,
 
 	ret = bt_ctf_event_validate(event);
 	if (ret) {
-		ret = -1;
+		goto end;
+	}
+
+	timestamp = bt_ctf_clock_get_time(stream->stream_class->clock);
+	ret = bt_ctf_event_set_timestamp(event, timestamp);
+	if (ret) {
 		goto end;
 	}
 
@@ -368,7 +374,14 @@ int bt_ctf_stream_flush(struct bt_ctf_stream *stream)
 		stream->flush.func(stream, stream->flush.data);
 	}
 
-	/* Flush! Serialize events... */
+	for (size_t i = 0; i < stream->events->len; i++) {
+		struct bt_ctf_event *event = g_ptr_array_index(
+			stream->events, i);
+		ret = bt_ctf_event_serialize(event, &stream->pos);
+		if (ret) {
+			goto end;
+		}
+	}
 
 	g_ptr_array_set_size(stream->events, 0);
 	stream->flushed_packet_count++;

@@ -94,6 +94,7 @@ struct bt_ctf_writer *bt_ctf_writer_create(const char *path)
 		goto error;
 	}
 
+	bt_ctf_writer_set_byte_order(writer, BT_CTF_BYTE_ORDER_NATIVE);
 	bt_ctf_ref_init(&writer->ref_count, bt_ctf_writer_destroy);
 	writer->path = g_string_new(path);
 	if (!writer->path) {
@@ -212,7 +213,8 @@ struct bt_ctf_stream *bt_ctf_writer_create_stream(struct bt_ctf_writer *writer,
 	bt_ctf_stream_set_flush_callback(stream, (flush_func)stream_flush_cb,
 		writer);
 	ret = bt_ctf_stream_class_set_byte_order(stream->stream_class,
-		writer->byte_order);
+		writer->byte_order == LITTLE_ENDIAN ?
+		BT_CTF_BYTE_ORDER_LITTLE_ENDIAN : BT_CTF_BYTE_ORDER_BIG_ENDIAN);
 	if (ret) {
 		goto error;
 	}
@@ -298,15 +300,12 @@ end:
 	return ret;
 }
 
-const char *get_byte_order_string(enum bt_ctf_byte_order byte_order)
+const char *get_byte_order_string(int byte_order)
 {
 	switch (byte_order) {
-	case BT_CTF_BYTE_ORDER_NATIVE:
-		return G_BYTE_ORDER == G_LITTLE_ENDIAN ? "le" : "be";
-	case BT_CTF_BYTE_ORDER_LITTLE_ENDIAN:
+	case LITTLE_ENDIAN:
 		return "le";
-	case BT_CTF_BYTE_ORDER_BIG_ENDIAN:
-	case BT_CTF_BYTE_ORDER_NETWORK:
+	case BIG_ENDIAN:
 		return "be";
 	default:
 		return "unknown";
@@ -362,15 +361,18 @@ static void append_env_metadata(struct bt_ctf_writer *writer,
 
 char *bt_ctf_writer_get_metadata_string(struct bt_ctf_writer *writer)
 {
+	int err = 0;
 	char *metadata = NULL;
 	struct metadata_context *context = NULL;
 
 	if (!writer) {
+		err = 1;
 		goto end;
 	}
 
 	context = g_new0(struct metadata_context, 1);
 	if (!context) {
+		err = 1;
 		goto end;
 	}
 
@@ -383,21 +385,19 @@ char *bt_ctf_writer_get_metadata_string(struct bt_ctf_writer *writer)
 		(GFunc)bt_ctf_clock_serialize, context);
 
 	for (size_t i = 0; i < writer->stream_classes->len; i++) {
-		int err = bt_ctf_stream_class_serialize(
+		err = bt_ctf_stream_class_serialize(
 			writer->stream_classes->pdata[i], context);
 		if (err) {
-			goto error;
+			goto end;
 		}
 	}
 
-	metadata = context->string->str;
-	g_string_free(context->string, FALSE);
 end:
-	return metadata;
-error:
-	g_string_free(context->string, TRUE);
+	metadata = context->string->str;
+	g_string_free(context->string, err ? TRUE : FALSE);
+	g_string_free(context->field_name, TRUE);
 	g_free(context);
-	return metadata;
+	return err ? NULL : metadata;
 }
 
 void bt_ctf_writer_flush_metadata(struct bt_ctf_writer *writer)
@@ -422,13 +422,14 @@ void bt_ctf_writer_flush_metadata(struct bt_ctf_writer *writer)
 		perror("write");
 	}
 
-	free(metadata_string);
+	g_free(metadata_string);
 }
 
 int bt_ctf_writer_set_byte_order(struct bt_ctf_writer *writer,
 		enum bt_ctf_byte_order byte_order)
 {
 	int ret = 0;
+	int internal_byte_order;
 
 	if (!writer || writer->locked ||
 		byte_order < BT_CTF_BYTE_ORDER_NATIVE ||
@@ -437,8 +438,26 @@ int bt_ctf_writer_set_byte_order(struct bt_ctf_writer *writer,
 		goto end;
 	}
 
-	if (!writer->locked) {
-		writer->byte_order = byte_order;
+	switch (byte_order) {
+	case BT_CTF_BYTE_ORDER_NATIVE:
+		internal_byte_order =  G_BYTE_ORDER == G_LITTLE_ENDIAN ?
+			LITTLE_ENDIAN : BIG_ENDIAN;
+		break;
+	case BT_CTF_BYTE_ORDER_LITTLE_ENDIAN:
+		internal_byte_order = LITTLE_ENDIAN;
+		break;
+	case BT_CTF_BYTE_ORDER_BIG_ENDIAN:
+	case BT_CTF_BYTE_ORDER_NETWORK:
+		internal_byte_order = BIG_ENDIAN;
+		break;
+	default:
+		ret = -1;
+		goto end;
+	}
+
+	writer->byte_order = internal_byte_order;
+	if (writer->trace_packet_header_type ||
+		writer->trace_packet_header) {
 		init_trace_packet_header(writer);
 	}
 end:
@@ -530,7 +549,9 @@ int init_trace_packet_header(struct bt_ctf_writer *writer)
 		goto end;
 	}
 
-	ret |= bt_ctf_field_type_set_byte_order(_uint32_t, writer->byte_order);
+	ret |= bt_ctf_field_type_set_byte_order(_uint32_t,
+		writer->byte_order == LITTLE_ENDIAN ?
+		BT_CTF_BYTE_ORDER_LITTLE_ENDIAN : BT_CTF_BYTE_ORDER_BIG_ENDIAN);
 	ret |= bt_ctf_field_type_structure_add_field(trace_packet_header_type,
 		_uint32_t, "magic");
 	ret |= bt_ctf_field_type_structure_add_field(trace_packet_header_type,
@@ -549,7 +570,6 @@ int init_trace_packet_header(struct bt_ctf_writer *writer)
 
 	magic = bt_ctf_field_structure_get_field(trace_packet_header, "magic");
 	ret = bt_ctf_field_unsigned_integer_set_value(magic, 0xC1FC1FC1);
-	bt_ctf_field_put(magic);
 	if (ret) {
 		goto end;
 	}

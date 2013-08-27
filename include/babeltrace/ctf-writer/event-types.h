@@ -30,6 +30,7 @@
  */
 
 #include <babeltrace/ctf-writer/writer.h>
+#include <babeltrace/ctf/events.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -42,18 +43,11 @@ struct bt_ctf_field_type;
 
 enum bt_ctf_integer_base {
 	BT_CTF_INTEGER_BASE_UNKNOWN = -1,
-	BT_CTF_INTEGER_BASE_DECIMAL,
-	BT_CTF_INTEGER_BASE_HEXADECIMAL,
-	BT_CTF_INTEGER_BASE_OCTAL,
-	BT_CTF_INTEGER_BASE_BINARY,
-	NR_BT_CTF_INTEGER_BASE_TYPES
-};
-
-enum bt_ctf_string_encoding {
-	BT_CTF_STRING_ENCODING_NONE = -1,
-	BT_CTF_STRING_ENCODING_UTF8,
-	BT_CTF_STRING_ENCODING_ASCII,
-	NR_BT_CTF_STRING_ENCODING_TYPES
+	BT_CTF_INTEGER_BASE_BINARY = 2,
+	BT_CTF_INTEGER_BASE_OCTAL = 8,
+	BT_CTF_INTEGER_BASE_DECIMAL = 10,
+	BT_CTF_INTEGER_BASE_HEXADECIMAL = 16,
+	BT_CTF_INTEGER_BASE_END
 };
 
 extern struct bt_ctf_field_type *bt_ctf_field_type_integer_create(
@@ -72,11 +66,11 @@ extern int bt_ctf_field_type_integer_set_base(
 
 /*
  * An integer encoding may be set to signal that the integer must be printed as
- * text, default BT_CTF_STRING_ENCODING_NONE
+ * text, default CTF_STRING_ENCODING_NONE
  */
 extern int bt_ctf_field_type_integer_set_encoding(
 		struct bt_ctf_field_type *integer,
-		enum bt_ctf_string_encoding encoding);
+		enum ctf_string_encoding encoding);
 
 extern struct bt_ctf_field_type *bt_ctf_field_type_enumeration_create(
 		struct bt_ctf_field_type *integer_container_type);
@@ -88,13 +82,13 @@ extern int bt_ctf_field_type_enumeration_add_mapping(
 
 extern struct bt_ctf_field_type *bt_ctf_field_type_floating_point_create(void);
 
-extern int bt_ctf_field_type_floating_point_set_exponent_digit(
+extern int bt_ctf_field_type_floating_point_set_exponent_digits(
 		struct bt_ctf_field_type *floating_point,
-		unsigned int exponent_digit);
+		unsigned int exponent_digits);
 
-extern int bt_ctf_field_type_floating_point_set_mantissa_digit(
+extern int bt_ctf_field_type_floating_point_set_mantissa_digits(
 		struct bt_ctf_field_type *floating_point,
-		unsigned int mantissa_digit);
+		unsigned int mantissa_digits);
 
 extern struct bt_ctf_field_type *bt_ctf_field_type_structure_create(void);
 
@@ -128,7 +122,7 @@ extern struct bt_ctf_field_type *bt_ctf_field_type_string_create(void);
 
 extern int bt_ctf_field_type_string_set_encoding(
 		struct bt_ctf_field_type *string,
-		enum bt_ctf_string_encoding encoding);
+		enum ctf_string_encoding encoding);
 
 extern int bt_ctf_field_type_set_alignment(struct bt_ctf_field_type *type,
 		unsigned int alignment);

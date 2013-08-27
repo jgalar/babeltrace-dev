@@ -26,6 +26,7 @@
 #include <babeltrace/ctf-writer/event.h>
 #include <babeltrace/ctf-writer/event-types.h>
 #include <babeltrace/ctf-writer/event-fields.h>
+#include <babeltrace/ctf/events.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -270,13 +271,13 @@ int main(int argc, char **argv)
 		bt_ctf_field_type_string_create();
 	ok(string_type, "Create a string type");
 	ok(bt_ctf_field_type_string_set_encoding(string_type,
-		BT_CTF_STRING_ENCODING_NONE),
+		CTF_STRING_NONE),
 		"Reject invalid \"None\" string encoding");
 	ok(bt_ctf_field_type_string_set_encoding(string_type,
 		42),
 		"Reject invalid string encoding");
 	ok(bt_ctf_field_type_string_set_encoding(string_type,
-		BT_CTF_STRING_ENCODING_ASCII) == 0,
+		CTF_STRING_ASCII) == 0,
 		"Set string encoding to ASCII");
 	struct bt_ctf_field_type *structure_seq_type =
 		bt_ctf_field_type_structure_create();
@@ -411,6 +412,7 @@ int main(int argc, char **argv)
 	bt_ctf_field_put(int_16);
 	bt_ctf_stream_class_put(stream_class);
 	bt_ctf_event_class_put(event_class);
+	bt_ctf_event_class_put(simple_event_class);
 	bt_ctf_field_type_put(uint_12_type);
 	bt_ctf_field_type_put(uint_8_type);
 	bt_ctf_field_type_put(sequence_type);
@@ -419,7 +421,9 @@ int main(int argc, char **argv)
 	bt_ctf_field_type_put(composite_structure_type);
 	bt_ctf_field_type_put(int_16_type);
 	bt_ctf_event_put(event);
+	bt_ctf_event_put(simple_event);
 	bt_ctf_writer_put(writer);
+	bt_ctf_field_put(integer_field);
 	bt_ctf_stream_put(stream1);
 	free(metadata_string);
 

@@ -52,6 +52,7 @@ struct bt_ctf_event_class {
 
 struct bt_ctf_event {
 	struct bt_ctf_ref ref_count;
+	uint64_t timestamp;
 	struct bt_ctf_event_class *event_class;
 	struct bt_ctf_field *context_payload;
 	struct bt_ctf_field *fields_payload;
@@ -78,5 +79,8 @@ int bt_ctf_event_validate(struct bt_ctf_event *event);
 BT_HIDDEN
 int bt_ctf_event_serialize(struct bt_ctf_event *event,
 		struct ctf_stream_pos *pos);
+
+BT_HIDDEN
+int bt_ctf_event_set_timestamp(struct bt_ctf_event *event, uint64_t timestamp);
 
 #endif /* _BABELTRACE_CTF_WRITER_EVENT_INTERNAL_H */

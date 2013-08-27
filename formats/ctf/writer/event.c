@@ -278,8 +278,23 @@ end:
 	return ret;
 }
 
-int bt_ctf_event_serialize(struct bt_ctf_event *field,
+int bt_ctf_event_serialize(struct bt_ctf_event *event,
 		struct ctf_stream_pos *pos)
 {
 	return -1;
+}
+
+int bt_ctf_event_set_timestamp(struct bt_ctf_event *event,
+		uint64_t timestamp)
+{
+	int ret = 0;
+
+	if (event->timestamp) {
+		ret = -1;
+		goto end;
+	}
+
+	event->timestamp = timestamp;
+end:
+	return ret;
 }

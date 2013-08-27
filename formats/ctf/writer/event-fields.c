@@ -85,68 +85,68 @@ static int bt_ctf_field_string_serialize(struct bt_ctf_field *,
 static struct bt_ctf_field *(*field_create_funcs[])(
 	struct bt_ctf_field_type *) =
 {
-	[BT_CTF_FIELD_TYPE_ID_INTEGER] = bt_ctf_field_integer_create,
-	[BT_CTF_FIELD_TYPE_ID_ENUMERATION] = bt_ctf_field_enumeration_create,
-	[BT_CTF_FIELD_TYPE_ID_FLOATING_POINT] =
+	[CTF_TYPE_INTEGER] = bt_ctf_field_integer_create,
+	[CTF_TYPE_ENUM] = bt_ctf_field_enumeration_create,
+	[CTF_TYPE_FLOAT] =
 		bt_ctf_field_floating_point_create,
-	[BT_CTF_FIELD_TYPE_ID_STRUCTURE] = bt_ctf_field_structure_create,
-	[BT_CTF_FIELD_TYPE_ID_VARIANT] = bt_ctf_field_variant_create,
-	[BT_CTF_FIELD_TYPE_ID_ARRAY] = bt_ctf_field_array_create,
-	[BT_CTF_FIELD_TYPE_ID_SEQUENCE] = bt_ctf_field_sequence_create,
-	[BT_CTF_FIELD_TYPE_ID_STRING] = bt_ctf_field_string_create
+	[CTF_TYPE_STRUCT] = bt_ctf_field_structure_create,
+	[CTF_TYPE_VARIANT] = bt_ctf_field_variant_create,
+	[CTF_TYPE_ARRAY] = bt_ctf_field_array_create,
+	[CTF_TYPE_SEQUENCE] = bt_ctf_field_sequence_create,
+	[CTF_TYPE_STRING] = bt_ctf_field_string_create
 };
 
 static void (*field_destroy_funcs[])(struct bt_ctf_field *) =
 {
-	[BT_CTF_FIELD_TYPE_ID_INTEGER] = bt_ctf_field_integer_destroy,
-	[BT_CTF_FIELD_TYPE_ID_ENUMERATION] = bt_ctf_field_enumeration_destroy,
-	[BT_CTF_FIELD_TYPE_ID_FLOATING_POINT] =
+	[CTF_TYPE_INTEGER] = bt_ctf_field_integer_destroy,
+	[CTF_TYPE_ENUM] = bt_ctf_field_enumeration_destroy,
+	[CTF_TYPE_FLOAT] =
 		bt_ctf_field_floating_point_destroy,
-	[BT_CTF_FIELD_TYPE_ID_STRUCTURE] = bt_ctf_field_structure_destroy,
-	[BT_CTF_FIELD_TYPE_ID_VARIANT] = bt_ctf_field_variant_destroy,
-	[BT_CTF_FIELD_TYPE_ID_ARRAY] = bt_ctf_field_array_destroy,
-	[BT_CTF_FIELD_TYPE_ID_SEQUENCE] = bt_ctf_field_sequence_destroy,
-	[BT_CTF_FIELD_TYPE_ID_STRING] = bt_ctf_field_string_destroy
+	[CTF_TYPE_STRUCT] = bt_ctf_field_structure_destroy,
+	[CTF_TYPE_VARIANT] = bt_ctf_field_variant_destroy,
+	[CTF_TYPE_ARRAY] = bt_ctf_field_array_destroy,
+	[CTF_TYPE_SEQUENCE] = bt_ctf_field_sequence_destroy,
+	[CTF_TYPE_STRING] = bt_ctf_field_string_destroy
 };
 
 static int (*field_validate_funcs[])(struct bt_ctf_field *) =
 {
-	[BT_CTF_FIELD_TYPE_ID_INTEGER] = bt_ctf_field_generic_validate,
-	[BT_CTF_FIELD_TYPE_ID_ENUMERATION] = bt_ctf_field_enumeration_validate,
-	[BT_CTF_FIELD_TYPE_ID_FLOATING_POINT] = bt_ctf_field_generic_validate,
-	[BT_CTF_FIELD_TYPE_ID_STRUCTURE] = bt_ctf_field_structure_validate,
-	[BT_CTF_FIELD_TYPE_ID_VARIANT] = bt_ctf_field_variant_validate,
-	[BT_CTF_FIELD_TYPE_ID_ARRAY] = bt_ctf_field_array_validate,
-	[BT_CTF_FIELD_TYPE_ID_SEQUENCE] = bt_ctf_field_sequence_validate,
-	[BT_CTF_FIELD_TYPE_ID_STRING] = bt_ctf_field_generic_validate
+	[CTF_TYPE_INTEGER] = bt_ctf_field_generic_validate,
+	[CTF_TYPE_ENUM] = bt_ctf_field_enumeration_validate,
+	[CTF_TYPE_FLOAT] = bt_ctf_field_generic_validate,
+	[CTF_TYPE_STRUCT] = bt_ctf_field_structure_validate,
+	[CTF_TYPE_VARIANT] = bt_ctf_field_variant_validate,
+	[CTF_TYPE_ARRAY] = bt_ctf_field_array_validate,
+	[CTF_TYPE_SEQUENCE] = bt_ctf_field_sequence_validate,
+	[CTF_TYPE_STRING] = bt_ctf_field_generic_validate
 };
 
 static int (*field_serialize_funcs[])(struct bt_ctf_field *,
 		struct ctf_stream_pos *) =
 {
-	[BT_CTF_FIELD_TYPE_ID_INTEGER] = bt_ctf_field_integer_serialize,
-	[BT_CTF_FIELD_TYPE_ID_ENUMERATION] = bt_ctf_field_enumeration_serialize,
-	[BT_CTF_FIELD_TYPE_ID_FLOATING_POINT] =
+	[CTF_TYPE_INTEGER] = bt_ctf_field_integer_serialize,
+	[CTF_TYPE_ENUM] = bt_ctf_field_enumeration_serialize,
+	[CTF_TYPE_FLOAT] =
 		bt_ctf_field_floating_point_serialize,
-	[BT_CTF_FIELD_TYPE_ID_STRUCTURE] = bt_ctf_field_structure_serialize,
-	[BT_CTF_FIELD_TYPE_ID_VARIANT] = bt_ctf_field_variant_serialize,
-	[BT_CTF_FIELD_TYPE_ID_ARRAY] = bt_ctf_field_array_serialize,
-	[BT_CTF_FIELD_TYPE_ID_SEQUENCE] = bt_ctf_field_sequence_serialize,
-	[BT_CTF_FIELD_TYPE_ID_STRING] = bt_ctf_field_string_serialize
+	[CTF_TYPE_STRUCT] = bt_ctf_field_structure_serialize,
+	[CTF_TYPE_VARIANT] = bt_ctf_field_variant_serialize,
+	[CTF_TYPE_ARRAY] = bt_ctf_field_array_serialize,
+	[CTF_TYPE_SEQUENCE] = bt_ctf_field_sequence_serialize,
+	[CTF_TYPE_STRING] = bt_ctf_field_string_serialize
 };
 
 struct bt_ctf_field *bt_ctf_field_create(struct bt_ctf_field_type *type)
 {
 	struct bt_ctf_field *field = NULL;
-	enum bt_ctf_field_type_id type_id;
+	enum ctf_type_id type_id;
 
 	if (!type) {
 		goto error;
 	}
 
 	type_id = bt_ctf_field_type_get_type_id(type);
-	if (type_id <= BT_CTF_FIELD_TYPE_ID_UNKNOWN ||
-		type_id >= NR_BT_CTF_FIELD_TYPE_ID_TYPES) {
+	if (type_id <= CTF_TYPE_UNKNOWN ||
+		type_id >= NR_CTF_TYPES) {
 		goto error;
 	}
 
@@ -191,19 +191,19 @@ int bt_ctf_field_sequence_set_length(struct bt_ctf_field *field,
 		goto end;
 	}
 	if (bt_ctf_field_type_get_type_id(length_field->type) !=
-		BT_CTF_FIELD_TYPE_ID_INTEGER) {
+		CTF_TYPE_INTEGER) {
 		goto end;
 	}
 
 	length_type = container_of(length_field->type,
 		struct bt_ctf_field_type_integer, parent);
-	if (length_type->_signed) {
+	if (length_type->declaration.signedness) {
 		goto end;
 	}
 
 	length = container_of(length_field, struct bt_ctf_field_integer,
 		parent);
-	sequence_length = length->payload._unsigned;
+	sequence_length = length->definition.value._unsigned;
 	sequence = container_of(field, struct bt_ctf_field_sequence, parent);
 	if (sequence->elements) {
 		g_ptr_array_free(sequence->elements, TRUE);
@@ -236,7 +236,7 @@ struct bt_ctf_field *bt_ctf_field_structure_get_field(
 
 	if (!field || !name ||
 		bt_ctf_field_type_get_type_id(field->type) !=
-			BT_CTF_FIELD_TYPE_ID_STRUCTURE) {
+			CTF_TYPE_STRUCT) {
 		goto end;
 	}
 
@@ -275,7 +275,7 @@ int bt_ctf_field_structure_set_field(struct bt_ctf_field *field,
 
 	if (!field || !name ||
 		bt_ctf_field_type_get_type_id(field->type) !=
-			BT_CTF_FIELD_TYPE_ID_STRUCTURE) {
+			CTF_TYPE_STRUCT) {
 		ret = -1;
 		goto end;
 	}
@@ -317,7 +317,7 @@ struct bt_ctf_field *bt_ctf_field_array_get_field(struct bt_ctf_field *field,
 	struct bt_ctf_field_type *field_type;
 
 	if (!field || bt_ctf_field_type_get_type_id(field->type) !=
-		BT_CTF_FIELD_TYPE_ID_ARRAY) {
+		CTF_TYPE_ARRAY) {
 		goto end;
 	}
 
@@ -350,7 +350,7 @@ struct bt_ctf_field *bt_ctf_field_sequence_get_field(struct bt_ctf_field *field,
 	struct bt_ctf_field_type *field_type;
 
 	if (!field || bt_ctf_field_type_get_type_id(field->type) !=
-		BT_CTF_FIELD_TYPE_ID_SEQUENCE) {
+		CTF_TYPE_SEQUENCE) {
 		goto end;
 	}
 
@@ -387,9 +387,9 @@ struct bt_ctf_field *bt_ctf_field_variant_get_field(struct bt_ctf_field *field,
 
 	if (!field || !tag_field || !tag_field->payload_set ||
 		bt_ctf_field_type_get_type_id(field->type) !=
-			BT_CTF_FIELD_TYPE_ID_VARIANT ||
+			CTF_TYPE_VARIANT ||
 		bt_ctf_field_type_get_type_id(tag_field->type) !=
-			BT_CTF_FIELD_TYPE_ID_ENUMERATION) {
+			CTF_TYPE_ENUM) {
 		goto end;
 	}
 
@@ -401,7 +401,7 @@ struct bt_ctf_field *bt_ctf_field_variant_get_field(struct bt_ctf_field *field,
 	tag_enum_integer = container_of(tag_enum->payload,
 		struct bt_ctf_field_integer, parent);
 
-	tag_enum_value = tag_enum_integer->payload._signed;
+	tag_enum_value = tag_enum_integer->definition.value._signed;
 	field_type = bt_ctf_field_type_variant_get_field_type(variant_type,
 		tag_enum_value);
 	if (!field_type) {
@@ -460,25 +460,25 @@ int bt_ctf_field_signed_integer_set_value(struct bt_ctf_field *field,
 
 	if (!field ||
 		bt_ctf_field_type_get_type_id(field->type) !=
-			BT_CTF_FIELD_TYPE_ID_INTEGER) {
+			CTF_TYPE_INTEGER) {
 		goto end;
 	}
 
 	integer = container_of(field, struct bt_ctf_field_integer, parent);
 	integer_type = container_of(field->type,
 		struct bt_ctf_field_type_integer, parent);
-	if (!integer_type->_signed) {
+	if (!integer_type->declaration.signedness) {
 		goto end;
 	}
 
-	size = integer_type->size;
+	size = integer_type->declaration.len;
 	min_value = -((int64_t)1 << (size - 1));
 	max_value = ((int64_t)1 << (size - 1)) - 1;
 	if (value < min_value || value > max_value) {
 		goto end;
 	}
 
-	integer->payload._signed = value;
+	integer->definition.value._signed = value;
 	integer->parent.payload_set = 1;
 	ret = 0;
 end:
@@ -496,23 +496,23 @@ int bt_ctf_field_unsigned_integer_set_value(struct bt_ctf_field *field,
 
 	if (!field ||
 		bt_ctf_field_type_get_type_id(field->type) !=
-			BT_CTF_FIELD_TYPE_ID_INTEGER) {
+			CTF_TYPE_INTEGER) {
 		goto end;
 	}
 
 	integer = container_of(field, struct bt_ctf_field_integer, parent);
 	integer_type = container_of(field->type,
 		struct bt_ctf_field_type_integer, parent);
-	if (integer_type->_signed) {
+	if (integer_type->declaration.signedness) {
 		goto end;
 	}
 
-	size = integer_type->size;
+	size = integer_type->declaration.len;
 	max_value = ((uint64_t)1 << size) - 1;
 	if (value > max_value) {
 		goto end;
 	}
-	integer->payload._signed = value;
+	integer->definition.value._signed = value;
 	ret = 0;
 	integer->parent.payload_set = 1;
 end:
@@ -527,7 +527,7 @@ int bt_ctf_field_floating_point_set_value(struct bt_ctf_field *field,
 
 	if (!field ||
 		bt_ctf_field_type_get_type_id(field->type) !=
-			BT_CTF_FIELD_TYPE_ID_FLOATING_POINT) {
+			CTF_TYPE_FLOAT) {
 		ret = -1;
 		goto end;
 	}
@@ -547,7 +547,7 @@ int bt_ctf_field_string_set_value(struct bt_ctf_field *field,
 
 	if (!field || !value ||
 		bt_ctf_field_type_get_type_id(field->type) !=
-			BT_CTF_FIELD_TYPE_ID_STRING) {
+			CTF_TYPE_STRING) {
 		ret = -1;
 		goto end;
 	}
@@ -562,7 +562,7 @@ end:
 int bt_ctf_field_validate(struct bt_ctf_field *field)
 {
 	int ret = 0;
-	enum bt_ctf_field_type_id type_id;
+	enum ctf_type_id type_id;
 
 	if (!field) {
 		ret = -1;
@@ -579,7 +579,7 @@ int bt_ctf_field_serialize(struct bt_ctf_field *field,
 		struct ctf_stream_pos *pos)
 {
 	int ret = 0;
-	enum bt_ctf_field_type_id type_id;
+	enum ctf_type_id type_id;
 
 	if (!field) {
 		ret = -1;
@@ -594,8 +594,15 @@ end:
 
 struct bt_ctf_field *bt_ctf_field_integer_create(struct bt_ctf_field_type *type)
 {
+	struct bt_ctf_field_type_integer *integer_type = container_of(type,
+		struct bt_ctf_field_type_integer, parent);
 	struct bt_ctf_field_integer *integer = g_new0(
 		struct bt_ctf_field_integer, 1);
+
+	if (integer) {
+		integer->definition.declaration = &integer_type->declaration;
+	}
+
 	return integer ? &integer->parent : NULL;
 }
 
@@ -604,6 +611,7 @@ struct bt_ctf_field *bt_ctf_field_enumeration_create(
 {
 	struct bt_ctf_field_enumeration *enumeration = g_new0(
 		struct bt_ctf_field_enumeration, 1);
+
 	return enumeration ? &enumeration->parent : NULL;
 }
 
@@ -612,6 +620,7 @@ struct bt_ctf_field *bt_ctf_field_floating_point_create(
 {
 	struct bt_ctf_field_floating_point *floating_point = g_new0(
 		struct bt_ctf_field_floating_point, 1);
+
 	return floating_point ? &floating_point->parent : NULL;
 }
 
@@ -689,7 +698,7 @@ void bt_ctf_field_destroy(struct bt_ctf_ref *ref)
 {
 	struct bt_ctf_field *field;
 	struct bt_ctf_field_type *type;
-	enum bt_ctf_field_type_id type_id;
+	enum ctf_type_id type_id;
 
 	if (!ref) {
 		return;
@@ -698,8 +707,8 @@ void bt_ctf_field_destroy(struct bt_ctf_ref *ref)
 	field = container_of(ref, struct bt_ctf_field, ref_count);
 	type = field->type;
 	type_id = bt_ctf_field_type_get_type_id(type);
-	if (type_id <= BT_CTF_FIELD_TYPE_ID_UNKNOWN ||
-		type_id >= NR_BT_CTF_FIELD_TYPE_ID_TYPES) {
+	if (type_id <= CTF_TYPE_UNKNOWN ||
+		type_id >= NR_CTF_TYPES) {
 		return;
 	}
 
@@ -923,6 +932,7 @@ end:
 int bt_ctf_field_integer_serialize(struct bt_ctf_field * field,
 		struct ctf_stream_pos *pos)
 {
+
 	return -1;
 }
 
@@ -941,7 +951,20 @@ int bt_ctf_field_floating_point_serialize(struct bt_ctf_field *field,
 int bt_ctf_field_structure_serialize(struct bt_ctf_field *field,
 		struct ctf_stream_pos *pos)
 {
-	return -1;
+	int ret = 0;
+	struct bt_ctf_field_structure *structure = container_of(
+		field, struct bt_ctf_field_structure, parent);
+
+	for (size_t i = 0; i < structure->fields->len; i++) {
+		struct bt_ctf_field *field = g_ptr_array_index(
+			structure->fields, i);
+		ret = bt_ctf_field_serialize(field, pos);
+		if (ret) {
+			break;
+		}
+	}
+
+	return ret;
 }
 
 int bt_ctf_field_variant_serialize(struct bt_ctf_field *field,
