@@ -484,6 +484,7 @@ int validate_identifier(const char *input_string)
 	while (token) {
 		if (g_hash_table_contains(reserved_keywords_set,
 			GINT_TO_POINTER(g_quark_from_string(token)))) {
+			ret = -1;
 			goto end;
 		}
 

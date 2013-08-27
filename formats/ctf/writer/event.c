@@ -256,7 +256,7 @@ int bt_ctf_event_class_serialize(struct bt_ctf_event_class *event_class,
 		g_string_append(context->string, ";\n");
 	}
 
-	g_string_append(context->string, "};\n");
+	g_string_append(context->string, "};\n\n");
 end:
 	context->current_indentation_level = 0;
 	return ret;
