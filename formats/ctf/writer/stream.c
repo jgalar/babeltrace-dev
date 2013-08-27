@@ -77,6 +77,7 @@ int bt_ctf_stream_class_set_clock(struct bt_ctf_stream_class *stream_class,
 		struct bt_ctf_clock *clock)
 {
 	int ret = 0;
+
 	if (!stream_class || !clock || stream_class->locked) {
 		ret = -1;
 		goto end;
@@ -96,8 +97,10 @@ int bt_ctf_stream_class_add_event_class(
 		struct bt_ctf_stream_class *stream_class,
 		struct bt_ctf_event_class *event_class)
 {
-	int ret = -1;
+	int ret = 0;
+
 	if (!stream_class || !event_class) {
+		ret = -1;
 		goto end;
 	}
 
@@ -106,18 +109,19 @@ int bt_ctf_stream_class_add_event_class(
 		{ .value = event_class, .found = 0 };
 	g_ptr_array_foreach(stream_class->event_classes, value_exists, &query);
 	if (query.found) {
+		ret = -1;
 		goto end;
 	}
 
 	if (bt_ctf_event_class_set_id(event_class,
 		stream_class->next_event_id++)) {
 		/* The event is already associated to a stream class */
+		ret = -1;
 		goto end;
 	}
 
 	bt_ctf_event_class_get(event_class);
 	g_ptr_array_add(stream_class->event_classes, event_class);
-	ret = 0;
 end:
 	return ret;
 }
@@ -127,6 +131,7 @@ void bt_ctf_stream_class_get(struct bt_ctf_stream_class *stream_class)
 	if (!stream_class) {
 		return;
 	}
+
 	bt_ctf_ref_get(&stream_class->ref_count);
 }
 
@@ -135,6 +140,7 @@ void bt_ctf_stream_class_put(struct bt_ctf_stream_class *stream_class)
 	if (!stream_class) {
 		return;
 	}
+
 	bt_ctf_ref_put(&stream_class->ref_count);
 }
 
@@ -154,6 +160,7 @@ int bt_ctf_stream_class_set_id(struct bt_ctf_stream_class *stream_class,
 	uint32_t id)
 {
 	int ret = 0;
+
 	if (stream_class->id_set && (id != stream_class->id)) {
 		ret = -1;
 		goto end;
@@ -169,6 +176,7 @@ int bt_ctf_stream_class_set_byte_order(struct bt_ctf_stream_class *stream_class,
 	enum bt_ctf_byte_order byte_order)
 {
 	int ret = 0;
+
 	ret |= init_packet_context(stream_class, byte_order);
 	ret |= init_event_header(stream_class, byte_order);
 	return ret;
@@ -178,6 +186,7 @@ int bt_ctf_stream_class_serialize(struct bt_ctf_stream_class *stream_class,
 		struct metadata_context *context)
 {
 	int ret = 0;
+
 	g_string_assign(context->field_name, "");
 	context->current_indentation_level = 1;
 	if (!stream_class->id_set) {
@@ -235,12 +244,13 @@ end:
 
 void bt_ctf_stream_class_destroy(struct bt_ctf_ref *ref)
 {
+	struct bt_ctf_stream_class *stream_class;
+
 	if (!ref) {
 		return;
 	}
 
-	struct bt_ctf_stream_class *stream_class = container_of(
-		ref, struct bt_ctf_stream_class, ref_count);
+	stream_class = container_of(ref, struct bt_ctf_stream_class, ref_count);
 	bt_ctf_clock_put(stream_class->clock);
 
 	if (stream_class->event_classes) {
@@ -261,6 +271,7 @@ struct bt_ctf_stream *bt_ctf_stream_create(
 		struct bt_ctf_stream_class *stream_class)
 {
 	struct bt_ctf_stream *stream = NULL;
+
 	if (!stream_class) {
 		goto end;
 	}
@@ -286,6 +297,7 @@ int bt_ctf_stream_set_flush_callback(struct bt_ctf_stream *stream,
 	flush_func callback, void *data)
 {
 	int ret = stream ? 0 : -1;
+
 	if (!stream) {
 		goto end;
 	}
@@ -299,6 +311,7 @@ end:
 int bt_ctf_stream_set_fd(struct bt_ctf_stream *stream, int fd)
 {
 	int ret = 0;
+
 	if (stream->pos.fd != -1) {
 		ret = -1;
 		goto end;
@@ -320,6 +333,7 @@ int bt_ctf_stream_push_event(struct bt_ctf_stream *stream,
 		struct bt_ctf_event *event)
 {
 	int ret = 0;
+
 	if (!stream || !event) {
 		ret = -1;
 		goto end;
@@ -340,6 +354,7 @@ end:
 int bt_ctf_stream_flush(struct bt_ctf_stream *stream)
 {
 	int ret = 0;
+
 	if (!stream) {
 		ret = -1;
 		goto end;
@@ -366,6 +381,7 @@ void bt_ctf_stream_get(struct bt_ctf_stream *stream)
 	if (!stream) {
 		return;
 	}
+
 	bt_ctf_ref_get(&stream->ref_count);
 }
 
@@ -374,17 +390,19 @@ void bt_ctf_stream_put(struct bt_ctf_stream *stream)
 	if (!stream) {
 		return;
 	}
+
 	bt_ctf_ref_put(&stream->ref_count);
 }
 
 void bt_ctf_stream_destroy(struct bt_ctf_ref *ref)
 {
+	struct bt_ctf_stream *stream;
+
 	if (!ref) {
 		return;
 	}
 
-	struct bt_ctf_stream *stream = container_of(ref,
-		struct bt_ctf_stream, ref_count);
+	stream = container_of(ref, struct bt_ctf_stream, ref_count);
 	ctf_fini_pos(&stream->pos);
 	close(stream->pos.fd);
 	bt_ctf_stream_class_put(stream->stream_class);
@@ -397,14 +415,13 @@ int init_event_header(struct bt_ctf_stream_class *stream_class,
 		enum bt_ctf_byte_order byte_order)
 {
 	int ret = 0;
-
-	/* We create the large event header proposed in the CTF specification */
 	struct bt_ctf_field_type *event_header =
 		bt_ctf_field_type_structure_create();
 	struct bt_ctf_field_type *_uint32_t =
 		get_field_type(FIELD_TYPE_ALIAS_UINT32_T);
 	struct bt_ctf_field_type *_uint64_t =
 		get_field_type(FIELD_TYPE_ALIAS_UINT64_T);
+
 	if (!event_header) {
 		ret = -1;
 		goto end;
@@ -431,12 +448,8 @@ end:
 int init_packet_context(struct bt_ctf_stream_class *stream_class,
 		enum bt_ctf_byte_order byte_order)
 {
-	int ret = 0;
 
-	/*
-	 * We create a stream packet context proposed in the CTF
-	 * specification
-	 */
+	int ret = 0;
 	struct bt_ctf_field_type *packet_context =
 		bt_ctf_field_type_structure_create();
 	struct bt_ctf_field_type *_uint64_t =
@@ -447,6 +460,10 @@ int init_packet_context(struct bt_ctf_stream_class *stream_class,
 		goto end;
 	}
 
+	/*
+	 * We create a stream packet context as proposed in the CTF
+	 * specification.
+	 */
 	ret |= bt_ctf_field_type_set_byte_order(_uint64_t, byte_order);
 	ret |= bt_ctf_field_type_structure_add_field(packet_context,
 		_uint64_t, "timestamp_begin");
@@ -463,6 +480,7 @@ int init_packet_context(struct bt_ctf_stream_class *stream_class,
 		bt_ctf_field_type_put(packet_context);
 		goto end;
 	}
+
 	stream_class->packet_context = packet_context;
 end:
 	bt_ctf_field_type_put(_uint64_t);
