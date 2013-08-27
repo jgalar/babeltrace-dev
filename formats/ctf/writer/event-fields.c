@@ -929,11 +929,15 @@ end:
 	return ret;
 }
 
-int bt_ctf_field_integer_serialize(struct bt_ctf_field * field,
+int bt_ctf_field_integer_serialize(struct bt_ctf_field *field,
 		struct ctf_stream_pos *pos)
 {
+	int ret = 0;
+	struct bt_ctf_field_integer *integer = container_of(field,
+		struct bt_ctf_field_integer, parent);
 
-	return -1;
+	ret = ctf_integer_write(&pos->parent, &integer->definition.p);
+	return ret;
 }
 
 int bt_ctf_field_enumeration_serialize(struct bt_ctf_field *field,

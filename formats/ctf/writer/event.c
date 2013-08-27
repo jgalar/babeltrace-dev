@@ -281,7 +281,23 @@ end:
 int bt_ctf_event_serialize(struct bt_ctf_event *event,
 		struct ctf_stream_pos *pos)
 {
-	return -1;
+	int ret = 0;
+
+	if (event->context_payload) {
+		ret = bt_ctf_field_serialize(event->context_payload, pos);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	if (event->fields_payload) {
+		ret = bt_ctf_field_serialize(event->fields_payload, pos);
+		if (ret) {
+			goto end;
+		}
+	}
+end:
+	return ret;
 }
 
 int bt_ctf_event_set_timestamp(struct bt_ctf_event *event,

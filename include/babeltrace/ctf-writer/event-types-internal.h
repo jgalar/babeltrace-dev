@@ -45,8 +45,7 @@ typedef int(*type_serialize_func)(struct bt_ctf_field_type *,
 
 struct bt_ctf_field_type {
 	struct bt_ctf_ref ref_count;
-	enum ctf_type_id type_id;
-	unsigned int alignment;
+	struct bt_declaration *declaration;
 	type_lock_func lock;
 	type_serialize_func serialize;
 	/*
@@ -70,6 +69,7 @@ struct bt_ctf_field_type_enumeration {
 	struct bt_ctf_field_type parent;
 	struct bt_ctf_field_type *container;
 	GPtrArray *entries; /* Array of pointers to struct enum_mapping */
+	struct declaration_enum declaration;
 };
 
 struct bt_ctf_field_type_floating_point {
@@ -86,6 +86,7 @@ struct bt_ctf_field_type_structure {
 	struct bt_ctf_field_type parent;
 	GHashTable *field_name_to_index;
 	GPtrArray *fields; /* Array of pointers to struct structure_field */
+	struct declaration_enum declaration;
 };
 
 struct bt_ctf_field_type_variant {
@@ -94,23 +95,26 @@ struct bt_ctf_field_type_variant {
 	struct bt_ctf_field_type_enumeration *tag;
 	GHashTable *field_name_to_index;
 	GPtrArray *fields; /* Array of pointers to struct structure_field */
+	struct declaration_variant declaration;
 };
 
 struct bt_ctf_field_type_array {
 	struct bt_ctf_field_type parent;
 	struct bt_ctf_field_type *element_type;
 	unsigned int length; /* Number of elements */
+	struct declaration_array declaration;
 };
 
 struct bt_ctf_field_type_sequence {
 	struct bt_ctf_field_type parent;
 	struct bt_ctf_field_type *element_type;
 	GString *length_field_name;
+	struct declaration_sequence declaration;
 };
 
 struct bt_ctf_field_type_string {
 	struct bt_ctf_field_type parent;
-	enum ctf_string_encoding encoding;
+	struct declaration_string declaration;
 };
 
 BT_HIDDEN

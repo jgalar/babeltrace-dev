@@ -160,13 +160,15 @@ static void check_ranges_overlap(gpointer element, gpointer query)
 
 static void bt_ctf_field_type_init(struct bt_ctf_field_type *type)
 {
-	assert(type && type->type_id > CTF_TYPE_UNKNOWN &&
-		type->type_id < NR_CTF_TYPES);
-	bt_ctf_ref_init(&type->ref_count, type_destroy_funcs[type->type_id]);
-	type->lock = type_lock_funcs[type->type_id];
-	type->serialize = type_serialize_funcs[type->type_id];
+	enum ctf_type_id type_id = type->declaration->id;
+
+	assert(type && type_id > CTF_TYPE_UNKNOWN &&
+		type_id < NR_CTF_TYPES);
+	bt_ctf_ref_init(&type->ref_count, type_destroy_funcs[type_id]);
+	type->lock = type_lock_funcs[type_id];
+	type->serialize = type_serialize_funcs[type_id];
 	bt_ctf_field_type_set_byte_order(type, BT_CTF_BYTE_ORDER_NATIVE);
-	type->alignment = 1;
+	type->declaration->alignment = 1;
 }
 
 static int add_structure_field(GPtrArray *fields,
@@ -211,7 +213,8 @@ struct bt_ctf_field_type *bt_ctf_field_type_integer_create(unsigned int size)
 		return NULL;
 	}
 
-	integer->parent.type_id = CTF_TYPE_INTEGER;
+	integer->parent.declaration = &integer->declaration.p;
+	integer->parent.declaration->id = CTF_TYPE_INTEGER;
 	integer->declaration.len = size;
 	integer->declaration.base = BT_CTF_INTEGER_BASE_DECIMAL;
 	integer->declaration.encoding = CTF_STRING_NONE;
@@ -224,9 +227,10 @@ int bt_ctf_field_type_integer_set_signed(struct bt_ctf_field_type *type,
 {
 	int ret = -1;
 	struct bt_ctf_field_type_integer *integer;
+	enum ctf_type_id type_id = type->declaration->id;
 
 	if (!type || type->locked ||
-		type->type_id != CTF_TYPE_INTEGER) {
+		type_id != CTF_TYPE_INTEGER) {
 		goto end;
 	}
 
@@ -246,9 +250,10 @@ int bt_ctf_field_type_integer_set_base(struct bt_ctf_field_type *type,
 {
 	int ret = 0;
 	struct bt_ctf_field_type_integer *integer;
+	enum ctf_type_id type_id = type->declaration->id;
 
 	if (!type || type->locked ||
-		type->type_id != CTF_TYPE_INTEGER ||
+		type_id != CTF_TYPE_INTEGER ||
 		base <= BT_CTF_INTEGER_BASE_UNKNOWN ||
 		base >= BT_CTF_INTEGER_BASE_END) {
 		ret = -1;
@@ -266,9 +271,10 @@ int bt_ctf_field_type_integer_set_encoding(struct bt_ctf_field_type *type,
 {
 	int ret = 0;
 	struct bt_ctf_field_type_integer *integer;
+	enum ctf_type_id type_id = type->declaration->id;
 
 	if (!type || type->locked ||
-		type->type_id != CTF_TYPE_INTEGER ||
+		type_id != CTF_TYPE_INTEGER ||
 		encoding < CTF_STRING_NONE ||
 		encoding >= CTF_STRING_UNKNOWN) {
 		ret = -1;
@@ -295,7 +301,8 @@ struct bt_ctf_field_type *bt_ctf_field_type_enumeration_create(
 		goto error;
 	}
 
-	enumeration->parent.type_id = CTF_TYPE_ENUM;
+	enumeration->parent.declaration = &enumeration->declaration.p;
+	enumeration->parent.declaration->id = CTF_TYPE_ENUM;
 	bt_ctf_field_type_get(integer_container_type);
 	enumeration->container = integer_container_type;
 	enumeration->entries = g_ptr_array_new_with_free_func(
@@ -316,8 +323,9 @@ int bt_ctf_field_type_enumeration_add_mapping(
 	struct enumeration_mapping *mapping;
 	struct bt_ctf_field_type_enumeration *enumeration;
 	struct range_overlap_query query;
+	enum ctf_type_id type_id = type->declaration->id;
 
-	if (!type || type->type_id != CTF_TYPE_ENUM ||
+	if (!type || type_id != CTF_TYPE_ENUM ||
 		type->locked ||
 		range_end < range_start) {
 		goto end;
@@ -372,7 +380,8 @@ struct bt_ctf_field_type *bt_ctf_field_type_floating_point_create(void)
 		goto error;
 	}
 
-	floating_point->parent.type_id = CTF_TYPE_FLOAT;
+	floating_point->parent.declaration = &floating_point->declaration.p;
+	floating_point->parent.declaration->id = CTF_TYPE_FLOAT;
 	floating_point->declaration.exp->len =
 		sizeof(float) * CHAR_BIT - FLT_MANT_DIG;
 	floating_point->declaration.mantissa->len = FLT_MANT_DIG;
@@ -389,9 +398,10 @@ int bt_ctf_field_type_floating_point_set_exponent_digits(
 {
 	int ret = 0;
 	struct bt_ctf_field_type_floating_point *floating_point;
+	enum ctf_type_id type_id = type->declaration->id;
 
 	if (!type || type->locked ||
-		type->type_id != CTF_TYPE_FLOAT) {
+		type_id != CTF_TYPE_FLOAT) {
 		ret = -1;
 		goto end;
 	}
@@ -417,9 +427,10 @@ int bt_ctf_field_type_floating_point_set_mantissa_digits(
 {
 	int ret = 0;
 	struct bt_ctf_field_type_floating_point *floating_point;
+	enum ctf_type_id type_id = type->declaration->id;
 
 	if (!type || type->locked ||
-		type->type_id != CTF_TYPE_FLOAT) {
+		type_id != CTF_TYPE_FLOAT) {
 		ret = -1;
 		goto end;
 	}
@@ -447,7 +458,8 @@ struct bt_ctf_field_type *bt_ctf_field_type_structure_create(void)
 		goto error;
 	}
 
-	structure->parent.type_id = CTF_TYPE_STRUCT;
+	structure->parent.declaration = &structure->declaration.p;
+	structure->parent.declaration->id = CTF_TYPE_STRUCT;
 	bt_ctf_field_type_init(&structure->parent);
 	structure->fields = g_ptr_array_new_with_free_func(
 		(GDestroyNotify)destroy_structure_field);
@@ -463,10 +475,11 @@ int bt_ctf_field_type_structure_add_field(struct bt_ctf_field_type *type,
 {
 	int ret = 0;
 	struct bt_ctf_field_type_structure *structure;
+	enum ctf_type_id type_id = type->declaration->id;
 
 	if (!type || !field_type || type->locked ||
 		validate_identifier(field_name) ||
-		type->type_id != CTF_TYPE_STRUCT) {
+		type_id != CTF_TYPE_STRUCT) {
 		goto end;
 	}
 
@@ -484,28 +497,30 @@ end:
 struct bt_ctf_field_type *bt_ctf_field_type_variant_create(
 	struct bt_ctf_field_type *enum_tag, const char *tag_name)
 {
-	struct bt_ctf_field_type_variant *variant_type = NULL;
+	struct bt_ctf_field_type_variant *variant = NULL;
+	enum ctf_type_id type_id = enum_tag->declaration->id;
 
 	if (!enum_tag || validate_identifier(tag_name) ||
-		enum_tag->type_id != CTF_TYPE_ENUM) {
+		type_id != CTF_TYPE_ENUM) {
 		goto error;
 	}
 
-	variant_type = g_new0(struct bt_ctf_field_type_variant, 1);
-	if (!variant_type) {
+	variant = g_new0(struct bt_ctf_field_type_variant, 1);
+	if (!variant) {
 		goto error;
 	}
 
-	variant_type->parent.type_id = CTF_TYPE_VARIANT;
-	variant_type->tag_name = g_string_new(tag_name);
-	bt_ctf_field_type_init(&variant_type->parent);
-	variant_type->field_name_to_index = g_hash_table_new(NULL, NULL);
-	variant_type->fields = g_ptr_array_new_with_free_func(
+	variant->parent.declaration = &variant->declaration.p;
+	variant->parent.declaration->id = CTF_TYPE_VARIANT;
+	variant->tag_name = g_string_new(tag_name);
+	bt_ctf_field_type_init(&variant->parent);
+	variant->field_name_to_index = g_hash_table_new(NULL, NULL);
+	variant->fields = g_ptr_array_new_with_free_func(
 		(GDestroyNotify)destroy_structure_field);
 	bt_ctf_field_type_get(enum_tag);
-	variant_type->tag = container_of(enum_tag,
+	variant->tag = container_of(enum_tag,
 		struct bt_ctf_field_type_enumeration, parent);
-	return &variant_type->parent;
+	return &variant->parent;
 error:
 	return NULL;
 }
@@ -518,10 +533,11 @@ int bt_ctf_field_type_variant_add_field(struct bt_ctf_field_type *type,
 	int name_found = 0;
 	struct bt_ctf_field_type_variant *variant;
 	GQuark field_name_quark = g_quark_from_string(field_name);
+	enum ctf_type_id type_id = type->declaration->id;
 
 	if (!type || !field_type || type->locked ||
 		validate_identifier(field_name) ||
-		type->type_id != CTF_TYPE_VARIANT) {
+		type_id != CTF_TYPE_VARIANT) {
 		ret = -1;
 		goto end;
 	}
@@ -561,7 +577,8 @@ struct bt_ctf_field_type *bt_ctf_field_type_array_create(
 		goto error;
 	}
 
-	array->parent.type_id = CTF_TYPE_ARRAY;
+	array->parent.declaration = &array->declaration.p;
+	array->parent.declaration->id = CTF_TYPE_ARRAY;
 	bt_ctf_field_type_init(&array->parent);
 	bt_ctf_field_type_get(element_type);
 	array->element_type = element_type;
@@ -586,7 +603,8 @@ struct bt_ctf_field_type *bt_ctf_field_type_sequence_create(
 		goto error;
 	}
 
-	sequence->parent.type_id = CTF_TYPE_SEQUENCE;
+	sequence->parent.declaration = &sequence->declaration.p;
+	sequence->parent.declaration->id = CTF_TYPE_SEQUENCE;
 	bt_ctf_field_type_init(&sequence->parent);
 	bt_ctf_field_type_get(element_type);
 	sequence->element_type = element_type;
@@ -605,10 +623,11 @@ struct bt_ctf_field_type *bt_ctf_field_type_string_create(void)
 		return NULL;
 	}
 
-	string->parent.type_id = CTF_TYPE_STRING;
+	string->parent.declaration = &string->declaration.p;
+	string->parent.declaration->id = CTF_TYPE_STRING;
 	bt_ctf_field_type_init(&string->parent);
-	string->encoding = CTF_STRING_UTF8;
-	string->parent.alignment = 8;
+	string->declaration.encoding = CTF_STRING_UTF8;
+	string->parent.declaration->alignment = 8;
 	return &string->parent;
 }
 
@@ -618,8 +637,9 @@ int bt_ctf_field_type_string_set_encoding(
 {
 	int ret = 0;
 	struct bt_ctf_field_type_string *string;
+	enum ctf_type_id type_id = type->declaration->id;
 
-	if (!type || type->type_id != CTF_TYPE_STRING ||
+	if (!type || type_id != CTF_TYPE_STRING ||
 		(encoding != CTF_STRING_UTF8 &&
 		encoding != CTF_STRING_ASCII)) {
 		ret = -1;
@@ -627,7 +647,7 @@ int bt_ctf_field_type_string_set_encoding(
 	}
 
 	string = container_of(type, struct bt_ctf_field_type_string, parent);
-	string->encoding = encoding;
+	string->declaration.encoding = encoding;
 end:
 	return ret;
 }
@@ -636,6 +656,7 @@ int bt_ctf_field_type_set_alignment(struct bt_ctf_field_type *type,
 		unsigned int alignment)
 {
 	int ret = 0;
+	enum ctf_type_id type_id = type->declaration->id;
 
 	/* Alignment must be bit-aligned (1) or byte aligned */
 	if (!type || type->locked || (alignment != 1 && alignment & 0x7)) {
@@ -643,12 +664,12 @@ int bt_ctf_field_type_set_alignment(struct bt_ctf_field_type *type,
 		goto end;
 	}
 
-	if (type->type_id == CTF_TYPE_STRING && alignment != 8) {
+	if (type_id == CTF_TYPE_STRING && alignment != 8) {
 		ret = -1;
 		goto end;
 	}
 
-	type->alignment = alignment;
+	type->declaration->alignment = alignment;
 	ret = 0;
 end:
 	return ret;
@@ -659,7 +680,7 @@ int bt_ctf_field_type_set_byte_order(struct bt_ctf_field_type *type,
 {
 	int ret = 0;
 	int internal_byte_order;
-	enum ctf_type_id type_id = type->type_id;
+	enum ctf_type_id type_id = type->declaration->id;
 
 	if (!type || type->locked) {
 		ret = -1;
@@ -724,7 +745,7 @@ enum ctf_type_id bt_ctf_field_type_get_type_id(
 		return CTF_TYPE_UNKNOWN;
 	}
 
-	return type->type_id;
+	return type->declaration->id;
 }
 
 struct bt_ctf_field_type *bt_ctf_field_type_structure_get_type(
@@ -1033,8 +1054,8 @@ int bt_ctf_field_type_integer_serialize(struct bt_ctf_field_type *type,
 		struct bt_ctf_field_type_integer, parent);
 
 	g_string_append_printf(context->string,
-		"integer { size = %"PRIuPTR"; align = %u; signed = %s; encoding = %s; base = %s; byte_order = %s; }",
-		integer->declaration.len, type->alignment,
+		"integer { size = %"PRIuPTR"; align = %"PRIuPTR"; signed = %s; encoding = %s; base = %s; byte_order = %s; }",
+		integer->declaration.len, type->declaration->alignment,
 		(integer->declaration.signedness ? "true" : "false"),
 		get_encoding_string(integer->declaration.encoding),
 		get_integer_base_string(integer->declaration.base),
@@ -1091,11 +1112,11 @@ int bt_ctf_field_type_floating_point_serialize(struct bt_ctf_field_type *type,
 		type, struct bt_ctf_field_type_floating_point, parent);
 
 	g_string_append_printf(context->string,
-		"floating_point { exp_dig = %"PRIuPTR"; mant_dig = %"PRIuPTR"; byte_order = %s; align = %u; }",
+		"floating_point { exp_dig = %"PRIuPTR"; mant_dig = %"PRIuPTR"; byte_order = %s; align = %"PRIuPTR"; }",
 		floating_point->declaration.exp->len,
 		floating_point->declaration.mantissa->len,
 		get_byte_order_string(floating_point->declaration.byte_order),
-			type->alignment);
+		type->declaration->alignment);
 	return 0;
 }
 
@@ -1139,7 +1160,8 @@ int bt_ctf_field_type_structure_serialize(struct bt_ctf_field_type *type,
 		g_string_append_c(context->string, '\t');
 	}
 
-	g_string_append_printf(context->string, "} align(%u)", type->alignment);
+	g_string_append_printf(context->string, "} align(%"PRIuPTR")",
+		 type->declaration->alignment);
 end:
 	g_string_free(context->field_name, TRUE);
 	context->field_name = structure_field_name;
@@ -1252,7 +1274,7 @@ int bt_ctf_field_type_string_serialize(struct bt_ctf_field_type *type,
 
 	g_string_append_printf(context->string,
 		"string { encoding = %s; }",
-		get_encoding_string(string->encoding));
+		get_encoding_string(string->declaration.encoding));
 	return 0;
 }
 

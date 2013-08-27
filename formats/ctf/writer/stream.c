@@ -377,6 +377,9 @@ int bt_ctf_stream_flush(struct bt_ctf_stream *stream)
 	for (size_t i = 0; i < stream->events->len; i++) {
 		struct bt_ctf_event *event = g_ptr_array_index(
 			stream->events, i);
+		/* Write event header */
+		/* ... */
+
 		ret = bt_ctf_event_serialize(event, &stream->pos);
 		if (ret) {
 			goto end;
