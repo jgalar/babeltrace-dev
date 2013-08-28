@@ -257,9 +257,9 @@ struct bt_ctf_field *bt_ctf_field_structure_get_field(
 		goto end;
 	}
 
-	bt_ctf_field_get(new_field);
 	structure->fields->pdata[index] = new_field;
 end:
+	bt_ctf_field_get(new_field);
 	return new_field;
 }
 
@@ -508,7 +508,7 @@ int bt_ctf_field_unsigned_integer_set_value(struct bt_ctf_field *field,
 	}
 
 	size = integer_type->declaration.len;
-	max_value = ((uint64_t)1 << size) - 1;
+	max_value = size == 64 ? UINT64_MAX : ((uint64_t)1 << size) - 1;
 	if (value > max_value) {
 		goto end;
 	}
@@ -980,13 +980,37 @@ int bt_ctf_field_variant_serialize(struct bt_ctf_field *field,
 int bt_ctf_field_array_serialize(struct bt_ctf_field *field,
 		struct ctf_stream_pos *pos)
 {
-	return -1;
+	int ret = 0;
+	struct bt_ctf_field_array *array = container_of(
+		field, struct bt_ctf_field_array, parent);
+
+	for (size_t i = 0; i < array->elements->len; i++) {
+		ret = bt_ctf_field_serialize(
+			g_ptr_array_index(array->elements, i), pos);
+		if (ret) {
+			goto end;
+		}
+	}
+end:
+	return ret;
 }
 
 int bt_ctf_field_sequence_serialize(struct bt_ctf_field *field,
 		struct ctf_stream_pos *pos)
 {
-	return -1;
+	int ret = 0;
+	struct bt_ctf_field_sequence *sequence = container_of(
+		field, struct bt_ctf_field_sequence, parent);
+
+	for (size_t i = 0; i < sequence->elements->len; i++) {
+		ret = bt_ctf_field_serialize(
+			g_ptr_array_index(sequence->elements, i), pos);
+		if (ret) {
+			goto end;
+		}
+	}
+end:
+	return ret;	
 }
 
 int bt_ctf_field_string_serialize(struct bt_ctf_field *field,

@@ -209,6 +209,11 @@ end:
 	return ret;
 }
 
+uint32_t bt_ctf_event_class_get_id(struct bt_ctf_event_class *event_class)
+{
+	return event_class->id;
+}
+
 int bt_ctf_event_class_set_stream_id(struct bt_ctf_event_class *event_class,
 		uint32_t id)
 {
@@ -313,4 +318,9 @@ int bt_ctf_event_set_timestamp(struct bt_ctf_event *event,
 	event->timestamp = timestamp;
 end:
 	return ret;
+}
+
+uint64_t bt_ctf_event_get_timestamp(struct bt_ctf_event *event)
+{
+	return event->timestamp;
 }

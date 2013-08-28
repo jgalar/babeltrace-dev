@@ -66,6 +66,9 @@ int bt_ctf_event_class_set_id(struct bt_ctf_event_class *event_class,
 		uint32_t id);
 
 BT_HIDDEN
+uint32_t bt_ctf_event_class_get_id(struct bt_ctf_event_class *event_class);
+
+BT_HIDDEN
 int bt_ctf_event_class_set_stream_id(struct bt_ctf_event_class *event_class,
 		uint32_t id);
 
@@ -82,5 +85,8 @@ int bt_ctf_event_serialize(struct bt_ctf_event *event,
 
 BT_HIDDEN
 int bt_ctf_event_set_timestamp(struct bt_ctf_event *event, uint64_t timestamp);
+
+BT_HIDDEN
+uint64_t bt_ctf_event_get_timestamp(struct bt_ctf_event *event);
 
 #endif /* _BABELTRACE_CTF_WRITER_EVENT_INTERNAL_H */
