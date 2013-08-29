@@ -31,6 +31,8 @@
 #include <babeltrace/ctf-writer/event-types-internal.h>
 #include <babeltrace/compiler.h>
 
+#define PACKET_LEN	(getpagesize() * 8 * CHAR_BIT)
+
 static struct bt_ctf_field *bt_ctf_field_integer_create(
 		struct bt_ctf_field_type *);
 static struct bt_ctf_field *bt_ctf_field_enumeration_create(
@@ -81,6 +83,8 @@ static int bt_ctf_field_sequence_serialize(struct bt_ctf_field *,
 		struct ctf_stream_pos *);
 static int bt_ctf_field_string_serialize(struct bt_ctf_field *,
 		struct ctf_stream_pos *);
+
+static int increase_packet_size(struct ctf_stream_pos *pos);
 
 static struct bt_ctf_field *(*field_create_funcs[])(
 	struct bt_ctf_field_type *) =
@@ -935,8 +939,20 @@ int bt_ctf_field_integer_serialize(struct bt_ctf_field *field,
 	int ret = 0;
 	struct bt_ctf_field_integer *integer = container_of(field,
 		struct bt_ctf_field_integer, parent);
-
+retry:
 	ret = ctf_integer_write(&pos->parent, &integer->definition.p);
+	if (ret == -EFAULT) {
+		/*
+		 * The field is too large to fit in the current packet's
+		 * remaining space. Bump the packet size and retry.
+		 */
+		ret = increase_packet_size(pos);
+		if (ret) {
+			goto end;
+		}
+		goto retry;
+	}
+end:
 	return ret;
 }
 
@@ -1010,11 +1026,36 @@ int bt_ctf_field_sequence_serialize(struct bt_ctf_field *field,
 		}
 	}
 end:
-	return ret;	
+	return ret;
 }
 
 int bt_ctf_field_string_serialize(struct bt_ctf_field *field,
 		struct ctf_stream_pos *pos)
 {
 	return -1;
+}
+
+int increase_packet_size(struct ctf_stream_pos *pos)
+{
+	int ret;
+
+	ret = munmap_align(pos->base_mma);
+	if (ret) {
+		goto end;
+	}
+
+	pos->packet_size += PACKET_LEN;
+	ret = posix_fallocate(pos->fd, pos->mmap_offset,
+		pos->packet_size / CHAR_BIT);
+	if (ret) {
+		goto end;
+	}
+
+	pos->base_mma = mmap_align(pos->packet_size / CHAR_BIT, pos->prot,
+		pos->flags, pos->fd, pos->mmap_offset);
+	if (pos->base_mma == MAP_FAILED) {
+		ret = -1;
+	}
+end:
+	return ret;
 }

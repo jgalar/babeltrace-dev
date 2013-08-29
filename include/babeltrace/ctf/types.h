@@ -145,7 +145,7 @@ void ctf_move_pos(struct ctf_stream_pos *pos, uint64_t bit_offset)
 		 * packet.
 		 */
 		if ((pos->prot == PROT_WRITE)
-		    	&& (unlikely(pos->offset + bit_offset >= pos->packet_size))) {
+		    	&& (unlikely(pos->offset + bit_offset > pos->packet_size))) {
 			printf_debug("ctf_packet_seek (before call): %" PRId64 "\n",
 				     pos->offset);
 			ctf_packet_seek(&pos->parent, 0, SEEK_CUR);

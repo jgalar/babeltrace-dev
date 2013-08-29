@@ -36,6 +36,7 @@
 #include <babeltrace/ctf-writer/stream-internal.h>
 #include <babeltrace/ctf-writer/functor-internal.h>
 #include <babeltrace/compiler.h>
+#include <babeltrace/align.h>
 
 #define CONTENT_SIZE_PACKET_OFFSET 320
 #define PACKET_SIZE_PACKET_OFFSET 384
@@ -373,7 +374,7 @@ end:
 int bt_ctf_stream_flush(struct bt_ctf_stream *stream)
 {
 	int ret = 0;
-	uint64_t timestamp_begin, timestamp_end, content_size;
+	uint64_t timestamp_begin, timestamp_end, content_size, packet_size;
 	struct bt_ctf_stream_class *stream_class = stream->stream_class;
 	struct bt_ctf_field *integer;
 
@@ -475,6 +476,7 @@ int bt_ctf_stream_flush(struct bt_ctf_stream *stream)
 	}
 	bt_ctf_field_put(integer);
 
+	packet_size = ALIGN(content_size, getpagesize());
 	integer = bt_ctf_field_structure_get_field(
 		stream_class->packet_context, "packet_size");
 	bt_ctf_field_unsigned_integer_set_value(integer, stream->pos.packet_size);
@@ -483,13 +485,13 @@ int bt_ctf_stream_flush(struct bt_ctf_stream *stream)
 	if (ret) {
 		goto end;
 	}
-	bt_ctf_field_put(integer);
 
 	stream->pos.offset = content_size;
 	g_ptr_array_set_size(stream->events, 0);
 	stream->flushed_packet_count++;
 	stream->events_discarded = 0;
 end:
+	bt_ctf_field_put(integer);
 	return ret;
 }
 

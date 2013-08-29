@@ -136,6 +136,51 @@ result:
 	close(metadata_fd);
 }
 
+void packet_resize_test(struct bt_ctf_stream_class *stream_class,
+		struct bt_ctf_stream *stream)
+{
+	/*
+	 * Push enough events to force the underlying packet to be resized.
+	 * Also tests that a new event can be declared after a stream has been
+	 * instanciated and used/flushed.
+	 */
+	int ret = 0;
+	struct bt_ctf_event_class *event_class = bt_ctf_event_class_create(
+		"Spammy_Event");
+	struct bt_ctf_field_type *integer_type =
+		bt_ctf_field_type_integer_create(17);
+
+	ret = bt_ctf_event_class_add_field(event_class, integer_type,
+		"field_1");
+	ret = bt_ctf_stream_class_add_event_class(stream_class, event_class);
+	ok(ret == 0, "Add a new event class to a stream class after writing an event");
+	if (ret) {
+		goto end;
+	}
+
+	for (unsigned int i = 0; i < 100000; i++) {
+		struct bt_ctf_event *event = bt_ctf_event_create(event_class);
+		struct bt_ctf_field *integer =
+			bt_ctf_field_create(integer_type);
+
+		ret |= bt_ctf_field_unsigned_integer_set_value(integer, i);
+		ret |= bt_ctf_event_set_payload(event, "field_1",
+			integer);
+		bt_ctf_field_put(integer);
+		ret |= bt_ctf_stream_push_event(stream, event);
+		bt_ctf_event_put(event);
+
+		if (ret) {
+			break;
+		}
+	}
+end:
+	ok(ret == 0, "Push 100 000 events to a stream");
+	ok(bt_ctf_stream_flush(stream) == 0, "Flush a stream that forces a packet resize");
+	bt_ctf_field_type_put(integer_type);
+	bt_ctf_event_class_put(event_class);
+}
+
 int main(int argc, char **argv)
 {
 	char trace_path[] = "/tmp/ctfwriter_XXXXXX";
@@ -342,8 +387,6 @@ int main(int argc, char **argv)
 	struct bt_ctf_event *event =
 		bt_ctf_event_create(event_class);
 	ok(event, "Instanciate an event class");
-	struct bt_ctf_event *simple_event =
-		bt_ctf_event_create(simple_event_class);
 
 	struct bt_ctf_field *int_16 = bt_ctf_field_create(int_16_type);
 	ok(int_16, "Instanciate a signed 16-bit integer");
@@ -392,9 +435,22 @@ int main(int argc, char **argv)
 		"Reject event payloads of incorrect type");
 	bt_ctf_event_set_payload(event, "int_16", int_16);
 
+	/* Push one simple event in the stream and flush */
+	struct bt_ctf_event *simple_event =
+		bt_ctf_event_create(simple_event_class);
 	struct bt_ctf_field *integer_field = bt_ctf_field_create(uint_12_type);
 	bt_ctf_field_unsigned_integer_set_value(integer_field, 42);
 	bt_ctf_event_set_payload(simple_event, "integer_field", integer_field);
+	bt_ctf_field_put(integer_field);
+	ok(bt_ctf_stream_push_event(stream1, simple_event) == 0,
+		"Push simple event to trace stream");
+	bt_ctf_event_put(simple_event);
+	ok(bt_ctf_stream_flush(stream1) == 0,
+		"Flush trace stream with one event");
+	simple_event = NULL;
+	integer_field = NULL;
+
+	packet_resize_test(stream_class, stream1);
 
 	char *metadata_string = bt_ctf_writer_get_metadata_string(writer);
 	ok(metadata_string, "Get metadata string");
