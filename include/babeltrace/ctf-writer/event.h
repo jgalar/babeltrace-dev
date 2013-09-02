@@ -55,6 +55,9 @@ extern int bt_ctf_event_set_payload(struct bt_ctf_event *event,
 		const char *name,
 		struct bt_ctf_field *value);
 
+extern struct bt_ctf_field *bt_ctf_event_get_payload(struct bt_ctf_event *event,
+		const char *name);
+
 extern void bt_ctf_event_get(struct bt_ctf_event *event);
 
 extern void bt_ctf_event_put(struct bt_ctf_event *event);
