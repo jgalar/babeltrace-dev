@@ -43,6 +43,8 @@
 
 #define METADATA_LINE_SIZE 512
 
+static uint64_t current_time = 0;
+
 void validate_metadata(char *parser_path, char *metadata_path)
 {
 	int ret = 0;
@@ -136,150 +138,180 @@ result:
 	close(metadata_fd);
 }
 
-void packet_resize_test(struct bt_ctf_stream_class *stream_class,
-		struct bt_ctf_stream *stream)
+void push_simple_event(struct bt_ctf_stream_class *stream_class,
+		struct bt_ctf_stream *stream, struct bt_ctf_clock *clock)
 {
-	/*
-	 * Push enough events to force the underlying packet to be resized.
-	 * Also tests that a new event can be declared after a stream has been
-	 * instanciated and used/flushed.
-	 */
-	int ret = 0;
-	struct bt_ctf_event_class *event_class = bt_ctf_event_class_create(
-		"Spammy_Event");
-	struct bt_ctf_field_type *integer_type =
-		bt_ctf_field_type_integer_create(17);
-
-	ret = bt_ctf_event_class_add_field(event_class, integer_type,
-		"field_1");
-	ret = bt_ctf_stream_class_add_event_class(stream_class, event_class);
-	ok(ret == 0, "Add a new event class to a stream class after writing an event");
-	if (ret) {
-		goto end;
-	}
-
-	for (unsigned int i = 0; i < 100000; i++) {
-		struct bt_ctf_event *event = bt_ctf_event_create(event_class);
-		struct bt_ctf_field *integer =
-			bt_ctf_field_create(integer_type);
-
-		ret |= bt_ctf_field_unsigned_integer_set_value(integer, i);
-		ret |= bt_ctf_event_set_payload(event, "field_1",
-			integer);
-		bt_ctf_field_put(integer);
-		ret |= bt_ctf_stream_push_event(stream, event);
-		bt_ctf_event_put(event);
-
-		if (ret) {
-			break;
-		}
-	}
-end:
-	ok(ret == 0, "Push 100 000 events to a stream");
-	ok(bt_ctf_stream_flush(stream) == 0, "Flush a stream that forces a packet resize");
-	bt_ctf_field_type_put(integer_type);
-	bt_ctf_event_class_put(event_class);
-}
-
-int main(int argc, char **argv)
-{
-	char trace_path[] = "/tmp/ctfwriter_XXXXXX";
-	char metadata_path[sizeof(trace_path) + 9];
-
-	if (argc < 2) {
-		printf("Usage: tests-ctf-writer path_to_ctf_parser_test\n");
-		exit(-1);
-	}
-
-	plan_no_plan();
-
-	if (!mkdtemp(trace_path)) {
-		perror("# perror");
-	}
-	strcpy(metadata_path, trace_path);
-	strcat(metadata_path + sizeof(trace_path) - 1, "/metadata");
-
-	struct bt_ctf_writer *writer =
-		bt_ctf_writer_create(trace_path);
-	ok(writer, "bt_ctf_create succeeds in creating trace with path");
-
-	/* Add environment context to the trace */
-	char hostname[HOST_NAME_MAX];
-	gethostname(hostname, HOST_NAME_MAX);
-	ok(bt_ctf_writer_add_environment_field(writer, "host", hostname) == 0,
-		"Add host (%s) environment field to writer instance",
-		hostname);
-	ok(bt_ctf_writer_add_environment_field(NULL, "test_field",
-		"test_value"),
-		"bt_ctf_writer_add_environment_field error with NULL writer");
-	ok(bt_ctf_writer_add_environment_field(writer, NULL,
-		"test_value"),
-		"bt_ctf_writer_add_environment_field error with NULL field name");
-	ok(bt_ctf_writer_add_environment_field(writer, "test_field",
-		NULL),
-		"bt_ctf_writer_add_environment_field error with NULL field value");
-
-	struct utsname *name = malloc(sizeof(struct utsname));
-	if (uname(name)) {
-		perror("uname");
-		return -1;
-	}
-
-	ok(bt_ctf_writer_add_environment_field(writer, "sysname", name->sysname)
-		== 0, "Add sysname (%s) environment field to writer instance",
-		name->sysname);
-	ok(bt_ctf_writer_add_environment_field(writer, "nodename",
-		name->nodename) == 0,
-		"Add nodename (%s) environment field to writer instance",
-		name->nodename);
-	ok(bt_ctf_writer_add_environment_field(writer, "release", name->release)
-		== 0, "Add release (%s) environment field to writer instance",
-		name->release);
-	ok(bt_ctf_writer_add_environment_field(writer, "version", name->version)
-		== 0, "Add version (%s) environment field to writer instance",
-		name->version);
-	ok(bt_ctf_writer_add_environment_field(writer, "machine", name->machine)
-		== 0, "Add machine (%s) environment field to writer istance",
-		name->machine);
-	free(name);
-
-	/* Define a clock and add it to the trace */
-	const char *clock_name = "test_clock";
-	const char *clock_description = "This is a test clock";
-
-	ok(bt_ctf_clock_create("signed") == NULL, "Illegal clock name rejected");
-	struct bt_ctf_clock *clock = bt_ctf_clock_create(clock_name);
-	ok(clock, "Clock created sucessfully");
-	bt_ctf_clock_set_description(clock, clock_description);
-
-	const uint64_t frequency = 1000000000;
-	const uint64_t offset_s = 1351530929945824323;
-	const uint64_t offset = 1234567;
-	const uint64_t precision = 10;
-
-	ok(bt_ctf_clock_set_frequency(clock, frequency) == 0,
-		"Set clock frequency");
-	ok(bt_ctf_clock_set_offset_s(clock, offset_s) == 0,
-		"Set clock offset (seconds)");
-	ok(bt_ctf_clock_set_offset(clock, offset) == 0, "Set clock offset");
-	ok(bt_ctf_clock_set_precision(clock, precision) == 0,
-		"Set clock precision");
-	ok(bt_ctf_clock_set_is_absolute(clock, 0xFF) == 0,
-		"Set clock absolute property");
-
-	ok(bt_ctf_writer_add_clock(writer, clock) == 0,
-		"Add clock to writer instance");
-	ok(bt_ctf_writer_add_clock(writer, clock),
-		"Verify a clock can't be added twice to a writer instance");
-
-	/* Define a stream class and field types */
-	struct bt_ctf_stream_class *stream_class = bt_ctf_stream_class_create("test_stream");
-	ok(stream_class, "Create stream class");
-	ok(bt_ctf_stream_class_set_clock(stream_class, clock) == 0,
-		"Set a stream class' clock");
-
+	/* Create and add a simple event class */
+	struct bt_ctf_event_class *simple_event_class =
+		bt_ctf_event_class_create("Simple Event");
 	struct bt_ctf_field_type *uint_12_type =
 		bt_ctf_field_type_integer_create(12);
+	struct bt_ctf_event *simple_event;
+	struct bt_ctf_field *integer_field;
+
+	ok(uint_12_type, "Create an unsigned integer type");
+	bt_ctf_event_class_add_field(simple_event_class, uint_12_type,
+		"integer_field");
+	bt_ctf_stream_class_add_event_class(stream_class,
+		simple_event_class);
+
+	simple_event = bt_ctf_event_create(simple_event_class);
+
+	ok(simple_event,
+		"Instanciate an event containing a single integer field");
+
+	integer_field = bt_ctf_field_create(uint_12_type);
+	bt_ctf_field_unsigned_integer_set_value(integer_field, 42);
+	ok(bt_ctf_event_set_payload(simple_event, "integer_field",
+		integer_field) == 0,"Use bt_ctf_event_set_payload to set a manually allocated field");
+
+	ok(bt_ctf_clock_set_time(clock, current_time) == 0, "Set clock time");
+
+	ok(bt_ctf_stream_push_event(stream, simple_event) == 0,
+		"Push simple event to trace stream");
+
+	ok(bt_ctf_stream_flush(stream) == 0,
+		"Flush trace stream with one event");
+
+	bt_ctf_event_class_put(simple_event_class);
+	bt_ctf_event_put(simple_event);
+	bt_ctf_field_type_put(uint_12_type);
+	bt_ctf_field_put(integer_field);
+}
+
+void push_complex_event(struct bt_ctf_stream_class *stream_class,
+		struct bt_ctf_stream *stream, struct bt_ctf_clock *clock)
+{
+	struct bt_ctf_field_type *uint_35_type =
+		bt_ctf_field_type_integer_create(35);
+	struct bt_ctf_field_type *int_16_type =
+		bt_ctf_field_type_integer_create(16);
+	struct bt_ctf_field_type *string_type =
+		bt_ctf_field_type_string_create();
+	struct bt_ctf_field_type *sequence_type;
+	struct bt_ctf_field_type *inner_structure_type =
+		bt_ctf_field_type_structure_create();
+	struct bt_ctf_field_type *complex_structure_type =
+		bt_ctf_field_type_structure_create();
+	struct bt_ctf_event_class *event_class;
+	struct bt_ctf_event *event;
+	struct bt_ctf_field *uint_35_field, *int_16_field, *a_string_field,
+		*inner_structure_field, *complex_structure_field,
+		*a_sequence_field;
+
+	bt_ctf_field_type_set_alignment(int_16_type, 32);
+	bt_ctf_field_type_integer_set_signed(int_16_type, 1);
+	bt_ctf_field_type_integer_set_base(uint_35_type,
+		BT_CTF_INTEGER_BASE_HEXADECIMAL);
+
+	sequence_type = bt_ctf_field_type_sequence_create(int_16_type,
+		"seq_len");
+	bt_ctf_field_type_structure_add_field(inner_structure_type,
+		uint_35_type, "seq_len");
+	bt_ctf_field_type_structure_add_field(inner_structure_type,
+		sequence_type, "a_sequence");
+
+	bt_ctf_field_type_structure_add_field(complex_structure_type,
+		string_type, "a_string");
+	bt_ctf_field_type_structure_add_field(complex_structure_type,
+		inner_structure_type, "inner_structure");
+
+	ok(bt_ctf_event_class_create("clock") == NULL,
+		"Reject creation of an event class with an illegal name");
+	event_class = bt_ctf_event_class_create("Complex Test Event");
+	ok(event_class, "Create an event class");
+	ok(bt_ctf_event_class_add_field(event_class, uint_35_type, ""),
+		"Reject addition of a field with an empty name to an event");
+	ok(bt_ctf_event_class_add_field(event_class, NULL, "an_integer"),
+		"Reject addition of a field with a NULL type to an event");
+	ok(bt_ctf_event_class_add_field(event_class, uint_35_type,
+		"int"),
+		"Reject addition of a type with an illegal name to an event");
+	ok(bt_ctf_event_class_add_field(event_class, uint_35_type,
+		"uint_35") == 0,
+		"Add field of type unsigned integer to an event");
+	ok(bt_ctf_event_class_add_field(event_class, int_16_type,
+		"int_16") == 0, "Add field of type signed integer to an event");
+	ok(bt_ctf_event_class_add_field(event_class, complex_structure_type,
+		"complex_structure") == 0,
+		"Add composite structure to an event");
+
+	/* Add event class to the stream class */
+	ok(bt_ctf_stream_class_add_event_class(stream_class, NULL),
+		"Reject addition of NULL event class to a stream class");
+	ok(bt_ctf_stream_class_add_event_class(stream_class,
+		event_class) == 0, "Add an event class to stream class");
+
+	event = bt_ctf_event_create(event_class);
+	ok(event, "Instanciate a complex event");
+
+	uint_35_field = bt_ctf_event_get_payload(event, "uint_35");
+	ok(uint_35_field, "Use bt_ctf_event_get_payload to get a field instance ");
+	bt_ctf_field_unsigned_integer_set_value(uint_35_field, 0x0DDF00D);
+	bt_ctf_field_put(uint_35_field);
+
+	int_16_field = bt_ctf_event_get_payload(event, "int_16");
+	bt_ctf_field_signed_integer_set_value(int_16_field, -12345);
+	bt_ctf_field_put(int_16_field);
+
+	complex_structure_field = bt_ctf_event_get_payload(event,
+		"complex_structure");
+	inner_structure_field = bt_ctf_field_structure_get_field(
+		complex_structure_field, "inner_structure");
+	a_string_field = bt_ctf_field_structure_get_field(
+		complex_structure_field, "a_string");
+	uint_35_field = bt_ctf_field_structure_get_field(
+		inner_structure_field, "seq_len");
+	a_sequence_field = bt_ctf_field_structure_get_field(
+		inner_structure_field, "a_sequence");
+
+	bt_ctf_field_string_set_value(a_string_field,
+		"Test string");
+	bt_ctf_field_unsigned_integer_set_value(uint_35_field, 10);
+	ok(bt_ctf_field_sequence_set_length(a_sequence_field,
+		uint_35_field) == 0, "Set a sequence field's length");
+	for (int i = 0; i < 10; i++) {
+		int_16_field = bt_ctf_field_sequence_get_field(
+			a_sequence_field, i);
+		bt_ctf_field_signed_integer_set_value(int_16_field, 4 - i);
+		bt_ctf_field_put(int_16_field);
+	}
+
+	bt_ctf_clock_set_time(clock, ++current_time);
+	ok(bt_ctf_stream_push_event(stream, event) == 0,
+		"Push a complex event to a stream");
+	ok(bt_ctf_stream_flush(stream) == 0,
+		"Flush a stream containing a complex event");
+
+	bt_ctf_field_put(uint_35_field);
+	bt_ctf_field_put(a_string_field);
+	bt_ctf_field_put(inner_structure_field);
+	bt_ctf_field_put(complex_structure_field);
+	bt_ctf_field_put(a_sequence_field);
+	bt_ctf_field_type_put(uint_35_type);
+	bt_ctf_field_type_put(int_16_type);
+	bt_ctf_field_type_put(string_type);
+	bt_ctf_field_type_put(sequence_type);
+	bt_ctf_field_type_put(inner_structure_type);
+	bt_ctf_field_type_put(complex_structure_type);
+	bt_ctf_event_class_put(event_class);
+	bt_ctf_event_put(event);
+}
+
+void type_field_tests()
+{
+	struct bt_ctf_field *uint_12;
+	struct bt_ctf_field *int_16;
+	struct bt_ctf_field *string;
+	struct bt_ctf_field_type *composite_structure_type;
+	struct bt_ctf_field_type *structure_seq_type;
+	struct bt_ctf_field_type *string_type;
+	struct bt_ctf_field_type *sequence_type;
+	struct bt_ctf_field_type *uint_8_type;
+	struct bt_ctf_field_type *int_16_type;
+	struct bt_ctf_field_type *uint_12_type =
+		bt_ctf_field_type_integer_create(12);
+
 	ok(uint_12_type, "Create an unsigned integer type");
 	ok(bt_ctf_field_type_integer_set_base(uint_12_type,
 		BT_CTF_INTEGER_BASE_BINARY) == 0,
@@ -303,17 +335,14 @@ int main(int argc, char **argv)
 	ok(bt_ctf_field_type_integer_set_signed(uint_12_type, 0) == 0,
 		"Set integer type signedness to unsigned");
 
-	struct bt_ctf_field_type *int_16_type =
-		bt_ctf_field_type_integer_create(16);
+	int_16_type = bt_ctf_field_type_integer_create(16);
 	bt_ctf_field_type_integer_set_signed(int_16_type, 1);
-	struct bt_ctf_field_type *uint_8_type =
-		bt_ctf_field_type_integer_create(8);
-	struct bt_ctf_field_type *sequence_type =
+	uint_8_type = bt_ctf_field_type_integer_create(8);
+	sequence_type =
 		bt_ctf_field_type_sequence_create(int_16_type, "seq_len");
 	ok(sequence_type, "Create a sequence of int16_t type");
 
-	struct bt_ctf_field_type *string_type =
-		bt_ctf_field_type_string_create();
+	string_type = bt_ctf_field_type_string_create();
 	ok(string_type, "Create a string type");
 	ok(bt_ctf_field_type_string_set_encoding(string_type,
 		CTF_STRING_NONE),
@@ -324,8 +353,8 @@ int main(int argc, char **argv)
 	ok(bt_ctf_field_type_string_set_encoding(string_type,
 		CTF_STRING_ASCII) == 0,
 		"Set string encoding to ASCII");
-	struct bt_ctf_field_type *structure_seq_type =
-		bt_ctf_field_type_structure_create();
+
+	structure_seq_type = bt_ctf_field_type_structure_create();
 	ok(structure_seq_type, "Create a structure type");
 	ok(bt_ctf_field_type_structure_add_field(structure_seq_type,
 		uint_8_type, "seq_len") == 0,
@@ -333,8 +362,7 @@ int main(int argc, char **argv)
 	ok(bt_ctf_field_type_structure_add_field(structure_seq_type,
 		sequence_type, "a_sequence") == 0,
 		"Add a sequence type to a structure");
-	struct bt_ctf_field_type *composite_structure_type =
-		bt_ctf_field_type_structure_create();
+	composite_structure_type = bt_ctf_field_type_structure_create();
 	ok(bt_ctf_field_type_structure_add_field(composite_structure_type,
 		string_type, "a_string") == 0,
 		"Add a string type to a structure");
@@ -342,55 +370,9 @@ int main(int argc, char **argv)
 		structure_seq_type, "inner_structure") == 0,
 		"Add a structure type to a structure");
 
-	ok(bt_ctf_event_class_create("clock") == NULL,
-		"Reject creation of an event class with an illegal name");
-	struct bt_ctf_event_class *event_class =
-		bt_ctf_event_class_create("A Test Event");
-	ok(event_class, "Create an event class");
-	ok(bt_ctf_event_class_add_field(event_class, uint_12_type, ""),
-		"Reject addition of a field with an empty name to an event");
-	ok(bt_ctf_event_class_add_field(event_class, NULL, "an_integer"),
-		"Reject addition of a field with a NULL type to an event");
-	ok(bt_ctf_event_class_add_field(event_class, uint_12_type,
-		"int"),
-		"Reject addition of a type with an illegal name to an event");
-	ok(bt_ctf_event_class_add_field(event_class, uint_12_type,
-		"uint_12") == 0,
-		"Add field of type unsigned integer to an event");
-	ok(bt_ctf_event_class_add_field(event_class, int_16_type,
-		"int_16") == 0, "Add field of type signed integer to an event");
-	ok(bt_ctf_event_class_add_field(event_class, composite_structure_type,
-		"complex_structure") == 0,
-		"Add composite structure to an event");
-
-	/* Add event class to the stream class */
-	ok(bt_ctf_stream_class_add_event_class(stream_class, NULL),
-		"Reject addition of NULL event class to a stream class");
-	ok(bt_ctf_stream_class_add_event_class(stream_class,
-		event_class) == 0, "Add an event class to stream class");
-
-	/* Create and add a simple event class */
-	struct bt_ctf_event_class *simple_event_class =
-		bt_ctf_event_class_create("Simple Event");
-	bt_ctf_event_class_add_field(simple_event_class, uint_12_type,
-		"integer_field");
-	bt_ctf_stream_class_add_event_class(stream_class, simple_event_class);
-
-	/* Instanciate a stream and an event */
-	struct bt_ctf_stream *stream1 = bt_ctf_writer_create_stream(writer,
-		stream_class);
-	ok(stream1, "Instanciate a stream class from writer");
-	/* Should fail after instanciating a stream (locked)*/
-	ok(bt_ctf_stream_class_set_clock(stream_class, clock),
-		"Changes to a stream class that was already instanciated fail");
-
-	struct bt_ctf_event *event =
-		bt_ctf_event_create(event_class);
-	ok(event, "Instanciate an event class");
-
-	struct bt_ctf_field *int_16 = bt_ctf_field_create(int_16_type);
+	int_16 = bt_ctf_field_create(int_16_type);
 	ok(int_16, "Instanciate a signed 16-bit integer");
-	struct bt_ctf_field *uint_12 = bt_ctf_field_create(uint_12_type);
+	uint_12 = bt_ctf_field_create(uint_12_type);
 	ok(uint_12, "Instanciate an unsigned 12-bit integer");
 
 	/* Can't modify types after instanciating them */
@@ -406,7 +388,7 @@ int main(int argc, char **argv)
 	ok(bt_ctf_field_unsigned_integer_set_value(int_16, 42),
 		"Check bt_ctf_field_unsigned_integer_set_value is not allowed on a signed integer");
 
-	/* Check the overflow is properly tested for */
+	/* Check overflows are properly tested for */
 	ok(bt_ctf_field_signed_integer_set_value(int_16, -32768) == 0,
 		"Check -32768 is allowed for a signed 16-bit integer");
 	ok(bt_ctf_field_signed_integer_set_value(int_16, 32767) == 0,
@@ -424,62 +406,207 @@ int main(int argc, char **argv)
 		"Check 4096 is not allowed for a unsigned 12-bit integer");
 	ok(bt_ctf_field_unsigned_integer_set_value(uint_12, 0) == 0,
 		"Check 0 is allowed for an unsigned 12-bit integer");
-	bt_ctf_field_unsigned_integer_set_value(uint_12, 1295);
 
-	/* Set event payload */
-	ok(bt_ctf_event_set_payload(event, "uint_12", uint_12) == 0,
-		"Set an event field payload");
-	ok(bt_ctf_event_set_payload(event, "uint_12", uint_12) == 0,
-		"Change an event's existing payload");
-	ok(bt_ctf_event_set_payload(event, "int_16", uint_12),
-		"Reject event payloads of incorrect type");
-	bt_ctf_event_set_payload(event, "int_16", int_16);
+	string = bt_ctf_field_create(string_type);
+	ok(string, "Instanciate a string field");
+	ok(bt_ctf_field_string_set_value(string, "A value") == 0,
+		"Set a string's value");
 
-	/* Push one simple event in the stream and flush */
-	struct bt_ctf_event *simple_event =
-		bt_ctf_event_create(simple_event_class);
-	struct bt_ctf_field *integer_field = bt_ctf_field_create(uint_12_type);
-	bt_ctf_field_unsigned_integer_set_value(integer_field, 42);
-	bt_ctf_event_set_payload(simple_event, "integer_field", integer_field);
-	bt_ctf_field_put(integer_field);
-	ok(bt_ctf_stream_push_event(stream1, simple_event) == 0,
-		"Push simple event to trace stream");
-	bt_ctf_event_put(simple_event);
-	ok(bt_ctf_stream_flush(stream1) == 0,
-		"Flush trace stream with one event");
-	simple_event = NULL;
-	integer_field = NULL;
+	bt_ctf_field_put(string);
+	bt_ctf_field_put(uint_12);
+	bt_ctf_field_put(int_16);
+	bt_ctf_field_type_put(composite_structure_type);
+	bt_ctf_field_type_put(structure_seq_type);
+	bt_ctf_field_type_put(string_type);
+	bt_ctf_field_type_put(sequence_type);
+	bt_ctf_field_type_put(uint_8_type);
+	bt_ctf_field_type_put(int_16_type);
+	bt_ctf_field_type_put(uint_12_type);
+}
 
-	packet_resize_test(stream_class, stream1);
+void packet_resize_test(struct bt_ctf_stream_class *stream_class,
+		struct bt_ctf_stream *stream, struct bt_ctf_clock *clock)
+{
+	/*
+	 * Push enough events to force the underlying packet to be resized.
+	 * Also tests that a new event can be declared after a stream has been
+	 * instanciated and used/flushed.
+	 */
+	int ret = 0;
+	struct bt_ctf_event_class *event_class = bt_ctf_event_class_create(
+		"Spammy_Event");
+	struct bt_ctf_field_type *integer_type =
+		bt_ctf_field_type_integer_create(17);
+	struct bt_ctf_field_type *string_type =
+		bt_ctf_field_type_string_create();
 
-	char *metadata_string = bt_ctf_writer_get_metadata_string(writer);
+	ret |= bt_ctf_event_class_add_field(event_class, integer_type,
+		"field_1");
+	ret |= bt_ctf_event_class_add_field(event_class, string_type,
+		"a_string");
+	ret |= bt_ctf_stream_class_add_event_class(stream_class, event_class);
+	ok(ret == 0, "Add a new event class to a stream class after writing an event");
+	if (ret) {
+		goto end;
+	}
+
+	for (unsigned int i = 0; i < 100000; i++) {
+		struct bt_ctf_event *event = bt_ctf_event_create(event_class);
+		struct bt_ctf_field *integer =
+			bt_ctf_field_create(integer_type);
+		struct bt_ctf_field *string =
+			bt_ctf_field_create(string_type);
+
+		ret |= bt_ctf_clock_set_time(clock, ++current_time);
+		ret |= bt_ctf_field_unsigned_integer_set_value(integer, i);
+		ret |= bt_ctf_event_set_payload(event, "field_1",
+			integer);
+		bt_ctf_field_put(integer);
+		ret |= bt_ctf_field_string_set_value(string, "This is a test");
+		ret |= bt_ctf_event_set_payload(event, "a_string",
+			string);
+		bt_ctf_field_put(string);
+		ret |= bt_ctf_stream_push_event(stream, event);
+		bt_ctf_event_put(event);
+
+		if (ret) {
+			break;
+		}
+	}
+end:
+	ok(ret == 0, "Push 100 000 events to a stream");
+	ok(bt_ctf_stream_flush(stream) == 0, "Flush a stream that forces a packet resize");
+	bt_ctf_field_type_put(integer_type);
+	bt_ctf_field_type_put(string_type);
+	bt_ctf_event_class_put(event_class);
+}
+
+int main(int argc, char **argv)
+{
+	char trace_path[] = "/tmp/ctfwriter_XXXXXX";
+	char metadata_path[sizeof(trace_path) + 9];
+	const char *clock_name = "test_clock";
+	const char *clock_description = "This is a test clock";
+	const uint64_t frequency = 1000000000;
+	const uint64_t offset_s = 1351530929945824323;
+	const uint64_t offset = 1234567;
+	const uint64_t precision = 10;
+	char *metadata_string;
+	struct bt_ctf_writer *writer;
+	struct utsname name;
+	char hostname[HOST_NAME_MAX];
+	struct bt_ctf_clock *clock;
+	struct bt_ctf_stream_class *stream_class;
+	struct bt_ctf_stream *stream1;
+
+	if (argc < 2) {
+		printf("Usage: tests-ctf-writer path_to_ctf_parser_test\n");
+		exit(-1);
+	}
+
+	plan_no_plan();
+
+	if (!mkdtemp(trace_path)) {
+		perror("# perror");
+	}
+
+	strcpy(metadata_path, trace_path);
+	strcat(metadata_path + sizeof(trace_path) - 1, "/metadata");
+
+	writer = bt_ctf_writer_create(trace_path);
+	ok(writer, "bt_ctf_create succeeds in creating trace with path");
+
+	/* Add environment context to the trace */
+	gethostname(hostname, HOST_NAME_MAX);
+	ok(bt_ctf_writer_add_environment_field(writer, "host", hostname) == 0,
+		"Add host (%s) environment field to writer instance",
+		hostname);
+	ok(bt_ctf_writer_add_environment_field(NULL, "test_field",
+		"test_value"),
+		"bt_ctf_writer_add_environment_field error with NULL writer");
+	ok(bt_ctf_writer_add_environment_field(writer, NULL,
+		"test_value"),
+		"bt_ctf_writer_add_environment_field error with NULL field name");
+	ok(bt_ctf_writer_add_environment_field(writer, "test_field",
+		NULL),
+		"bt_ctf_writer_add_environment_field error with NULL field value");
+
+	if (uname(&name)) {
+		perror("uname");
+		return -1;
+	}
+
+	ok(bt_ctf_writer_add_environment_field(writer, "sysname", name.sysname)
+		== 0, "Add sysname (%s) environment field to writer instance",
+		name.sysname);
+	ok(bt_ctf_writer_add_environment_field(writer, "nodename",
+		name.nodename) == 0,
+		"Add nodename (%s) environment field to writer instance",
+		name.nodename);
+	ok(bt_ctf_writer_add_environment_field(writer, "release", name.release)
+		== 0, "Add release (%s) environment field to writer instance",
+		name.release);
+	ok(bt_ctf_writer_add_environment_field(writer, "version", name.version)
+		== 0, "Add version (%s) environment field to writer instance",
+		name.version);
+	ok(bt_ctf_writer_add_environment_field(writer, "machine", name.machine)
+		== 0, "Add machine (%s) environment field to writer istance",
+		name.machine);
+
+	/* Define a clock and add it to the trace */
+	ok(bt_ctf_clock_create("signed") == NULL, "Illegal clock name rejected");
+	ok(bt_ctf_clock_create(NULL) == NULL, "NULL clock name rejected");
+	clock = bt_ctf_clock_create(clock_name);
+	ok(clock, "Clock created sucessfully");
+	bt_ctf_clock_set_description(clock, clock_description);
+
+	ok(bt_ctf_clock_set_frequency(clock, frequency) == 0,
+		"Set clock frequency");
+	ok(bt_ctf_clock_set_offset_s(clock, offset_s) == 0,
+		"Set clock offset (seconds)");
+	ok(bt_ctf_clock_set_offset(clock, offset) == 0, "Set clock offset");
+	ok(bt_ctf_clock_set_precision(clock, precision) == 0,
+		"Set clock precision");
+	ok(bt_ctf_clock_set_is_absolute(clock, 0xFF) == 0,
+		"Set clock absolute property");
+
+	ok(bt_ctf_writer_add_clock(writer, clock) == 0,
+		"Add clock to writer instance");
+	ok(bt_ctf_writer_add_clock(writer, clock),
+		"Verify a clock can't be added twice to a writer instance");
+
+	/* Define a stream class */
+	stream_class = bt_ctf_stream_class_create("test_stream");
+	ok(stream_class, "Create stream class");
+	ok(bt_ctf_stream_class_set_clock(stream_class, clock) == 0,
+		"Set a stream class' clock");
+
+	/* Test the event fields and event types APIs */
+	type_field_tests();
+
+	/* Instanciate a stream and push events */
+	stream1 = bt_ctf_writer_create_stream(writer, stream_class);
+	ok(stream1, "Instanciate a stream class from writer");
+
+	/* Should fail after instanciating a stream (locked)*/
+	ok(bt_ctf_stream_class_set_clock(stream_class, clock),
+		"Changes to a stream class that was already instanciated fail");
+
+	push_simple_event(stream_class, stream1, clock);
+
+	packet_resize_test(stream_class, stream1, clock);
+
+	push_complex_event(stream_class, stream1, clock);
+
+	metadata_string = bt_ctf_writer_get_metadata_string(writer);
 	ok(metadata_string, "Get metadata string");
 
 	bt_ctf_writer_flush_metadata(writer);
 	validate_metadata(argv[1], metadata_path);
 
-	ok(bt_ctf_stream_push_event(stream1, simple_event) == 0,
-		"Push simple event to trace stream");
-	ok(bt_ctf_stream_flush(stream1) == 0,
-		"Flush trace stream");
-
-	bt_ctf_field_put(uint_12);
 	bt_ctf_clock_put(clock);
-	bt_ctf_field_put(int_16);
 	bt_ctf_stream_class_put(stream_class);
-	bt_ctf_event_class_put(event_class);
-	bt_ctf_event_class_put(simple_event_class);
-	bt_ctf_field_type_put(uint_12_type);
-	bt_ctf_field_type_put(uint_8_type);
-	bt_ctf_field_type_put(sequence_type);
-	bt_ctf_field_type_put(string_type);
-	bt_ctf_field_type_put(structure_seq_type);
-	bt_ctf_field_type_put(composite_structure_type);
-	bt_ctf_field_type_put(int_16_type);
-	bt_ctf_event_put(event);
-	bt_ctf_event_put(simple_event);
 	bt_ctf_writer_put(writer);
-	bt_ctf_field_put(integer_field);
 	bt_ctf_stream_put(stream1);
 	free(metadata_string);
 
