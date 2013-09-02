@@ -200,6 +200,7 @@ static int add_structure_field(GPtrArray *fields,
 		(gpointer) (unsigned long) name_quark,
 		(gpointer) (unsigned long) fields->len);
 	g_ptr_array_add(fields, field);
+	bt_ctf_field_type_lock(field_type);
 end:
 	return ret;
 }
@@ -490,6 +491,11 @@ int bt_ctf_field_type_structure_add_field(struct bt_ctf_field_type *type,
 		ret = -1;
 		goto end;
 	}
+
+	if (type->declaration->alignment < field_type->declaration->alignment) {
+		type->declaration->alignment =
+			field_type->declaration->alignment;
+	}
 end:
 	return ret;
 }
@@ -583,6 +589,8 @@ struct bt_ctf_field_type *bt_ctf_field_type_array_create(
 	bt_ctf_field_type_get(element_type);
 	array->element_type = element_type;
 	array->length = length;
+	array->parent.declaration->alignment =
+		element_type->declaration->alignment;
 	return &array->parent;
 error:
 	return NULL;
@@ -609,6 +617,8 @@ struct bt_ctf_field_type *bt_ctf_field_type_sequence_create(
 	bt_ctf_field_type_get(element_type);
 	sequence->element_type = element_type;
 	sequence->length_field_name = g_string_new(length_field_name);
+	sequence->parent.declaration->alignment =
+		element_type->declaration->alignment;
 	return &sequence->parent;
 error:
 	return NULL;
@@ -755,7 +765,6 @@ struct bt_ctf_field_type *bt_ctf_field_type_structure_get_type(
 	struct bt_ctf_field_type *type = NULL;
 	struct structure_field *field;
 	GQuark name_quark = g_quark_try_string(name);
-	gpointer result;
 	size_t index;
 
 	if (!name_quark) {
@@ -763,12 +772,7 @@ struct bt_ctf_field_type *bt_ctf_field_type_structure_get_type(
 	}
 
 	if (!g_hash_table_lookup_extended(structure->field_name_to_index,
-		GUINT_TO_POINTER(name_quark), NULL, &result)) {
-		goto end;
-	}
-
-	index = GPOINTER_TO_UINT(result);
-	if (index > structure->fields->len) {
+		GUINT_TO_POINTER(name_quark), NULL, (gpointer *)&index)) {
 		goto end;
 	}
 
