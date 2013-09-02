@@ -712,7 +712,8 @@ void ctf_packet_seek(struct bt_stream_pos *stream_pos, size_t index, int whence)
 		switch (whence) {
 		case SEEK_CUR:
 			/* The writer will add padding */
-			pos->mmap_offset += WRITE_PACKET_LEN / CHAR_BIT;
+			pos->mmap_offset += ALIGN(pos->packet_size,
+				getpagesize() * CHAR_BIT) / CHAR_BIT;
 			break;
 		case SEEK_SET:
 			assert(index == 0);	/* only seek supported for now */
