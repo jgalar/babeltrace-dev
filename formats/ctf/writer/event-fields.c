@@ -517,7 +517,7 @@ int bt_ctf_field_unsigned_integer_set_value(struct bt_ctf_field *field,
 	if (value > max_value) {
 		goto end;
 	}
-	integer->definition.value._signed = value;
+	integer->definition.value._unsigned = value;
 	ret = 0;
 	integer->parent.payload_set = 1;
 end:
