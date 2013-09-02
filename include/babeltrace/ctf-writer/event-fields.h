@@ -72,16 +72,6 @@ extern struct bt_ctf_field *bt_ctf_field_variant_get_field(
 extern struct bt_ctf_field *bt_ctf_field_enumeration_get_container(
 		struct bt_ctf_field *enumeration);
 
-/*
- * Integer values may be set using this generic function regardless
- * of the integer's signedness. If the value may need the signed
- * or unsigned 64-bits full range, use the specialized
- * bt_ctf_field_unsigned_integer_set_value and
- * bt_ctf_field_signed_integer_set_value functions.
- */
-extern int bt_ctf_field_integer_set_value(struct bt_ctf_field *integer,
-		int64_t value);
-
 extern int bt_ctf_field_signed_integer_set_value(struct bt_ctf_field *integer,
 		int64_t value);
 
