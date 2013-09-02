@@ -979,10 +979,18 @@ int bt_ctf_field_structure_serialize(struct bt_ctf_field *field,
 	int ret = 0;
 	struct bt_ctf_field_structure *structure = container_of(
 		field, struct bt_ctf_field_structure, parent);
+	if (!ctf_pos_access_ok(pos,
+		offset_align(pos->offset,
+			field->type->declaration->alignment))) {
+		increase_packet_size(pos);
+	}
+
+	ctf_align_pos(pos, field->type->declaration->alignment);
 
 	for (size_t i = 0; i < structure->fields->len; i++) {
 		struct bt_ctf_field *field = g_ptr_array_index(
 			structure->fields, i);
+
 		ret = bt_ctf_field_serialize(field, pos);
 		if (ret) {
 			break;
