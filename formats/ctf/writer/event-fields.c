@@ -249,8 +249,11 @@ struct bt_ctf_field *bt_ctf_field_structure_get_field(
 	structure_type = container_of(field->type,
 		struct bt_ctf_field_type_structure, parent);
 	field_type = bt_ctf_field_type_structure_get_type(structure_type, name);
-	index = (size_t)g_hash_table_lookup(structure->field_name_to_index,
-		GUINT_TO_POINTER(field_quark));
+	if (!g_hash_table_lookup_extended(structure->field_name_to_index,
+		GUINT_TO_POINTER(field_quark), NULL, (gpointer *)&index)) {
+		goto end;
+	}
+
 	if (structure->fields->pdata[index]) {
 		new_field = structure->fields->pdata[index];
 		goto end;
@@ -290,15 +293,13 @@ int bt_ctf_field_structure_set_field(struct bt_ctf_field *field,
 		struct bt_ctf_field_type_structure, parent);
 	expected_field_type = bt_ctf_field_type_structure_get_type(
 		structure_type, name);
-	index = (size_t)g_hash_table_lookup(structure->field_name_to_index,
-		GUINT_TO_POINTER(field_quark));
-
-	/*
-	 * Make sure value is of the appropriate type. This is currently
-	 * compared pointer-wise, but we should have equality operators
-	 */
 	if (expected_field_type != value->type) {
 		ret = -1;
+		goto end;
+	}
+
+	if (!g_hash_table_lookup_extended(structure->field_name_to_index,
+		GUINT_TO_POINTER(field_quark), NULL, (gpointer *) &index)) {
 		goto end;
 	}
 
