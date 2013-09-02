@@ -960,12 +960,16 @@ end:
 int bt_ctf_field_enumeration_serialize(struct bt_ctf_field *field,
 		struct ctf_stream_pos *pos)
 {
-	return -1;
+	struct bt_ctf_field_enumeration *enumeration = container_of(
+		field, struct bt_ctf_field_enumeration, parent);
+
+	return bt_ctf_field_serialize(enumeration->payload, pos);
 }
 
 int bt_ctf_field_floating_point_serialize(struct bt_ctf_field *field,
 		struct ctf_stream_pos *pos)
 {
+	/* Unsupported */
 	return -1;
 }
 
@@ -991,7 +995,10 @@ int bt_ctf_field_structure_serialize(struct bt_ctf_field *field,
 int bt_ctf_field_variant_serialize(struct bt_ctf_field *field,
 		struct ctf_stream_pos *pos)
 {
-	return -1;
+	struct bt_ctf_field_variant *variant = container_of(
+		field, struct bt_ctf_field_variant, parent);
+
+	return bt_ctf_field_serialize(variant->payload, pos);
 }
 
 int bt_ctf_field_array_serialize(struct bt_ctf_field *field,
@@ -1033,7 +1040,29 @@ end:
 int bt_ctf_field_string_serialize(struct bt_ctf_field *field,
 		struct ctf_stream_pos *pos)
 {
-	return -1;
+	int ret = 0;
+	struct bt_ctf_field_string *string = container_of(field,
+		struct bt_ctf_field_string, parent);
+	struct bt_ctf_field_type *character_type =
+		get_field_type(FIELD_TYPE_ALIAS_UINT8_T);
+	struct bt_ctf_field *character = bt_ctf_field_create(character_type);
+
+	for (size_t i = 0; i < string->payload->len + 1; i++) {
+		ret = bt_ctf_field_unsigned_integer_set_value(character,
+			(uint64_t) string->payload->str[i]);
+		if (ret) {
+			goto end;
+		}
+
+		ret = bt_ctf_field_integer_serialize(character, pos);
+		if (ret) {
+			goto end;
+		}
+	}
+end:
+	bt_ctf_field_put(character);
+	bt_ctf_field_type_put(character_type);
+	return ret;
 }
 
 int increase_packet_size(struct ctf_stream_pos *pos)
