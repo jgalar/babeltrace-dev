@@ -73,6 +73,7 @@ int ctf_array_write(struct bt_stream_pos *ppos, struct bt_definition *definition
 	struct bt_declaration *elem = array_declaration->elem;
 	struct ctf_stream_pos *pos =
 		container_of(ppos, struct ctf_stream_pos, parent);
+	uint64_t move_size;
 
 	if (elem->id == CTF_TYPE_INTEGER) {
 		struct declaration_integer *integer_declaration =
@@ -83,11 +84,14 @@ int ctf_array_write(struct bt_stream_pos *ppos, struct bt_definition *definition
 
 			if (integer_declaration->len == CHAR_BIT
 			    && integer_declaration->p.alignment == CHAR_BIT) {
+				move_size = offset_align(pos->offset,
+					integer_declaration->p.alignment) +
+					array_declaration->len * CHAR_BIT;
 
-				ctf_align_pos(pos, integer_declaration->p.alignment);
-				if (!ctf_pos_access_ok(pos, array_declaration->len * CHAR_BIT))
+				if (!ctf_pos_access_ok(pos, move_size))
 					return -EFAULT;
 
+				ctf_align_pos(pos, integer_declaration->p.alignment);
 				memcpy((char *) ctf_get_pos_addr(pos),
 					array_definition->string->str,
 					array_declaration->len);

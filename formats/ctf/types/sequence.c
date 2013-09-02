@@ -71,6 +71,7 @@ int ctf_sequence_write(struct bt_stream_pos *ppos, struct bt_definition *definit
 		sequence_definition->declaration;
 	struct bt_declaration *elem = sequence_declaration->elem;
 	struct ctf_stream_pos *pos = ctf_pos(ppos);
+	uint64_t move_size;
 
 	if (elem->id == CTF_TYPE_INTEGER) {
 		struct declaration_integer *integer_declaration =
@@ -83,10 +84,14 @@ int ctf_sequence_write(struct bt_stream_pos *ppos, struct bt_definition *definit
 			    && integer_declaration->p.alignment == CHAR_BIT) {
 				uint64_t len = bt_sequence_len(sequence_definition);
 
-				ctf_align_pos(pos, integer_declaration->p.alignment);
-				if (!ctf_pos_access_ok(pos, len * CHAR_BIT))
+				move_size = (len * CHAR_BIT) +
+					offset_align(pos->offset,
+					integer_declaration->p.alignment);
+
+				if (!ctf_pos_access_ok(pos, move_size))
 					return -EFAULT;
 
+				ctf_align_pos(pos, integer_declaration->p.alignment);
 				memcpy((char *) ctf_get_pos_addr(pos),
 					sequence_definition->string->str, len);
 				ctf_move_pos(pos, len * CHAR_BIT);

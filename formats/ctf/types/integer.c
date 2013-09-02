@@ -269,10 +269,14 @@ int ctf_integer_write(struct bt_stream_pos *ppos, struct bt_definition *definiti
 		return _aligned_integer_write(ppos, definition);
 	}
 
-	ctf_align_pos(pos, integer_declaration->p.alignment);
-
-	if (!ctf_pos_access_ok(pos, integer_declaration->len))
+	if (!ctf_pos_access_ok(pos,
+		integer_declaration->len +
+			offset_align(pos->offset,
+			integer_declaration->p.alignment))) {
 		return -EFAULT;
+	}
+
+	ctf_align_pos(pos, integer_declaration->p.alignment);
 
 	if (pos->dummy)
 		goto end;

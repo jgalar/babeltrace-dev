@@ -79,12 +79,15 @@ int ctf_string_write(struct bt_stream_pos *ppos,
 	size_t len;
 	char *destaddr;
 
-	ctf_align_pos(pos, string_declaration->p.alignment);
 	assert(string_definition->value != NULL);
 	len = string_definition->len;
 
-	if (!ctf_pos_access_ok(pos, len))
+	if (!ctf_pos_access_ok(pos, (len * CHAR_BIT) +
+		offset_align(pos->offset, string_declaration->p.alignment))) {
 		return -EFAULT;
+	}
+
+	ctf_align_pos(pos, string_declaration->p.alignment);
 
 	if (pos->dummy)
 		goto end;
