@@ -474,12 +474,12 @@ int bt_ctf_stream_flush(struct bt_ctf_stream *stream)
 	if (ret) {
 		goto end;
 	}
-	bt_ctf_field_put(integer);
 
-	packet_size = ALIGN(content_size, getpagesize());
+	bt_ctf_field_put(integer);
 	integer = bt_ctf_field_structure_get_field(
 		stream_class->packet_context, "packet_size");
-	bt_ctf_field_unsigned_integer_set_value(integer, stream->pos.packet_size);
+	packet_size = ALIGN(stream->pos.packet_size, getpagesize() * CHAR_BIT);
+	bt_ctf_field_unsigned_integer_set_value(integer, packet_size);
 	stream->pos.offset = PACKET_SIZE_PACKET_OFFSET;
 	ret = bt_ctf_field_serialize(integer, &stream->pos);
 	if (ret) {
