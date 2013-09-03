@@ -38,8 +38,7 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <dirent.h>
-
-#include "tap.h"
+#include "tap/tap.h"
 
 #define METADATA_LINE_SIZE 512
 

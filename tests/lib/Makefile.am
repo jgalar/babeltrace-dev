@@ -16,24 +16,19 @@ test_seek_LDADD = $(LIBTAP) libtestcommon.a \
 
 test_bitfield_LDADD = $(LIBTAP) libtestcommon.a
 
-noinst_PROGRAMS = test_seek test_bitfield
+test_ctf_writer_LDADD = $(LIBTAP) \
+	$(top_builddir)/lib/libbabeltrace.la \
+	$(top_builddir)/formats/ctf/libbabeltrace-ctf.la
+
+noinst_PROGRAMS = test_seek test_bitfield test_ctf_writer
 
 test_seek_SOURCES = test_seek.c
 test_bitfield_SOURCES = test_bitfield.c
+test_ctf_writer_SOURCES = test_ctf_writer.c
 
 SCRIPT_LIST = test_seek_big_trace test_seek_empty_packet
 
 dist_noinst_SCRIPTS = $(SCRIPT_LIST)
-
-test_ctf_writer_LDADD = libtestcommon.a \
-	$(top_builddir)/lib/libbabeltrace.la \
-	$(top_builddir)/formats/ctf/libbabeltrace-ctf.la
-
-noinst_PROGRAMS = test-seeks test-bitfield test-ctf-writer
-
-test_seeks_SOURCES = test-seeks.c
-test_bitfield_SOURCES = test-bitfield.c
-test_ctf_writer_SOURCES = test-ctf-writer.c
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
