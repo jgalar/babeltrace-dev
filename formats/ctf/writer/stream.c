@@ -376,7 +376,7 @@ int bt_ctf_stream_flush(struct bt_ctf_stream *stream)
 	int ret = 0;
 	uint64_t timestamp_begin, timestamp_end, content_size, packet_size;
 	struct bt_ctf_stream_class *stream_class = stream->stream_class;
-	struct bt_ctf_field *integer;
+	struct bt_ctf_field *integer = NULL;
 
 	if (!stream) {
 		ret = -1;

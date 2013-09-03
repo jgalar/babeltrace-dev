@@ -377,7 +377,7 @@ struct bt_ctf_field_type *bt_ctf_field_type_floating_point_create(void)
 		struct declaration_integer, 1);
 
 	if (!floating_point->declaration.mantissa ||
-		floating_point->declaration.exp) {
+		!floating_point->declaration.exp) {
 		goto error;
 	}
 

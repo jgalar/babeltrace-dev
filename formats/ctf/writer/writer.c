@@ -361,18 +361,16 @@ static void append_env_metadata(struct bt_ctf_writer *writer,
 
 char *bt_ctf_writer_get_metadata_string(struct bt_ctf_writer *writer)
 {
-	int err = 0;
 	char *metadata = NULL;
 	struct metadata_context *context = NULL;
+	int err = 0;
 
 	if (!writer) {
-		err = 1;
 		goto end;
 	}
 
 	context = g_new0(struct metadata_context, 1);
 	if (!context) {
-		err = 1;
 		goto end;
 	}
 
@@ -388,16 +386,17 @@ char *bt_ctf_writer_get_metadata_string(struct bt_ctf_writer *writer)
 		err = bt_ctf_stream_class_serialize(
 			writer->stream_classes->pdata[i], context);
 		if (err) {
-			goto end;
+			goto error;
 		}
 	}
 
-end:
 	metadata = context->string->str;
+error:
 	g_string_free(context->string, err ? TRUE : FALSE);
 	g_string_free(context->field_name, TRUE);
 	g_free(context);
-	return err ? NULL : metadata;
+end:
+	return metadata;
 }
 
 void bt_ctf_writer_flush_metadata(struct bt_ctf_writer *writer)
