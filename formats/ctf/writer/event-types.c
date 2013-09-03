@@ -49,8 +49,7 @@ static void bt_ctf_field_type_array_destroy(struct bt_ctf_ref *);
 static void bt_ctf_field_type_sequence_destroy(struct bt_ctf_ref *);
 static void bt_ctf_field_type_string_destroy(struct bt_ctf_ref *);
 
-static void (* const type_destroy_funcs[])(struct bt_ctf_ref *) =
-{
+static void (* const type_destroy_funcs[])(struct bt_ctf_ref *) = {
 	[CTF_TYPE_INTEGER] = bt_ctf_field_type_integer_destroy,
 	[CTF_TYPE_ENUM] =
 		bt_ctf_field_type_enumeration_destroy,
@@ -70,8 +69,7 @@ static void bt_ctf_field_type_variant_lock(struct bt_ctf_field_type *);
 static void bt_ctf_field_type_array_lock(struct bt_ctf_field_type *);
 static void bt_ctf_field_type_sequence_lock(struct bt_ctf_field_type *);
 
-static type_lock_func const type_lock_funcs[] =
-{
+static type_lock_func const type_lock_funcs[] = {
 	[CTF_TYPE_INTEGER] = generic_field_type_lock,
 	[CTF_TYPE_ENUM] = bt_ctf_field_type_enumeration_lock,
 	[CTF_TYPE_FLOAT] = generic_field_type_lock,
@@ -99,8 +97,7 @@ static int bt_ctf_field_type_sequence_serialize(struct bt_ctf_field_type *,
 static int bt_ctf_field_type_string_serialize(struct bt_ctf_field_type *,
 		struct metadata_context *);
 
-static type_serialize_func const type_serialize_funcs[] =
-{
+static type_serialize_func const type_serialize_funcs[] = {
 	[CTF_TYPE_INTEGER] = bt_ctf_field_type_integer_serialize,
 	[CTF_TYPE_ENUM] =
 		bt_ctf_field_type_enumeration_serialize,
@@ -119,8 +116,8 @@ static void bt_ctf_field_type_integer_set_byte_order(struct bt_ctf_field_type *,
 static void bt_ctf_field_type_floating_point_set_byte_order(
 		struct bt_ctf_field_type *, int byte_order);
 
-static void (* const set_byte_order_funcs[])(struct bt_ctf_field_type *, int) =
-{
+static void (* const set_byte_order_funcs[])(struct bt_ctf_field_type *,
+	int) = {
 	[CTF_TYPE_INTEGER] =
 		bt_ctf_field_type_integer_set_byte_order,
 	[CTF_TYPE_FLOAT] =
@@ -293,7 +290,7 @@ struct bt_ctf_field_type *bt_ctf_field_type_enumeration_create(
 {
 	struct bt_ctf_field_type_enumeration *enumeration = NULL;
 
-	if (!integer_container_type ) {
+	if (!integer_container_type) {
 		goto error;
 	}
 

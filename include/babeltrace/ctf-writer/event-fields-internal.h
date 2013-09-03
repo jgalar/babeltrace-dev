@@ -88,7 +88,7 @@ struct bt_ctf_field_string {
  * Set a field's value with an already allocated field instance.
  */
 BT_HIDDEN
-int bt_ctf_field_structure_set_field( struct bt_ctf_field *structure,
+int bt_ctf_field_structure_set_field(struct bt_ctf_field *structure,
 		const char *name, struct bt_ctf_field *value);
 
 BT_HIDDEN

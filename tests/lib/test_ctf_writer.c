@@ -42,7 +42,7 @@
 
 #define METADATA_LINE_SIZE 512
 
-static uint64_t current_time = 0;
+static uint64_t current_time;
 
 void validate_metadata(char *parser_path, char *metadata_path)
 {
@@ -128,7 +128,7 @@ result:
 		}
 
 		free(line);
-	close_fp:
+close_fp:
 		fclose(metadata_fp);
 		fclose(parser_output_fp);
 	}
@@ -162,7 +162,7 @@ void push_simple_event(struct bt_ctf_stream_class *stream_class,
 	integer_field = bt_ctf_field_create(uint_12_type);
 	bt_ctf_field_unsigned_integer_set_value(integer_field, 42);
 	ok(bt_ctf_event_set_payload(simple_event, "integer_field",
-		integer_field) == 0,"Use bt_ctf_event_set_payload to set a manually allocated field");
+		integer_field) == 0, "Use bt_ctf_event_set_payload to set a manually allocated field");
 
 	ok(bt_ctf_clock_set_time(clock, current_time) == 0, "Set clock time");
 
@@ -474,7 +474,8 @@ void packet_resize_test(struct bt_ctf_stream_class *stream_class,
 	}
 end:
 	ok(ret == 0, "Push 100 000 events to a stream");
-	ok(bt_ctf_stream_flush(stream) == 0, "Flush a stream that forces a packet resize");
+	ok(bt_ctf_stream_flush(stream) == 0,
+		"Flush a stream that forces a packet resize");
 	bt_ctf_field_type_put(integer_type);
 	bt_ctf_field_type_put(string_type);
 	bt_ctf_event_class_put(event_class);

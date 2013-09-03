@@ -111,8 +111,7 @@ int bt_ctf_stream_class_add_event_class(
 	}
 
 	/* Check for duplicate event classes */
-	struct search_query query =
-		{ .value = event_class, .found = 0 };
+	struct search_query query = { .value = event_class, .found = 0 };
 	g_ptr_array_foreach(stream_class->event_classes, value_exists, &query);
 	if (query.found) {
 		ret = -1;

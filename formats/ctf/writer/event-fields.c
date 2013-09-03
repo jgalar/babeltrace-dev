@@ -87,8 +87,7 @@ static int bt_ctf_field_string_serialize(struct bt_ctf_field *,
 static int increase_packet_size(struct ctf_stream_pos *pos);
 
 static struct bt_ctf_field *(*field_create_funcs[])(
-	struct bt_ctf_field_type *) =
-{
+struct bt_ctf_field_type *) = {
 	[CTF_TYPE_INTEGER] = bt_ctf_field_integer_create,
 	[CTF_TYPE_ENUM] = bt_ctf_field_enumeration_create,
 	[CTF_TYPE_FLOAT] =
@@ -100,8 +99,7 @@ static struct bt_ctf_field *(*field_create_funcs[])(
 	[CTF_TYPE_STRING] = bt_ctf_field_string_create
 };
 
-static void (*field_destroy_funcs[])(struct bt_ctf_field *) =
-{
+static void (*field_destroy_funcs[])(struct bt_ctf_field *) = {
 	[CTF_TYPE_INTEGER] = bt_ctf_field_integer_destroy,
 	[CTF_TYPE_ENUM] = bt_ctf_field_enumeration_destroy,
 	[CTF_TYPE_FLOAT] =
@@ -113,8 +111,7 @@ static void (*field_destroy_funcs[])(struct bt_ctf_field *) =
 	[CTF_TYPE_STRING] = bt_ctf_field_string_destroy
 };
 
-static int (*field_validate_funcs[])(struct bt_ctf_field *) =
-{
+static int (*field_validate_funcs[])(struct bt_ctf_field *) = {
 	[CTF_TYPE_INTEGER] = bt_ctf_field_generic_validate,
 	[CTF_TYPE_ENUM] = bt_ctf_field_enumeration_validate,
 	[CTF_TYPE_FLOAT] = bt_ctf_field_generic_validate,
@@ -126,8 +123,7 @@ static int (*field_validate_funcs[])(struct bt_ctf_field *) =
 };
 
 static int (*field_serialize_funcs[])(struct bt_ctf_field *,
-		struct ctf_stream_pos *) =
-{
+		struct ctf_stream_pos *) = {
 	[CTF_TYPE_INTEGER] = bt_ctf_field_integer_serialize,
 	[CTF_TYPE_ENUM] = bt_ctf_field_enumeration_serialize,
 	[CTF_TYPE_FLOAT] =
@@ -858,7 +854,7 @@ end:
 int bt_ctf_field_structure_validate(struct bt_ctf_field *field)
 {
 	int ret = 0;
-	struct bt_ctf_field_structure * structure;
+	struct bt_ctf_field_structure *structure;
 
 	if (!field) {
 		ret = -1;
