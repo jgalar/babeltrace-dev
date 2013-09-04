@@ -538,7 +538,7 @@ int bt_ctf_field_floating_point_set_value(struct bt_ctf_field *field,
 	}
 	floating_point = container_of(field, struct bt_ctf_field_floating_point,
 		parent);
-	floating_point->payload = value;
+	floating_point->definition.value = value;
 	floating_point->parent.payload_set = 1;
 end:
 	return ret;
@@ -625,6 +625,28 @@ struct bt_ctf_field *bt_ctf_field_floating_point_create(
 {
 	struct bt_ctf_field_floating_point *floating_point = g_new0(
 		struct bt_ctf_field_floating_point, 1);
+	struct bt_ctf_field_type_floating_point *floating_point_type =
+		container_of(type, struct bt_ctf_field_type_floating_point,
+			parent);
+
+	floating_point->definition.declaration = container_of(
+		type->declaration, struct declaration_float, p);
+
+
+	floating_point->definition.sign = &floating_point->sign;
+	floating_point->sign.declaration = &floating_point_type->sign;
+	floating_point->definition.sign->p.declaration =
+		&floating_point_type->sign.p;
+
+	floating_point->definition.mantissa = &floating_point->mantissa;
+	floating_point->mantissa.declaration = &floating_point_type->mantissa;
+	floating_point->definition.mantissa->p.declaration =
+		&floating_point_type->mantissa.p;
+
+	floating_point->definition.exp = &floating_point->exp;
+	floating_point->exp.declaration = &floating_point_type->exp;
+	floating_point->definition.exp->p.declaration =
+		&floating_point_type->exp.p;
 
 	return floating_point ? &floating_point->parent : NULL;
 }
@@ -969,8 +991,24 @@ int bt_ctf_field_enumeration_serialize(struct bt_ctf_field *field,
 int bt_ctf_field_floating_point_serialize(struct bt_ctf_field *field,
 		struct ctf_stream_pos *pos)
 {
-	/* Unsupported */
-	return -1;
+	int ret = 0;
+	struct bt_ctf_field_floating_point *floating_point = container_of(field,
+		struct bt_ctf_field_floating_point, parent);
+retry:
+	ret = ctf_float_write(&pos->parent, &floating_point->definition.p);
+	if (ret == -EFAULT) {
+		/*
+		 * The field is too large to fit in the current packet's
+		 * remaining space. Bump the packet size and retry.
+		 */
+		ret = increase_packet_size(pos);
+		if (ret) {
+			goto end;
+		}
+		goto retry;
+	}
+end:
+	return ret;
 }
 
 int bt_ctf_field_structure_serialize(struct bt_ctf_field *field,

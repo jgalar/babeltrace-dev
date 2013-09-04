@@ -145,12 +145,20 @@ void push_simple_event(struct bt_ctf_stream_class *stream_class,
 		bt_ctf_event_class_create("Simple Event");
 	struct bt_ctf_field_type *uint_12_type =
 		bt_ctf_field_type_integer_create(12);
+	struct bt_ctf_field_type *float_type =
+		bt_ctf_field_type_floating_point_create();
 	struct bt_ctf_event *simple_event;
 	struct bt_ctf_field *integer_field;
+	struct bt_ctf_field *float_field;
 
+	bt_ctf_field_type_set_alignment(float_type, 32);
+	bt_ctf_field_type_floating_point_set_exponent_digits(float_type, 11);
+	bt_ctf_field_type_floating_point_set_mantissa_digits(float_type, 53);
 	ok(uint_12_type, "Create an unsigned integer type");
 	bt_ctf_event_class_add_field(simple_event_class, uint_12_type,
 		"integer_field");
+	bt_ctf_event_class_add_field(simple_event_class, float_type,
+		"float_field");
 	bt_ctf_stream_class_add_event_class(stream_class,
 		simple_event_class);
 
@@ -164,6 +172,9 @@ void push_simple_event(struct bt_ctf_stream_class *stream_class,
 	ok(bt_ctf_event_set_payload(simple_event, "integer_field",
 		integer_field) == 0, "Use bt_ctf_event_set_payload to set a manually allocated field");
 
+	float_field = bt_ctf_event_get_payload(simple_event, "float_field");
+	bt_ctf_field_floating_point_set_value(float_field, 3.1415);
+
 	ok(bt_ctf_clock_set_time(clock, current_time) == 0, "Set clock time");
 
 	ok(bt_ctf_stream_push_event(stream, simple_event) == 0,
@@ -175,7 +186,9 @@ void push_simple_event(struct bt_ctf_stream_class *stream_class,
 	bt_ctf_event_class_put(simple_event_class);
 	bt_ctf_event_put(simple_event);
 	bt_ctf_field_type_put(uint_12_type);
+	bt_ctf_field_type_put(float_type);
 	bt_ctf_field_put(integer_field);
+	bt_ctf_field_put(float_field);
 }
 
 void push_complex_event(struct bt_ctf_stream_class *stream_class,

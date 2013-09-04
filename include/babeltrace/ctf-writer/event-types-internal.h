@@ -75,6 +75,7 @@ struct bt_ctf_field_type_enumeration {
 struct bt_ctf_field_type_floating_point {
 	struct bt_ctf_field_type parent;
 	struct declaration_float declaration;
+	struct declaration_integer sign, mantissa, exp;
 };
 
 struct structure_field {

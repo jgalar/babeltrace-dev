@@ -53,7 +53,8 @@ struct bt_ctf_field_enumeration {
 
 struct bt_ctf_field_floating_point {
 	struct bt_ctf_field parent;
-	long double payload;
+	struct definition_float definition;
+	struct definition_integer sign, mantissa, exp;
 };
 
 struct bt_ctf_field_structure {

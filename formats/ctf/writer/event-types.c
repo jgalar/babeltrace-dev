@@ -368,21 +368,19 @@ struct bt_ctf_field_type *bt_ctf_field_type_floating_point_create(void)
 		goto error;
 	}
 
-	floating_point->declaration.mantissa = g_new0(
-		struct declaration_integer, 1);
-	floating_point->declaration.exp = g_new0(
-		struct declaration_integer, 1);
-
-	if (!floating_point->declaration.mantissa ||
-		!floating_point->declaration.exp) {
-		goto error;
-	}
-
+	floating_point->declaration.sign = &floating_point->sign;
+	floating_point->declaration.mantissa = &floating_point->mantissa;
+	floating_point->declaration.exp = &floating_point->exp;
+	floating_point->sign.len = 1;
 	floating_point->parent.declaration = &floating_point->declaration.p;
 	floating_point->parent.declaration->id = CTF_TYPE_FLOAT;
 	floating_point->declaration.exp->len =
 		sizeof(float) * CHAR_BIT - FLT_MANT_DIG;
-	floating_point->declaration.mantissa->len = FLT_MANT_DIG;
+	floating_point->declaration.mantissa->len = FLT_MANT_DIG - 1;
+	floating_point->sign.p.alignment = 1;
+	floating_point->mantissa.p.alignment = 1;
+	floating_point->exp.p.alignment = 1;
+
 	bt_ctf_field_type_init(&floating_point->parent);
 	return &floating_point->parent;
 error:
@@ -442,7 +440,7 @@ int bt_ctf_field_type_floating_point_set_mantissa_digits(
 		goto end;
 	}
 
-	floating_point->declaration.mantissa->len = mantissa_digits;
+	floating_point->declaration.mantissa->len = mantissa_digits - 1;
 end:
 	return ret;
 }
@@ -876,8 +874,6 @@ void bt_ctf_field_type_floating_point_destroy(struct bt_ctf_ref *ref)
 	floating_point = container_of(
 		container_of(ref, struct bt_ctf_field_type, ref_count),
 		struct bt_ctf_field_type_floating_point, parent);
-	g_free(floating_point->declaration.mantissa);
-	g_free(floating_point->declaration.exp);
 	g_free(floating_point);
 }
 
@@ -1115,7 +1111,7 @@ int bt_ctf_field_type_floating_point_serialize(struct bt_ctf_field_type *type,
 	g_string_append_printf(context->string,
 		"floating_point { exp_dig = %"PRIuPTR"; mant_dig = %"PRIuPTR"; byte_order = %s; align = %"PRIuPTR"; }",
 		floating_point->declaration.exp->len,
-		floating_point->declaration.mantissa->len,
+		floating_point->declaration.mantissa->len + 1,
 		get_byte_order_string(floating_point->declaration.byte_order),
 		type->declaration->alignment);
 	return 0;
@@ -1296,4 +1292,7 @@ void bt_ctf_field_type_floating_point_set_byte_order(
 		parent);
 
 	floating_point_type->declaration.byte_order = byte_order;
+	floating_point_type->sign.byte_order = byte_order;
+	floating_point_type->mantissa.byte_order = byte_order;
+	floating_point_type->exp.byte_order = byte_order;
 }
