@@ -525,7 +525,7 @@ end:
 }
 
 int bt_ctf_field_floating_point_set_value(struct bt_ctf_field *field,
-		long double value)
+		double value)
 {
 	int ret = 0;
 	struct bt_ctf_field_floating_point *floating_point;

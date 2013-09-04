@@ -41,7 +41,7 @@ struct bt_ctf_clock;
 /*
  * bt_ctf_clock_create : create a clock
  *
- * Allocate a new clock setting its refcount to 1.
+ * Allocate a new clock setting its reference count to 1.
  *
  * Returns an allocated clock on success and NULL on error
  */
@@ -126,7 +126,7 @@ extern int bt_ctf_clock_set_time(struct bt_ctf_clock *clock, uint64_t time);
  * bt_ctf_clock_get and bt_ctf_clock_put : increments and decrement the
  * refcount of the clock
  *
- * These functions ensures that the clock won't be destroyed when it
+ * These functions ensure that the clock won't be destroyed when it
  * is in use. The same number of get and put (plus one extra put to
  * release the initial reference done at creation) has to be done to
  * destroy a clock.
