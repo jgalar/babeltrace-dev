@@ -51,6 +51,7 @@ void validate_metadata(char *parser_path, char *metadata_path)
 	int parser_output_fd = -1, metadata_fd = -1;
 
 	if (!metadata_path) {
+		ret = -1;
 		goto result;
 	}
 
@@ -135,6 +136,76 @@ close_fp:
 
 	close(parser_output_fd);
 	close(metadata_fd);
+}
+
+void validate_trace(char *parser_path, char *trace_path)
+{
+	int ret = 0;
+	char babeltrace_output_path[] = "/tmp/babeltrace_output_XXXXXX";
+	int babeltrace_output_fd = -1;
+
+	if (!trace_path) {
+		ret = -1;
+		goto result;
+	}
+
+	babeltrace_output_fd = mkstemp(babeltrace_output_path);
+	unlink(babeltrace_output_path);
+
+	if (babeltrace_output_fd == -1) {
+		printf("# Failed to create a temporary file for trace parsing.\n");
+		ret = -1;
+		goto result;
+	}
+
+	pid_t pid = fork();
+	if (pid) {
+		int status = 0;
+		waitpid(pid, &status, 0);
+		ret = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+	} else {
+		ret = dup2(babeltrace_output_fd, STDOUT_FILENO);
+		if (ret < 0) {
+			perror("# dup2 babeltrace_output_fd to STDOUT");
+			goto result;
+		}
+
+		ret = dup2(babeltrace_output_fd, STDERR_FILENO);
+		if (ret < 0) {
+			perror("# dup2 babeltrace_output_fd to STDERR");
+			goto result;
+		}
+
+		execl(parser_path, "babeltrace", trace_path, NULL);
+		perror("# Could not launch the babeltrace process");
+		exit(-1);
+	}
+result:
+	ok(ret == 0, "Babeltrace could read the resulting trace");
+
+	if (ret && babeltrace_output_fd > 0) {
+		char *line;
+		size_t len = METADATA_LINE_SIZE;
+		FILE *babeltrace_output_fp = NULL;
+
+		babeltrace_output_fp = fdopen(babeltrace_output_fd, "r");
+		if (!babeltrace_output_fp) {
+			perror("fdopen on babeltrace_output_fd");
+			goto close_fp;
+		}
+
+		line = malloc(len);
+		rewind(babeltrace_output_fp);
+		while (getline(&line, &len, babeltrace_output_fp) > 0) {
+			printf("# %s", line);
+		}
+
+		free(line);
+close_fp:
+		fclose(babeltrace_output_fp);
+	}
+
+	close(babeltrace_output_fd);
 }
 
 void push_simple_event(struct bt_ctf_stream_class *stream_class,
@@ -556,8 +627,8 @@ int main(int argc, char **argv)
 	struct bt_ctf_stream_class *stream_class;
 	struct bt_ctf_stream *stream1;
 
-	if (argc < 2) {
-		printf("Usage: tests-ctf-writer path_to_ctf_parser_test\n");
+	if (argc < 3) {
+		printf("Usage: tests-ctf-writer path_to_ctf_parser_test path_to_babeltrace\n");
 		exit(-1);
 	}
 
@@ -660,6 +731,7 @@ int main(int argc, char **argv)
 
 	bt_ctf_writer_flush_metadata(writer);
 	validate_metadata(argv[1], metadata_path);
+	validate_trace(argv[2], trace_path);
 
 	bt_ctf_clock_put(clock);
 	bt_ctf_stream_class_put(stream_class);
