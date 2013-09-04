@@ -381,12 +381,12 @@ struct bt_ctf_field *bt_ctf_field_variant_get_field(struct bt_ctf_field *field,
 	struct bt_ctf_field *new_field = NULL;
 	struct bt_ctf_field_variant *variant;
 	struct bt_ctf_field_type_variant *variant_type;
-	struct bt_ctf_field_enumeration *tag_enum;
 	struct bt_ctf_field_type *field_type;
+	struct bt_ctf_field *tag_enum = NULL;
 	struct bt_ctf_field_integer *tag_enum_integer;
 	int64_t tag_enum_value;
 
-	if (!field || !tag_field || !tag_field->payload_set ||
+	if (!field || !tag_field ||
 		bt_ctf_field_type_get_type_id(field->type) !=
 			CTF_TYPE_VARIANT ||
 		bt_ctf_field_type_get_type_id(tag_field->type) !=
@@ -397,10 +397,13 @@ struct bt_ctf_field *bt_ctf_field_variant_get_field(struct bt_ctf_field *field,
 	variant = container_of(field, struct bt_ctf_field_variant, parent);
 	variant_type = container_of(field->type,
 		struct bt_ctf_field_type_variant, parent);
-	tag_enum = container_of(tag_field, struct bt_ctf_field_enumeration,
+	tag_enum = bt_ctf_field_enumeration_get_container(tag_field);
+	tag_enum_integer = container_of(tag_enum, struct bt_ctf_field_integer,
 		parent);
-	tag_enum_integer = container_of(tag_enum->payload,
-		struct bt_ctf_field_integer, parent);
+
+	if (!bt_ctf_field_validate(variant->tag)) {
+		goto end;
+	}
 
 	tag_enum_value = tag_enum_integer->definition.value._signed;
 	field_type = bt_ctf_field_type_variant_get_field_type(variant_type,
@@ -421,6 +424,7 @@ struct bt_ctf_field *bt_ctf_field_variant_get_field(struct bt_ctf_field *field,
 	variant->tag = tag_field;
 	variant->payload = new_field;
 end:
+	bt_ctf_field_put(tag_enum);
 	return new_field;
 }
 

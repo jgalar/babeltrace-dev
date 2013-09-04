@@ -185,6 +185,13 @@ void push_complex_event(struct bt_ctf_stream_class *stream_class,
 		bt_ctf_field_type_integer_create(35);
 	struct bt_ctf_field_type *int_16_type =
 		bt_ctf_field_type_integer_create(16);
+	struct bt_ctf_field_type *uint_3_type =
+		bt_ctf_field_type_integer_create(3);
+	struct bt_ctf_field_type *enum_variant_type =
+		bt_ctf_field_type_enumeration_create(uint_3_type);
+	struct bt_ctf_field_type *variant_type =
+		bt_ctf_field_type_variant_create(enum_variant_type,
+			"variant_selector");
 	struct bt_ctf_field_type *string_type =
 		bt_ctf_field_type_string_create();
 	struct bt_ctf_field_type *sequence_type;
@@ -196,7 +203,8 @@ void push_complex_event(struct bt_ctf_stream_class *stream_class,
 	struct bt_ctf_event *event;
 	struct bt_ctf_field *uint_35_field, *int_16_field, *a_string_field,
 		*inner_structure_field, *complex_structure_field,
-		*a_sequence_field;
+		*a_sequence_field, *enum_variant_field, *enum_container_field,
+		*variant_field;
 
 	bt_ctf_field_type_set_alignment(int_16_type, 32);
 	bt_ctf_field_type_integer_set_signed(int_16_type, 1);
@@ -210,8 +218,27 @@ void push_complex_event(struct bt_ctf_stream_class *stream_class,
 	bt_ctf_field_type_structure_add_field(inner_structure_type,
 		sequence_type, "a_sequence");
 
+	bt_ctf_field_type_enumeration_add_mapping(enum_variant_type,
+		"UINT3_TYPE", 0, 0);
+	bt_ctf_field_type_enumeration_add_mapping(enum_variant_type,
+		"INT16_TYPE", 1, 1);
+	bt_ctf_field_type_enumeration_add_mapping(enum_variant_type,
+		"UINT35_TYPE", 2, 7);
+	ok(bt_ctf_field_type_variant_add_field(variant_type, uint_3_type,
+		"An unknown entry"), "Reject a variant field based on an unknown tag value");
+	ok(bt_ctf_field_type_variant_add_field(variant_type, uint_3_type,
+		"UINT3_TYPE") == 0, "Add a field to a variant");
+	bt_ctf_field_type_variant_add_field(variant_type, int_16_type,
+		"INT16_TYPE");
+	bt_ctf_field_type_variant_add_field(variant_type, uint_35_type,
+		"UINT35_TYPE");
+
+	bt_ctf_field_type_structure_add_field(complex_structure_type,
+		enum_variant_type, "variant_selector");
 	bt_ctf_field_type_structure_add_field(complex_structure_type,
 		string_type, "a_string");
+	bt_ctf_field_type_structure_add_field(complex_structure_type,
+		variant_type, "variant_value");
 	bt_ctf_field_type_structure_add_field(complex_structure_type,
 		inner_structure_type, "inner_structure");
 
@@ -259,11 +286,22 @@ void push_complex_event(struct bt_ctf_stream_class *stream_class,
 		complex_structure_field, "inner_structure");
 	a_string_field = bt_ctf_field_structure_get_field(
 		complex_structure_field, "a_string");
+	enum_variant_field = bt_ctf_field_structure_get_field(
+		complex_structure_field, "variant_selector");
+	variant_field = bt_ctf_field_structure_get_field(
+		complex_structure_field, "variant_value");
 	uint_35_field = bt_ctf_field_structure_get_field(
 		inner_structure_field, "seq_len");
 	a_sequence_field = bt_ctf_field_structure_get_field(
 		inner_structure_field, "a_sequence");
 
+	enum_container_field = bt_ctf_field_enumeration_get_container(
+		enum_variant_field);
+	bt_ctf_field_unsigned_integer_set_value(enum_container_field, 1);
+	int_16_field = bt_ctf_field_variant_get_field(variant_field,
+		enum_variant_field);
+	bt_ctf_field_signed_integer_set_value(int_16_field, -200);
+	bt_ctf_field_put(int_16_field);
 	bt_ctf_field_string_set_value(a_string_field,
 		"Test string");
 	bt_ctf_field_unsigned_integer_set_value(uint_35_field, 10);
@@ -287,12 +325,18 @@ void push_complex_event(struct bt_ctf_stream_class *stream_class,
 	bt_ctf_field_put(inner_structure_field);
 	bt_ctf_field_put(complex_structure_field);
 	bt_ctf_field_put(a_sequence_field);
+	bt_ctf_field_put(enum_variant_field);
+	bt_ctf_field_put(enum_container_field);
+	bt_ctf_field_put(variant_field);
 	bt_ctf_field_type_put(uint_35_type);
 	bt_ctf_field_type_put(int_16_type);
 	bt_ctf_field_type_put(string_type);
 	bt_ctf_field_type_put(sequence_type);
 	bt_ctf_field_type_put(inner_structure_type);
 	bt_ctf_field_type_put(complex_structure_type);
+	bt_ctf_field_type_put(uint_3_type);
+	bt_ctf_field_type_put(enum_variant_type);
+	bt_ctf_field_type_put(variant_type);
 	bt_ctf_event_class_put(event_class);
 	bt_ctf_event_put(event);
 }
