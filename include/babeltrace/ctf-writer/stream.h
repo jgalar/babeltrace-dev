@@ -39,45 +39,105 @@ struct bt_ctf_stream_class;
 struct bt_ctf_stream;
 struct bt_ctf_clock;
 
+/*
+ * bt_ctf_stream_class_create : create a stream class
+ *
+ * Allocate a new stream class of the given name. The creation of an event class
+ * sets its reference count to 1.
+ *
+ * Returns an allocated stream class on success and NULL on error.
+ */
 extern struct bt_ctf_stream_class *bt_ctf_stream_class_create(const char *name);
 
+/*
+ * bt_ctf_stream_class_set_clock : assign a clock to a stream class
+ *
+ * Assign a clock to a stream class. This clock will be sampled each time an
+ * event is pushed to an instance of this stream class.
+ *
+ * Returns 0 on success and a negative value on error.
+ */
 extern int bt_ctf_stream_class_set_clock(
 		struct bt_ctf_stream_class *stream_class,
 		struct bt_ctf_clock *clock);
 
-/* Add an event class to the stream */
+/*
+ * bt_ctf_stream_class_set_clock : assign a clock to a stream class
+ *
+ * Add an event class to a stream class. New events can be added even after a
+ * stream has beem instanciated and events have been pushed. However, a stream
+ * will not accept events of a class that has not been registered beforehand.
+ * The stream class will share the ownership of "event_class" by incrementing
+ * its reference count.
+ *
+ * Returns 0 on success and a negative value on error.
+ */
 extern int bt_ctf_stream_class_add_event_class(
 		struct bt_ctf_stream_class *stream_class,
 		struct bt_ctf_event_class *event_class);
 
+/*
+ * bt_ctf_stream_class_get and bt_ctf_stream_class_put : increments and
+ * decrement the stream class' reference count.
+ *
+ * These functions ensure that the stream class won't be destroyed while it
+ * is in use. The same number of get and put (plus one extra put to
+ * release the initial reference done at creation) have to be done to
+ * destroy a stream class.
+ *
+ * When the stream class' reference count is decremented to 0 by a
+ * bt_ctf_stream_class_put, the stream class is freed.
+ */
 extern void bt_ctf_stream_class_get(struct bt_ctf_stream_class *stream_class);
-
 extern void bt_ctf_stream_class_put(struct bt_ctf_stream_class *stream_class);
 
-
 /*
- * Insert event_count discarded/dropped events in stream before the next
- * event.
+ * bt_ctf_stream_push_discarded_events : increment discarded events count
+ *
+ * Increase the current packet's discarded event count.
+ *
+ * Returns 0 on success and a negative value on error.
  */
 extern void bt_ctf_stream_push_discarded_events(struct bt_ctf_stream *stream,
 		uint64_t event_count);
 
 /*
- * The stream's associated clock will be sampled during the call to
- * bt_ctf_stream_push_event(). The event shall not be modified after
- * after being pushed to a stream.
+ * bt_ctf_stream_push_event : push an event to the stream
+ *
+ * Add "event" to the stream's current packet. The stream's associated clock
+ * will be sampled during this call. The event shall not be modified after
+ * being pushed to a stream. The stream will share the event's ownership by
+ * incrementing its reference count. The current packet is not flushed to disk
+ * until the next call to bt_ctf_stream_flush.
+ *
+ * Returns 0 on success and a negative value on error.
  */
 extern int bt_ctf_stream_push_event(struct bt_ctf_stream *stream,
 		struct bt_ctf_event *event);
 
 /*
- * Close the current packet. The events pushed after a call to this function
- * will be placed in a new packet.
+ * bt_ctf_stream_flush : flush a stream
+ *
+ * The stream's current packet's events will be flushed to disk. Events
+ * subsequently pushed to the stream will be added to a new packet.
+ *
+ * Returns 0 on success and a negative value on error.
  */
 extern int bt_ctf_stream_flush(struct bt_ctf_stream *stream);
 
+/*
+ * bt_ctf_stream_get and bt_ctf_stream_put : increments and decrement the
+ * stream's reference count.
+ *
+ * These functions ensure that the stream won't be destroyed while it
+ * is in use. The same number of get and put (plus one extra put to
+ * release the initial reference done at creation) have to be done to
+ * destroy a stream.
+ *
+ * When the stream's reference count is decremented to 0 by a
+ * bt_ctf_stream_put, the stream is freed.
+ */
 extern void bt_ctf_stream_get(struct bt_ctf_stream *stream);
-
 extern void bt_ctf_stream_put(struct bt_ctf_stream *stream);
 
 #ifdef __cplusplus
