@@ -50,88 +50,243 @@ enum bt_ctf_integer_base {
 	BT_CTF_INTEGER_BASE_END
 };
 
+/*
+ * bt_ctf_field_type_integer_create : create an integer field type
+ *
+ * Allocate a new integer field type of the given size. The creation of a field
+ * type sets its reference count to 1.
+ *
+ * Returns an allocated field type on success and NULL on error.
+ */
 extern struct bt_ctf_field_type *bt_ctf_field_type_integer_create(
 		unsigned int size);
 
+/*
+ * bt_ctf_field_type_integer_set_signed : set an integer type's signedness
+ *
+ * Set an integer type's signedness attribute. Defaults to FALSE.
+ *
+ * Returns 0 on success and a negative value on error.
+ */
 extern int bt_ctf_field_type_integer_set_signed(
 		struct bt_ctf_field_type *integer, int is_signed);
 
 /*
- * Base used for pretty-printing output, defaults to decimal
- * BT_CTF_INTEGER_BASE_DECIMAL
+ * bt_ctf_field_type_integer_set_base : set an integer type's base
+ *
+ * Set an integer type's base used to pretty-print the resulting trace, defaults
+ * to decimal (BT_CTF_INTEGER_BASE_DECIMAL)
+ *
+ * Returns 0 on success and a negative value on error.
  */
 extern int bt_ctf_field_type_integer_set_base(
 		struct bt_ctf_field_type *integer,
 		enum bt_ctf_integer_base base);
 
 /*
+ * bt_ctf_field_type_integer_set_encoding : set an integer type's encoding
+ *
  * An integer encoding may be set to signal that the integer must be printed as
- * text, default CTF_STRING_ENCODING_NONE
+ * text, default CTF_STRING_ENCODING_NONE.
+ *
+ * Returns 0 on success and a negative value on error.
  */
 extern int bt_ctf_field_type_integer_set_encoding(
 		struct bt_ctf_field_type *integer,
 		enum ctf_string_encoding encoding);
 
+/*
+ * bt_ctf_field_type_enumeration_create : create an enumeration field type
+ *
+ * Allocate a new enumeration field type with the given underlying type. The
+ * creation of a field type sets its reference count to 1.
+ * The resulting enumeration will share the integer_container_type's ownership
+ * by increasing its reference count.
+ *
+ * Returns an allocated field type on success and NULL on error.
+ */
 extern struct bt_ctf_field_type *bt_ctf_field_type_enumeration_create(
 		struct bt_ctf_field_type *integer_container_type);
 
-/* Range is inclusive */
+/*
+ * bt_ctf_field_type_enumeration_add_mapping : add an enumeration mapping
+ *
+ * Add a mapping to the enumeration. The range's values are inclusive.
+ *
+ * Returns 0 on success and a negative value on error.
+ */
 extern int bt_ctf_field_type_enumeration_add_mapping(
 		struct bt_ctf_field_type *enumeration, const char *string,
 		int64_t range_start, int64_t range_end);
 
+/*
+ * bt_ctf_field_type_floating_point_create : create a floating point field type
+ *
+ * Allocate a new floating point field type. The creation of a field type sets
+ * its reference count to 1.
+ *
+ * Returns an allocated field type on success and NULL on error.
+ */
 extern struct bt_ctf_field_type *bt_ctf_field_type_floating_point_create(void);
 
+/*
+ * bt_ctf_field_type_floating_point_set_exponent_digits :set exp digit count
+ *
+ * Set the number of exponent digits to use to store the floating point field.
+ * The only values currently supported are FLT_EXP_DIG and DBL_EXP_DIG.
+ *
+ * Returns 0 on success and a negative value on error.
+ */
 extern int bt_ctf_field_type_floating_point_set_exponent_digits(
 		struct bt_ctf_field_type *floating_point,
 		unsigned int exponent_digits);
 
+/*
+ * bt_ctf_field_type_floating_point_set_mantissa_digits:set mantissa digit count
+ *
+ * Set the number of mantissa digits to use to store the floating point field.
+ * The only values currently supported are FLT_MANT_DIG and DBL_MANT_DIG.
+ *
+ * Returns 0 on success and a negative value on error.
+ */
 extern int bt_ctf_field_type_floating_point_set_mantissa_digits(
 		struct bt_ctf_field_type *floating_point,
 		unsigned int mantissa_digits);
 
+/*
+ * bt_ctf_field_type_structure_create : create a structure field type
+ *
+ * Allocate a new structure field type. The creation of a field type sets
+ * its reference count to 1.
+ *
+ * Returns an allocated field type on success and NULL on error.
+ */
 extern struct bt_ctf_field_type *bt_ctf_field_type_structure_create(void);
 
+/*
+ * bt_ctf_field_type_structure_add_field : add a field to a structure
+ *
+ * Add a field of type "field_type" to the structure. The structure will share
+ * field_type's ownership by increasing its reference count. The "field_name"
+ * will be copied.
+ *
+ * Returns 0 on success and a negative value on error.
+ */
 extern int bt_ctf_field_type_structure_add_field(
 		struct bt_ctf_field_type *structure,
 		struct bt_ctf_field_type *field_type,
 		const char *field_name);
 
+/*
+ * bt_ctf_field_type_variant_create : create a variant field type
+ *
+ * Allocate a new variant field type. The creation of a field type sets
+ * its reference count to 1. tag_name must be the name of an enumeration
+ * field declared in the same scope as this variant.
+ *
+ * Returns an allocated field type on success and NULL on error.
+ */
 extern struct bt_ctf_field_type *bt_ctf_field_type_variant_create(
 		struct bt_ctf_field_type *enum_tag,
 		const char *tag_name);
 
+/*
+ * bt_ctf_field_type_variant_add_field : add a field to a variant
+ *
+ * Add a field of type "field_type" to the variant.The variant will share
+ * field_type's ownership by increasing its reference count. The "field_name"
+ * will be copied. field_name must match a mapping in the tag/selector
+ * enumeration.
+ *
+ * Returns 0 on success and a negative value on error.
+ */
 extern int bt_ctf_field_type_variant_add_field(
 		struct bt_ctf_field_type *variant,
 		struct bt_ctf_field_type *field_type,
 		const char *field_name);
 
+/*
+ * bt_ctf_field_type_array_create : create an array field type
+ *
+ * Allocate a new array field type. The creation of a field type sets
+ * its reference count to 1. "length" is the array's length and must be > 0.
+ *
+ * Returns an allocated field type on success and NULL on error.
+ */
 extern struct bt_ctf_field_type *bt_ctf_field_type_array_create(
 		struct bt_ctf_field_type *element_type,
 		unsigned int length);
 
 /*
- * The length field is resolved by name when the sequence is added to an event
- * or a compound type. The length field must be added before the sequence.
+ * bt_ctf_field_type_sequence_create : create a sequence field type
+ *
+ * Allocate a new sequence field type. The creation of a field type sets
+ * its reference count to 1. "length_field_name" is copied and must match
+ * an integer field declared in the same scope.
+ *
+ * Returns an allocated field type on success and NULL on error.
  */
 extern struct bt_ctf_field_type *bt_ctf_field_type_sequence_create(
 		struct bt_ctf_field_type *element_type,
 		const char *length_field_name);
 
+/*
+ * bt_ctf_field_type_string_create : create a string field type
+ *
+ * Allocate a new string field type. The creation of a field type sets
+ * its reference count to 1.
+ *
+ * Returns an allocated field type on success and NULL on error.
+ */
 extern struct bt_ctf_field_type *bt_ctf_field_type_string_create(void);
 
+/*
+ * bt_ctf_field_type_string_set_encoding : set a string type's encoding
+ *
+ * Set the string type's encoding, default CTF_STRING_ENCODING_ASCII.
+ *
+ * Returns 0 on success and a negative value on error.
+ */
 extern int bt_ctf_field_type_string_set_encoding(
 		struct bt_ctf_field_type *string,
 		enum ctf_string_encoding encoding);
 
+/*
+ * bt_ctf_field_type_set_alignment : set a field type's alignment
+ *
+ * Set the field type's alignment. Defaults to 1 (bit-aligned). However,
+ * some types, like structures and string, may impose other alignment
+ * constraints. 
+ *
+ * Returns 0 on success and a negative value on error.
+ */
 extern int bt_ctf_field_type_set_alignment(struct bt_ctf_field_type *type,
 		unsigned int alignment);
 
+/*
+ * bt_ctf_field_type_set_byte_order : set a field type's byte order
+ *
+ * Set the field type's byte order. Defaults to BT_CTF_BYTE_ORDER_NATIVE,
+ * the host machine's endianness.
+ *
+ * Returns 0 on success and a negative value on error.
+ */
 extern int bt_ctf_field_type_set_byte_order(struct bt_ctf_field_type *type,
 		enum bt_ctf_byte_order byte_order);
 
+/*
+ * bt_ctf_field_type_get and bt_ctf_field_type_put : increments and decrement
+ * the field type's reference count.
+ *
+ * These functions ensure that the field type won't be destroyed while it
+ * is in use. The same number of get and put (plus one extra put to
+ * release the initial reference done at creation) have to be done to
+ * destroy a field type.
+ *
+ * When the field type's reference count is decremented to 0 by a
+ * bt_ctf_field_type_put, the field type is freed.
+ */
 extern void bt_ctf_field_type_get(struct bt_ctf_field_type *type);
-
 extern void bt_ctf_field_type_put(struct bt_ctf_field_type *type);
 
 #ifdef __cplusplus
