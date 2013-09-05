@@ -36,6 +36,14 @@ noinst_HEADERS = \
 	babeltrace/ctf-text/types.h \
 	babeltrace/ctf/types.h \
 	babeltrace/ctf/callbacks-internal.h \
+	babeltrace/ctf-writer/ref-internal.h \
+	babeltrace/ctf-writer/writer-internal.h \
+	babeltrace/ctf-writer/event-types-internal.h \
+	babeltrace/ctf-writer/event-fields-internal.h \
+	babeltrace/ctf-writer/event-internal.h \
+	babeltrace/ctf-writer/clock-internal.h \
+	babeltrace/ctf-writer/stream-internal.h \
+	babeltrace/ctf-writer/functor-internal.h \
 	babeltrace/trace-handle-internal.h \
 	babeltrace/compat/uuid.h \
 	babeltrace/compat/memstream.h \
