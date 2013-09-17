@@ -652,7 +652,7 @@ const struct bt_definition *bt_ctf_get_struct_field_index(const struct bt_defini
 
 %pythoncode%{
 
-class ctf:
+class CTFReader:
 
 	#enum equivalent, accessible constants
 	#These are taken directly from ctf/events.h
@@ -672,9 +672,9 @@ class ctf:
 
 		def get_type_id_name(id):
 			name = "UNKNOWN"
-			constants = [attr for attr in dir(ctf.type_id) if not callable(getattr(ctf.type_id, attr)) and not attr.startswith("__")]
+			constants = [attr for attr in dir(CTFReader.type_id) if not callable(getattr(CTFReader.type_id, attr)) and not attr.startswith("__")]
 			for attr in constants:
-				if getattr(ctf.type_id, attr) == id:
+				if getattr(CTFReader.type_id, attr) == id:
 					name = attr
 			return name
 
@@ -713,7 +713,7 @@ class ctf:
 
 		def __new__(cls, context, begin_pos = None, end_pos = None):
 			# __new__ is used to control the return value
-			# as the ctf.Iterator class should return None
+			# as the CTFReader.Iterator class should return None
 			# if bt_ctf_iter_create returns NULL
 
 			if begin_pos is None:
@@ -732,7 +732,7 @@ class ctf:
 			if it is None:
 				return None
 
-			ret_class = super(ctf.Iterator, cls).__new__(cls)
+			ret_class = super(CTFReader.Iterator, cls).__new__(cls)
 			ret_class._i = it
 			return ret_class
 
@@ -751,7 +751,7 @@ class ctf:
 			ret = _bt_ctf_iter_read_event(self._i)
 			if ret is None:
 				return ret
-			ev = ctf.Event.__new__(ctf.Event)
+			ev = CTFReader.Event.__new__(CTFReader.Event)
 			ev._e = ret
 			return ev
 
@@ -759,24 +759,24 @@ class ctf:
 	class Event(object):
 		"""
 		This class represents an event from the trace.
-		It is obtained with read_event() from ctf.Iterator.
+		It is obtained with read_event() from CTFReader.Iterator.
 		Do not instantiate.
 		"""
 
 		def __init__(self):
-			raise NotImplementedError("ctf.Event cannot be instantiated")
+			raise NotImplementedError("CTFReader.Event cannot be instantiated")
 
 		def get_top_level_scope(self, scope):
 			"""
 			Return a definition of the top-level scope
-			Top-level scopes are defined in ctf.scope.
+			Top-level scopes are defined in CTFReader.scope.
 			In order to get a field or a field list, the user needs to pass a
 			scope as argument, this scope can be a top-level scope or a scope
 			relative to an arbitrary field. This function provides the mapping
 			between the scope and the actual definition of top-level scopes.
 			On error return None.
 			"""
-			evDef = ctf.Definition.__new__(ctf.Definition)
+			evDef = CTFReader.Definition.__new__(CTFReader.Definition)
 			evDef._d = _bt_ctf_get_top_level_scope(self._e, scope)
 			if evDef._d is None:
 				return None
@@ -805,7 +805,7 @@ class ctf:
 			Return the definition of a specific field.
 			Return None on error.
 			"""
-			evDef = ctf.Definition.__new__(ctf.Definition)
+			evDef = CTFReader.Definition.__new__(CTFReader.Definition)
 			try:
 				evDef._d = _bt_ctf_get_field(self._e, scope._d, field)
 			except AttributeError:
@@ -821,8 +821,8 @@ class ctf:
 			Return the definition of fields by a name
 			Return None on error
 			"""
-			eventScope = self.get_top_level_scope(ctf.scope.EVENT_FIELDS)
-			streamScope = self.get_top_level_scope(ctf.scope.STREAM_EVENT_CONTEXT)
+			eventScope = self.get_top_level_scope(CTFReader.scope.EVENT_FIELDS)
+			streamScope = self.get_top_level_scope(CTFReader.scope.STREAM_EVENT_CONTEXT)
 			fields_by_name = []
 
 			if eventScope is not None:
@@ -855,7 +855,7 @@ class ctf:
 
 			def_list = []
 			for i in range(count):
-				tmp = ctf.Definition.__new__(ctf.Definition)
+				tmp = CTFReader.Definition.__new__(CTFReader.Definition)
 				tmp._d = _bt_python_field_one_from_list(field_lc, i)
 				tmp._s = scope
 				def_list.append(tmp)
@@ -864,8 +864,8 @@ class ctf:
 
 		def get_field_list(self):
 			"""Return a list of Definitions or None on error."""
-			eventScope = self.get_top_level_scope(ctf.scope.EVENT_FIELDS)
-			streamScope = self.get_top_level_scope(ctf.scope.STREAM_EVENT_CONTEXT)
+			eventScope = self.get_top_level_scope(CTFReader.scope.EVENT_FIELDS)
+			streamScope = self.get_top_level_scope(CTFReader.scope.STREAM_EVENT_CONTEXT)
 
 			def_list = []
 			if eventScope is not None:
@@ -887,7 +887,7 @@ class ctf:
 			If the field is an array or a sequence, return the element
 			at position index, otherwise return None
 			"""
-			evDef = ctf.Definition.__new__(ctf.Definition)
+			evDef = CTFReader.Definition.__new__(CTFReader.Definition)
 			try:
 				evDef._d = _bt_ctf_get_index(self._e, field._d, index)
 			except AttributeError:
@@ -934,7 +934,7 @@ class ctf:
 		"""Definition class.  Do not instantiate."""
 
 		def __init__(self):
-			raise NotImplementedError("ctf.Definition cannot be instantiated")
+			raise NotImplementedError("CTFReader.Definition cannot be instantiated")
 
 		def __repr__(self):
 			return "Babeltrace Definition: name('{0}'), type({1})".format(
@@ -1003,7 +1003,7 @@ class ctf:
 			if array is None:
 				return None
 
-			element = ctf.Definition.__new__(ctf.Definition)
+			element = CTFReader.Definition.__new__(CTFReader.Definition)
 			element._d =  _bt_array_index(array, index)
 			if element._d is None:
 				return None
@@ -1024,7 +1024,7 @@ class ctf:
 			"""
 			seq = _bt_python_get_sequence_from_def(self._d)
 			if seq is not None:
-				element = ctf.Definition.__new__(ctf.Definition)
+				element = CTFReader.Definition.__new__(CTFReader.Definition)
 				element._d = _bt_sequence_index(seq, index)
 				if element._d is not None:
 					return element
@@ -1035,7 +1035,7 @@ class ctf:
 			Return the value associated with the field.
 			If the field does not exist or is not of the type requested,
 			the value returned is undefined. To check if an error occured,
-			use the	ctf.field_error() function after accessing a field.
+			use the	CTFReader.field_error() function after accessing a field.
 			"""
 			return _bt_ctf_get_uint64(self._d)
 
@@ -1044,7 +1044,7 @@ class ctf:
 			Return the value associated with the field.
 			If the field does not exist or is not of the type requested,
 			the value returned is undefined. To check if an error occured,
-			use the ctf.field_error() function after accessing a field.
+			use the CTFReader.field_error() function after accessing a field.
 			"""
 			return _bt_ctf_get_int64(self._d)
 
@@ -1053,7 +1053,7 @@ class ctf:
 			Return the value associated with the field.
 			If the field does not exist or is not of the type requested,
 			the value returned is undefined. To check if an error occured,
-			use the ctf.field_error() function after accessing a field.
+			use the CTFReader.field_error() function after accessing a field.
 			"""
 			return _bt_ctf_get_char_array(self._d)
 
@@ -1062,7 +1062,7 @@ class ctf:
 			Return the value associated with the field.
 			If the field does not exist or is not of the type requested,
 			the value returned is undefined. To check if an error occured,
-			use the ctf.field_error() function after accessing a field.
+			use the CTFReader.field_error() function after accessing a field.
 			"""
 			return _bt_ctf_get_string(self._d)
 
@@ -1071,7 +1071,7 @@ class ctf:
 			Return the value associated with the field.
 			If the field does not exist or is not of the type requested,
 			the value returned is undefined. To check if an error occured,
-			use the ctf.field_error() function after accessing a field.
+			use the CTFReader.field_error() function after accessing a field.
 			"""
 			return _bt_ctf_get_float(self._d)
 
@@ -1080,7 +1080,7 @@ class ctf:
 			Return the variant's selected field.
 			If the field does not exist or is not of the type requested,
 			the value returned is undefined. To check if an error occured,
-			use the ctf.field_error() function after accessing a field.
+			use the CTFReader.field_error() function after accessing a field.
 			"""
 			return _bt_ctf_get_variant(self._d)
 
@@ -1097,7 +1097,7 @@ class ctf:
 			Return the structure's field at position i.
 			If the field does not exist or is not of the type requested,
 			the value returned is undefined. To check if an error occured,
-			use the ctf.field_error() function after accessing a field.
+			use the CTFReader.field_error() function after accessing a field.
 			"""
 			return _bt_ctf_get_struct_field_index(self._d, i)
 
@@ -1108,41 +1108,41 @@ class ctf:
 			"""
 			id = self.field_type()
 			value = None
-			if id == ctf.type_id.STRING:
+			if id == CTFReader.type_id.STRING:
 				value = self.get_str()
-			elif id == ctf.type_id.ARRAY:
+			elif id == CTFReader.type_id.ARRAY:
 				value = []
 				for i in range(self.get_array_len()):
 					element = self.get_array_element_at(i)
 					value.append(element.get_value())
-			elif id == ctf.type_id.INTEGER:
+			elif id == CTFReader.type_id.INTEGER:
 				if self.get_int_signedness() == 0:
 					value = self.get_uint64()
 				else:
 					value = self.get_int64()
-			elif id == ctf.type_id.ENUM:
+			elif id == CTFReader.type_id.ENUM:
 				value = self.get_enum_str()
-			elif id == ctf.type_id.SEQUENCE:
+			elif id == CTFReader.type_id.SEQUENCE:
 				seq_len = self.get_sequence_len()
 				value = []
 				for i in range(seq_len):
 					evDef = self.get_sequence_element_at(i)
 					value.append(evDef.get_value())
-			elif id == ctf.type_id.FLOAT:
+			elif id == CTFReader.type_id.FLOAT:
 				value = self.get_float()
-			elif id == ctf.type_id.VARIANT:
-				variant = ctf.Definition.__new__(ctf.Definition)
+			elif id == CTFReader.type_id.VARIANT:
+				variant = CTFReader.Definition.__new__(CTFReader.Definition)
 				variant._d = self.get_variant();
 				value = variant.get_value()
-			elif id == ctf.type_id.STRUCT:
+			elif id == CTFReader.type_id.STRUCT:
 				value = {}
 				for i in range(self.get_struct_field_count()):
-					member = ctf.Definition.__new__(ctf.Definition)
+					member = CTFReader.Definition.__new__(CTFReader.Definition)
 					member._d = self.get_struct_field_at(i);
 					value[member.field_name()] = member.get_value()
 
-			if ctf.field_error():
-				raise ctf.FieldError("Error occured while accessing field {} of type {}".format(self.field_name(), ctf.type_id.get_type_id_name(self.field_type())))
+			if CTFReader.field_error():
+				raise CTFReader.FieldError("Error occured while accessing field {} of type {}".format(self.field_name(), CTFReader.type_id.get_type_id_name(self.field_type())))
 			return value
 
 		def get_scope(self):
@@ -1153,7 +1153,7 @@ class ctf:
 		"""Event declaration class.  Do not instantiate."""
 
 		def __init__(self):
-			raise NotImplementedError("ctf.EventDecl cannot be instantiated")
+			raise NotImplementedError("CTFReader.EventDecl cannot be instantiated")
 
 		def __repr__(self):
 			return "Babeltrace EventDecl: name {0}".format(self.get_name())
@@ -1164,7 +1164,7 @@ class ctf:
 
 		def get_decl_fields(self, scope):
 			"""
-			Return a list of ctf.FieldDecl
+			Return a list of CTFReader.FieldDecl
 			Return None on error.
 			"""
 			ptr_list = _by_python_field_decl_listcaller(self._d, scope)
@@ -1175,7 +1175,7 @@ class ctf:
 			decl_list = []
 			i = 0
 			while True:
-				tmp = ctf.FieldDecl.__new__(ctf.FieldDecl)
+				tmp = CTFReader.FieldDecl.__new__(CTFReader.FieldDecl)
 				tmp._d =  _bt_python_field_decl_one_from_list(
 					ptr_list, i)
 
@@ -1192,7 +1192,7 @@ class ctf:
 		"""Field declaration class.  Do not instantiate."""
 
 		def __init__(self):
-			raise NotImplementedError("ctf.FieldDecl cannot be instantiated")
+			raise NotImplementedError("CTFReader.FieldDecl cannot be instantiated")
 
 		def __repr__(self):
 			return "Babeltrace FieldDecl: name {0}".format(self.get_name())
@@ -1214,7 +1214,7 @@ class ctf:
 	@staticmethod
 	def get_event_decl_list(trace_handle, context):
 		"""
-		Return a list of ctf.EventDecl
+		Return a list of CTFReader.EventDecl
 		Return None on error.
 		"""
 		try:
@@ -1233,7 +1233,7 @@ class ctf:
 
 		decl_list = []
 		for i in range(count):
-			tmp = ctf.EventDecl.__new__(ctf.EventDecl)
+			tmp = CTFReader.EventDecl.__new__(CTFReader.EventDecl)
 			tmp._d =  _bt_python_decl_one_from_list(ptr_list, i)
 			decl_list.append(tmp)
 
