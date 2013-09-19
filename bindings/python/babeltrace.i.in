@@ -652,32 +652,37 @@ const struct bt_definition *bt_ctf_get_struct_field_index(const struct bt_defini
 
 %pythoncode%{
 
+class CTFStringEncoding:
+	NONE = 0
+	UTF8 = 1
+	ASCII = 2
+	UNKNOWN = 3
+
+#enum equivalent, accessible constants
+#These are taken directly from ctf/events.h
+#All changes to enums must also be made here
+class CTFTypeId:
+	UNKNOWN = 0
+	INTEGER = 1
+	FLOAT = 2
+	ENUM = 3
+	STRING = 4
+	STRUCT = 5
+	UNTAGGED_VARIANT = 6
+	VARIANT = 7
+	ARRAY = 8
+	SEQUENCE = 9
+	NR_CTF_TYPES = 10
+
+	def get_type_name(id):
+		name = "UNKNOWN"
+		constants = [attr for attr in dir(CTFTypeId) if not callable(getattr(CTFTypeId, attr)) and not attr.startswith("__")]
+		for attr in constants:
+			if getattr(CTFTypeId, attr) == id:
+				name = attr
+		return name
+
 class CTFReader:
-
-	#enum equivalent, accessible constants
-	#These are taken directly from ctf/events.h
-	#All changes to enums must also be made here
-	class type_id:
-		UNKNOWN = 0
-		INTEGER = 1
-		FLOAT = 2
-		ENUM = 3
-		STRING = 4
-		STRUCT = 5
-		UNTAGGED_VARIANT = 6
-		VARIANT = 7
-		ARRAY = 8
-		SEQUENCE = 9
-		NR_CTF_TYPES = 10
-
-		def get_type_id_name(id):
-			name = "UNKNOWN"
-			constants = [attr for attr in dir(CTFReader.type_id) if not callable(getattr(CTFReader.type_id, attr)) and not attr.startswith("__")]
-			for attr in constants:
-				if getattr(CTFReader.type_id, attr) == id:
-					name = attr
-			return name
-
 	class scope:
 		TRACE_PACKET_HEADER = 0
 		STREAM_PACKET_CONTEXT = 1
@@ -1108,33 +1113,33 @@ class CTFReader:
 			"""
 			id = self.field_type()
 			value = None
-			if id == CTFReader.type_id.STRING:
+			if id == CTFTypeId.STRING:
 				value = self.get_str()
-			elif id == CTFReader.type_id.ARRAY:
+			elif id == CTFTypeId.ARRAY:
 				value = []
 				for i in range(self.get_array_len()):
 					element = self.get_array_element_at(i)
 					value.append(element.get_value())
-			elif id == CTFReader.type_id.INTEGER:
+			elif id == CTFTypeId.INTEGER:
 				if self.get_int_signedness() == 0:
 					value = self.get_uint64()
 				else:
 					value = self.get_int64()
-			elif id == CTFReader.type_id.ENUM:
+			elif id == CTFTypeId.ENUM:
 				value = self.get_enum_str()
-			elif id == CTFReader.type_id.SEQUENCE:
+			elif id == CTFTypeId.SEQUENCE:
 				seq_len = self.get_sequence_len()
 				value = []
 				for i in range(seq_len):
 					evDef = self.get_sequence_element_at(i)
 					value.append(evDef.get_value())
-			elif id == CTFReader.type_id.FLOAT:
+			elif id == CTFTypeId.FLOAT:
 				value = self.get_float()
-			elif id == CTFReader.type_id.VARIANT:
+			elif id == CTFTypeId.VARIANT:
 				variant = CTFReader.Definition.__new__(CTFReader.Definition)
 				variant._d = self.get_variant();
 				value = variant.get_value()
-			elif id == CTFReader.type_id.STRUCT:
+			elif id == CTFTypeId.STRUCT:
 				value = {}
 				for i in range(self.get_struct_field_count()):
 					member = CTFReader.Definition.__new__(CTFReader.Definition)
@@ -1142,7 +1147,7 @@ class CTFReader:
 					value[member.field_name()] = member.get_value()
 
 			if CTFReader.field_error():
-				raise CTFReader.FieldError("Error occured while accessing field {} of type {}".format(self.field_name(), CTFReader.type_id.get_type_id_name(self.field_type())))
+				raise CTFReader.FieldError("Error occured while accessing field {} of type {}".format(self.field_name(), CTFTypeId.get_type_name(self.field_type())))
 			return value
 
 		def get_scope(self):
