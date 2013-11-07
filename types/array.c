@@ -247,7 +247,8 @@ GString *bt_get_char_array(const struct bt_definition *field)
 				return array_definition->string;
 			}
 		}
+	} else if (elem->id == CTF_TYPE_STRING) {
+		fprintf(stderr, "[warning] Extracting string\n");
 	}
-	fprintf(stderr, "[warning] Extracting string\n");
 	return NULL;
 }
