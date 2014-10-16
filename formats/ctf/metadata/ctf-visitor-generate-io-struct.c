@@ -4,6 +4,7 @@
  * Common Trace Format Metadata Visitor (generate I/O structures).
  *
  * Copyright 2010 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * Copyright 2014 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +40,8 @@
 #include <babeltrace/compat/uuid.h>
 #include <babeltrace/endian.h>
 #include <babeltrace/ctf/events-internal.h>
+#include <babeltrace/ctf-ir/trace.h>
+#include <babeltrace/ctf-ir/clock-internal.h>
 #include "ctf-scanner.h"
 #include "ctf-parser.h"
 #include "ctf-ast.h"
@@ -646,6 +649,44 @@ int ctf_variant_type_declarators_visit(FILE *fd, int depth,
 }
 
 static
+int ctf_typedef_visit_ir(struct bt_ctf_field_type *scope,
+		struct ctf_node *type_specifier_list,
+		struct bt_list_head *type_declarators,
+		struct bt_ctf_trace *trace)
+{
+	struct ctf_node *iter;
+	const char *identifier;
+
+	bt_list_for_each_entry(iter, type_declarators, siblings) {
+		struct bt_ctf_field_type *type_declaration;
+		int ret;
+
+		//type_declaration = ctf_type_declarator_visit_ir(
+		//	type_specifier_list, &identifier, iter, NULL, trace);
+		if (!type_declaration) {
+			fprintf(stderr, "[error] %s: problem creating type declaration\n", __func__);
+			return -EINVAL;
+		}
+		/*
+		 * Don't allow typedef and typealias of untagged
+		 * variants.
+		 */
+		if (bt_ctf_field_type_get_type_id(type_declaration) ==
+			CTF_TYPE_UNTAGGED_VARIANT) {
+			fprintf(stderr, "[error] %s: typedef of untagged variant is not permitted.\n", __func__);
+			bt_ctf_field_type_put(type_declaration);
+			return -EPERM;
+		}
+		ret = bt_register_declaration_ir(identifier, type_declaration, scope);
+		bt_ctf_field_type_put(type_declaration);
+		if (ret) {
+			return ret;
+		}
+	}
+	return 0;
+}
+
+static
 int ctf_typedef_visit(FILE *fd, int depth, struct declaration_scope *scope,
 		struct ctf_node *type_specifier_list,
 		struct bt_list_head *type_declarators,
@@ -1200,7 +1241,7 @@ struct bt_declaration *ctf_declaration_type_specifier_visit(FILE *fd, int depth,
  * Returns 0/1 boolean, or < 0 on error.
  */
 static
-int get_boolean(FILE *fd, int depth, struct ctf_node *unary_expression)
+int get_boolean(FILE *fd, struct ctf_node *unary_expression)
 {
 	if (unary_expression->type != NODE_UNARY_EXPRESSION) {
 		fprintf(fd, "[error] %s: expecting unary expression\n",
@@ -1313,7 +1354,7 @@ struct bt_declaration *ctf_declaration_integer_visit(FILE *fd, int depth,
 		if (left->u.unary_expression.type != UNARY_STRING)
 			return NULL;
 		if (!strcmp(left->u.unary_expression.u.string, "signed")) {
-			signedness = get_boolean(fd, depth, right);
+			signedness = get_boolean(fd, right);
 			if (signedness < 0)
 				return NULL;
 		} else if (!strcmp(left->u.unary_expression.u.string, "byte_order")) {
@@ -2427,7 +2468,7 @@ int ctf_clock_declaration_visit(FILE *fd, int depth, struct ctf_node *node,
 			struct ctf_node *right;
 
 			right = _bt_list_first_entry(&node->u.ctf_expression.right, struct ctf_node, siblings);
-			ret = get_boolean(fd, depth, right);
+			ret = get_boolean(fd, right);
 			if (ret < 0) {
 				fprintf(fd, "[error] %s: unexpected \"absolute\" right member\n", __func__);
 				ret = -EINVAL;
@@ -2907,6 +2948,52 @@ int ctf_env_visit(FILE *fd, int depth, struct ctf_node *node, struct ctf_trace *
 			goto error;
 	}
 error:
+	return 0;
+}
+
+static
+int ctf_root_declaration_visit_ir(struct ctf_node *node,
+	struct bt_ctf_trace *trace)
+{
+	int ret = 0;
+
+	if (node->visited)
+		return 0;
+	node->visited = 1;
+
+	switch (node->type) {
+	case NODE_TYPEDEF:
+//		ret = ctf_typedef_visit_ir(node->u._typedef.type_specifier_list,
+//			&node->u._typedef.type_declarators, trace);
+		if (ret)
+			return ret;
+		break;
+	case NODE_TYPEALIAS:
+		/*
+		ret = ctf_typealias_visit(trace->root_declaration_scope,
+			node->u.typealias.target, node->u.typealias.alias,
+			trace);
+		if (ret)
+			return ret;
+		*/
+		break;
+	case NODE_TYPE_SPECIFIER_LIST:
+	{
+		/*
+		struct bt_declaration *declaration;
+
+		declaration = ctf_type_specifier_list_visit(node,
+			trace->root_declaration_scope, trace);
+		if (!declaration)
+			return -ENOMEM;
+		bt_declaration_unref(declaration);
+		*/
+		break;
+	}
+	default:
+		return -EPERM;
+	}
+
 	return 0;
 }
 

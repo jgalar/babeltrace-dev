@@ -31,9 +31,9 @@
 #include <babeltrace/endian.h>
 #include <babeltrace/babeltrace-internal.h>
 #include <babeltrace/ctf/metadata.h>
-#include "ctf-scanner.h"
-#include "ctf-parser.h"
-#include "ctf-ast.h"
+#include "metadata/ctf-scanner.h"
+#include "metadata/ctf-parser.h"
+#include "metadata/ctf-ast.h"
 
 int babeltrace_verbose, babeltrace_debug;
 
@@ -42,7 +42,15 @@ int main(int argc, char **argv)
 	struct ctf_scanner *scanner;
 	struct ctf_trace *trace;
 	int ret = 0;
+	FILE* fp = stdin;
 
+	if (argc > 1) {
+		fp = fopen(argv[1], "r");
+		if (!fp) {
+			fprintf(stderr, "Failed to open metadata file");
+			return -1;
+		}
+	}
 	babeltrace_debug = 1;
 	babeltrace_verbose = 1;
 	scanner = ctf_scanner_alloc();
@@ -50,7 +58,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Error allocating scanner\n");
 		return -ENOMEM;
 	}
-	ret = ctf_scanner_append_ast(scanner, stdin);
+	ret = ctf_scanner_append_ast(scanner, fp);
 	if (ret) {
 		fprintf(stderr, "Error creating AST\n");
 		goto end;
@@ -79,5 +87,8 @@ free_trace:
 	free(trace);
 end:
 	ctf_scanner_free(scanner);
+	if (fp && fp != stdin) {
+		fclose(fp);
+	}
 	return ret;
 } 

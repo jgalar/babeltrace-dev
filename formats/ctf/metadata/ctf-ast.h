@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <glib.h>
 #include <babeltrace/list.h>
+#include <babeltrace/ctf-ir/trace.h>
 
 // the parameter name (of the reentrant 'yyparse' function)
 // data is a pointer to a 'SParserParam' structure
@@ -313,6 +314,9 @@ int ctf_visitor_parent_links(FILE *fd, int depth, struct ctf_node *node);
 BT_HIDDEN
 int ctf_visitor_construct_metadata(FILE *fd, int depth, struct ctf_node *node,
 			struct ctf_trace *trace, int byte_order);
+BT_HIDDEN
+int ctf_visitor_construct_metadata_ir(struct ctf_node *node,
+		struct bt_ctf_trace *trace);
 BT_HIDDEN
 int ctf_destroy_metadata(struct ctf_trace *trace);
 

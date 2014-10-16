@@ -473,7 +473,7 @@ static int traverse_trace_dir(const char *fpath, const struct stat *sb,
 
 		/* Add path to the global list */
 		if (traversed_paths == NULL) {
-			fprintf(stderr, "[error] [Context] Invalid open path array.\n");	
+			fprintf(stderr, "[error] [Context] Invalid open path array.\n");
 			return -1;
 		}
 		g_ptr_array_add(traversed_paths, g_string_new(fpath));

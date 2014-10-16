@@ -38,6 +38,7 @@
 #include <string.h>
 #include <glib.h>
 #include <assert.h>
+#include <babeltrace/ctf-ir/event-types.h>
 
 /* Preallocate this many fields for structures */
 #define DEFAULT_NR_STRUCT_FIELDS 8
@@ -310,6 +311,9 @@ struct definition_sequence {
 	GString *string;		/* String for encoded integer children */
 };
 
+int bt_register_declaration_ir(const char *declaration_name,
+			 struct bt_ctf_field_type *declaration,
+			 struct bt_ctf_field_type *scope);
 int bt_register_declaration(GQuark declaration_name,
 			 struct bt_declaration *declaration,
 			 struct declaration_scope *scope);

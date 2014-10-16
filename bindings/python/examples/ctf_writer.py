@@ -47,8 +47,9 @@ stream_class.clock = clock
 event_class = CTFWriter.EventClass("SimpleEvent")
 
 # Create a int32_t equivalent type
-int32_type = CTFWriter.IntegerFieldDeclaration(32)
+int32_type = CTFWriter.IntegerFieldDeclaration(11)
 int32_type.signed = True
+int32_type.base = 16
 
 # Create a uint16_t equivalent type
 uint16_type = CTFWriter.IntegerFieldDeclaration(16)
@@ -103,7 +104,7 @@ for i in range(100):
     clock.time = i * 1000
     structure_field = event.payload("structure_field")
     integer_field = structure_field.field("an_integer")
-    integer_field.value = i
+    integer_field.value = 50 - i
 
     string_field = structure_field.field("a_string_field")
     string_field.value = "Test string."

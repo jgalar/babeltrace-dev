@@ -74,6 +74,22 @@ struct bt_declaration *bt_lookup_declaration(GQuark declaration_name,
 	return NULL;
 }
 
+int bt_register_declaration_ir(const char *name,
+		struct bt_ctf_field_type *declaration,
+		struct bt_ctf_field_type *scope)
+{
+	int ret;
+
+	if (!name || !declaration || !scope) {
+		ret = -EPERM;
+		goto end;
+	}
+
+	ret = bt_ctf_field_type_structure_add_field(scope, declaration, name);
+end:
+	return ret;
+}
+
 int bt_register_declaration(GQuark name, struct bt_declaration *declaration,
 		struct declaration_scope *scope)
 {

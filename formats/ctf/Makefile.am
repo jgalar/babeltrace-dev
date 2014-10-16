@@ -1,6 +1,6 @@
 AM_CFLAGS = $(PACKAGE_CFLAGS) -I$(top_srcdir)/include
 
-SUBDIRS = types metadata writer ir .
+SUBDIRS = types writer ir metadata .
 
 lib_LTLIBRARIES = libbabeltrace-ctf.la
 
@@ -22,3 +22,11 @@ libbabeltrace_ctf_la_LIBADD = \
 	metadata/libctf-ast.la \
 	writer/libctf-writer.la \
 	ir/libctf-ir.la
+
+noinst_PROGRAMS = ctf-parser-test
+ctf_parser_test_SOURCES = ctf-parser-test.c
+ctf_parser_test_LDADD =	metadata/libctf-parser.la \
+	metadata/libctf-ast.la \
+	ir/libctf-ir.la \
+	types/libctf-types.la \
+	libbabeltrace-ctf.la
