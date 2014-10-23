@@ -35,7 +35,7 @@
 #include <babeltrace/ctf-ir/stream.h>
 #include <babeltrace/ctf-ir/stream-internal.h>
 #include <babeltrace/ctf-ir/stream-class-internal.h>
-#include <babeltrace/ctf-writer/functor-internal.h>
+#include <babeltrace/ctf-ir/functor-internal.h>
 #include <babeltrace/compiler.h>
 #include <babeltrace/align.h>
 

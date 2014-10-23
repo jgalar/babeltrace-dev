@@ -34,7 +34,7 @@
 #include <babeltrace/ctf-ir/event-fields-internal.h>
 #include <babeltrace/ctf-writer/stream.h>
 #include <babeltrace/ctf-ir/stream-class-internal.h>
-#include <babeltrace/ctf-writer/functor-internal.h>
+#include <babeltrace/ctf-ir/functor-internal.h>
 #include <babeltrace/compiler.h>
 #include <babeltrace/align.h>
 

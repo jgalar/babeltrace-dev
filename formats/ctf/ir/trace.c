@@ -30,7 +30,7 @@
 #include <babeltrace/ctf-ir/clock-internal.h>
 #include <babeltrace/ctf-ir/stream-internal.h>
 #include <babeltrace/ctf-ir/stream-class-internal.h>
-#include <babeltrace/ctf-writer/functor-internal.h>
+#include <babeltrace/ctf-ir/functor-internal.h>
 #include <babeltrace/ctf-ir/event-types-internal.h>
 #include <babeltrace/compiler.h>
 
