@@ -1081,6 +1081,7 @@ end:
 	return ret;
 }
 
+BT_HIDDEN
 void bt_ctf_event_class_set_native_byte_order(
 		struct bt_ctf_event_class *event_class,
 		int byte_order)
@@ -1093,6 +1094,38 @@ void bt_ctf_event_class_set_native_byte_order(
 		byte_order);
 	bt_ctf_field_type_set_native_byte_order(event_class->fields,
 		byte_order);
+}
+
+BT_HIDDEN
+int bt_ctf_event_class_visit(struct bt_ctf_event_class *event_class,
+		struct bt_ctf_visitor *visitor)
+{
+	int ret = 0;
+	GString *original_path;
+
+	assert(event_class && visitor);
+	original_path = visitor->context.absolute_path;
+	visitor->context.absolute_path = g_string_new("event.");
+
+	if (event_class->context) {
+		ret = bt_ctf_field_type_visit(event_class->context, "context",
+			visitor);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	ret = bt_ctf_field_type_visit(event_class->fields, "fields",
+		visitor);
+	if (ret) {
+		goto end;
+	}
+end:
+	if (visitor && visitor->context.absolute_path) {
+		g_string_free(visitor->context.absolute_path, TRUE);
+	}
+	visitor->context.absolute_path = original_path;
+	return ret;
 }
 
 BT_HIDDEN

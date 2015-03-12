@@ -1956,6 +1956,108 @@ end:
 }
 
 static
+int bt_ctf_field_type_structure_visit(struct bt_ctf_field_type *type,
+		const char *name, struct bt_ctf_visitor *visitor)
+{
+	size_t i;
+	int ret = 0;
+	GString *original_path = visitor->context.absolute_path;
+	struct bt_ctf_field_type_structure *structure = container_of(
+		type, struct bt_ctf_field_type_structure, parent);
+
+	visitor->context.absolute_path = g_string_new(original_path->str);
+	if (!visitor->context.absolute_path) {
+		ret = -1;
+		goto end;
+	}
+
+	g_string_append_printf(visitor->context.absolute_path, "%s.", name);
+	for (i = 0; i < structure->fields->len; i++) {
+		struct structure_field *field = g_ptr_array_index(
+			structure->fields, i);
+
+		ret = bt_ctf_field_type_visit(field->type,
+			g_quark_to_string(field->name), visitor);
+		if (ret) {
+			goto end;
+		}
+	}
+end:
+	if (visitor->context.absolute_path) {
+		g_string_free(visitor->context.absolute_path, TRUE);
+	}
+	visitor->context.absolute_path = original_path;
+	return ret;
+}
+
+static
+int bt_ctf_field_type_variant_visit(struct bt_ctf_field_type *type,
+		const char *name, struct bt_ctf_visitor *visitor)
+{
+	size_t i;
+	int ret = 0;
+	GString *original_path = visitor->context.absolute_path;
+	struct bt_ctf_field_type_variant *variant = container_of(
+		type, struct bt_ctf_field_type_variant, parent);
+
+	visitor->context.absolute_path = g_string_new(original_path->str);
+	if (!visitor->context.absolute_path) {
+		ret = -1;
+		goto end;
+	}
+
+	g_string_append_printf(visitor->context.absolute_path, "%s.", name);
+	for (i = 0; i < variant->fields->len; i++) {
+		struct structure_field *field = g_ptr_array_index(
+			variant->fields, i);
+
+		ret = bt_ctf_field_type_visit(field->type,
+			g_quark_to_string(field->name), visitor);
+		if (ret) {
+			goto end;
+		}
+	}
+end:
+	if (visitor->context.absolute_path) {
+		g_string_free(visitor->context.absolute_path, TRUE);
+	}
+	visitor->context.absolute_path = original_path;
+	return ret;
+}
+
+BT_HIDDEN
+int bt_ctf_field_type_visit(struct bt_ctf_field_type *type, const char *name,
+		struct bt_ctf_visitor *visitor)
+{
+	int ret = 0;
+	const enum ctf_type_id type_id = bt_ctf_field_type_get_type_id(type);
+
+	if (type_id == CTF_TYPE_UNKNOWN || !name || !visitor) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = visitor->visit(visitor, type, name);
+	if (ret) {
+		goto end;
+	}
+
+	switch (type_id)
+	{
+	case CTF_TYPE_STRUCT:
+		ret = bt_ctf_field_type_structure_visit(type, name, visitor);
+		break;
+	case CTF_TYPE_VARIANT:
+		ret = bt_ctf_field_type_variant_visit(type, name, visitor);
+		break;
+	default:
+		break;
+	}
+end:
+	return ret;
+}
+
+static
 void bt_ctf_field_type_integer_destroy(struct bt_ctf_ref *ref)
 {
 	struct bt_ctf_field_type_integer *integer;

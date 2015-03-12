@@ -33,6 +33,7 @@
 #include <babeltrace/ctf-ir/event-fields.h>
 #include <babeltrace/babeltrace-internal.h>
 #include <babeltrace/objects.h>
+#include <babeltrace/ctf-ir/visitor-internal.h>
 #include <glib.h>
 #include <sys/types.h>
 #include <uuid/uuid.h>
@@ -49,15 +50,15 @@ enum field_type_alias {
 
 struct bt_ctf_trace {
 	struct bt_ctf_ref ref_count;
+	uint64_t next_stream_id;
 	int frozen;
 	uuid_t uuid;
 	int byte_order; /* A value defined in Babeltrace's "endian.h" */
 	struct bt_object *environment;
 	GPtrArray *clocks; /* Array of pointers to bt_ctf_clock */
+	struct bt_ctf_field_type *packet_header_type;
 	GPtrArray *stream_classes; /* Array of ptrs to bt_ctf_stream_class */
 	GPtrArray *streams; /* Array of ptrs to bt_ctf_stream */
-	struct bt_ctf_field_type *packet_header_type;
-	uint64_t next_stream_id;
 };
 
 struct environment_variable {
@@ -80,5 +81,18 @@ const char *get_byte_order_string(int byte_order);
 
 BT_HIDDEN
 struct bt_ctf_field_type *get_field_type(enum field_type_alias alias);
+
+/*
+ * bt_ctf_trace_visit: visit all field types in a trace.
+ *
+ * @param trace Trace instance to visit.
+ * @param visitor Visitor which will be called at each field node.
+ *
+ * Returns 0 on success, a negative value on error and a positive value if the
+ * visitor has requested the traversal to end.
+ */
+BT_HIDDEN
+int bt_ctf_trace_visit(struct bt_ctf_trace *trace,
+		struct bt_ctf_visitor *visitor);
 
 #endif /* BABELTRACE_CTF_IR_TRACE_INTERNAL_H */

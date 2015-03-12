@@ -36,6 +36,7 @@
 #include <babeltrace/ctf-ir/stream-class-internal.h>
 #include <babeltrace/ctf-writer/functor-internal.h>
 #include <babeltrace/ctf-ir/utils.h>
+#include <babeltrace/ctf-ir/visitor-internal.h>
 #include <babeltrace/compiler.h>
 #include <babeltrace/align.h>
 
@@ -701,6 +702,94 @@ int bt_ctf_stream_class_set_trace(struct bt_ctf_stream_class *stream_class,
 	}
 
 	stream_class->trace = trace;
+end:
+	return ret;
+}
+
+BT_HIDDEN
+int bt_ctf_stream_class_visit(struct bt_ctf_stream_class *stream_class,
+		struct bt_ctf_visitor *visitor)
+{
+	int ret, i;
+	GString *absolute_path = NULL, *original_absolute_path = NULL;
+
+	if (!stream_class || !visitor) {
+		ret = -1;
+		goto end;
+	}
+
+	visitor->context.stream_class = stream_class;
+	original_absolute_path = visitor->context.absolute_path;
+	absolute_path = g_string_new("stream.");
+	if (!absolute_path) {
+		ret = -1;
+		goto end;
+	}
+
+	visitor->context.absolute_path = absolute_path;
+	/* Visit stream.packet.context */
+	if (stream_class->packet_context_type) {
+		ret = bt_ctf_field_type_visit(stream_class->packet_context_type,
+			"packet.context", visitor);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* Visit stream.event.header */
+	if (stream_class->event_header_type) {
+		ret = bt_ctf_field_type_visit(stream_class->event_header_type,
+			"event.header", visitor);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* Visit stream.event.context */
+	if (stream_class->event_context_type) {
+		ret = bt_ctf_field_type_visit(stream_class->event_context_type,
+			"event.context", visitor);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	for (i = 0; i < stream_class->event_classes->len; i++) {
+		struct bt_ctf_event_class *event_class =
+			g_ptr_array_index(stream_class->event_classes, i);
+
+		ret = bt_ctf_event_class_visit(event_class, visitor);
+		if (ret) {
+			goto end;
+		}
+	}
+end:
+	if (absolute_path) {
+		g_string_free(absolute_path, TRUE);
+	}
+
+	/* Restore original absolute path */
+	if (visitor && original_absolute_path) {
+		visitor->context.absolute_path = original_absolute_path;
+	}
+	if (visitor) {
+		visitor->context.stream_class = NULL;
+	}
+	return ret;
+}
+
+BT_HIDDEN
+int bt_ctf_stream_class_resolve(struct bt_ctf_stream_class *stream_class)
+{
+	int ret;
+	struct bt_ctf_visitor visitor = { 0 };
+
+	if (!stream_class->trace) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = bt_ctf_stream_class_visit(stream_class, &visitor);
 end:
 	return ret;
 }

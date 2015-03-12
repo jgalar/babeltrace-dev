@@ -74,4 +74,15 @@ BT_HIDDEN
 int bt_ctf_stream_class_set_trace(struct bt_ctf_stream_class *stream_class,
 		struct bt_ctf_trace *trace);
 
+BT_HIDDEN
+int bt_ctf_stream_class_visit(struct bt_ctf_stream_class *stream_class,
+		struct bt_ctf_visitor *visitor);
+
+/*
+ * Resolve all dynamic scopes referenced in a stream class, its events,
+ * and their field types (sequences and variants).
+ */
+BT_HIDDEN
+int bt_ctf_stream_class_resolve(struct bt_ctf_stream_class *stream_class);
+
 #endif /* BABELTRACE_CTF_IR_STREAM_CLASS_INTERNAL_H */

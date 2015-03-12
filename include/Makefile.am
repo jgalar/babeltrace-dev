@@ -29,8 +29,7 @@ babeltracectfirinclude_HEADERS = \
 	babeltrace/ctf-ir/event.h \
 	babeltrace/ctf-ir/stream.h \
 	babeltrace/ctf-ir/stream-class.h \
-	babeltrace/ctf-ir/trace.h \
-	babeltrace/ctf-ir/utils.h
+	babeltrace/ctf-ir/trace.h
 
 noinst_HEADERS = \
 	babeltrace/align.h \
@@ -60,6 +59,8 @@ noinst_HEADERS = \
 	babeltrace/ctf-ir/stream-class-internal.h \
 	babeltrace/ctf-ir/stream-internal.h \
 	babeltrace/ctf-ir/trace-internal.h \
+	babeltrace/ctf-ir/utils.h \
+	babeltrace/ctf-ir/visitor-internal.h \
 	babeltrace/ctf-writer/functor-internal.h \
 	babeltrace/trace-handle-internal.h \
 	babeltrace/compat/uuid.h \

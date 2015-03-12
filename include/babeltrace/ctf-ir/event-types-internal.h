@@ -37,9 +37,11 @@
 #include <babeltrace/ctf/events.h>
 #include <glib.h>
 
-typedef void(*type_freeze_func)(struct bt_ctf_field_type *);
-typedef int(*type_serialize_func)(struct bt_ctf_field_type *,
+typedef void (*type_freeze_func)(struct bt_ctf_field_type *);
+typedef int (*type_serialize_func)(struct bt_ctf_field_type *,
 		struct metadata_context *);
+typedef int (*type_visit_func)(struct bt_ctf_field_type *, const char *,
+		struct bt_ctf_visitor *);
 
 struct bt_ctf_field_type {
 	struct bt_ctf_ref ref_count;
@@ -164,5 +166,9 @@ void bt_ctf_field_type_set_native_byte_order(
 BT_HIDDEN
 struct bt_ctf_field_type *bt_ctf_field_type_copy(
 		struct bt_ctf_field_type *type);
+
+BT_HIDDEN
+int bt_ctf_field_type_visit(struct bt_ctf_field_type *type,
+		const char *name, struct bt_ctf_visitor *visitor);
 
 #endif /* BABELTRACE_CTF_IR_EVENT_TYPES_INTERNAL_H */

@@ -32,6 +32,7 @@
 #include <babeltrace/ctf-ir/stream-class-internal.h>
 #include <babeltrace/ctf-writer/functor-internal.h>
 #include <babeltrace/ctf-ir/event-types-internal.h>
+#include <babeltrace/ctf-ir/visitor-internal.h>
 #include <babeltrace/ctf-ir/utils.h>
 #include <babeltrace/compiler.h>
 #include <babeltrace/objects.h>
@@ -522,6 +523,57 @@ const char *get_byte_order_string(int byte_order)
 	}
 
 	return string;
+}
+
+BT_HIDDEN
+int bt_ctf_trace_visit(struct bt_ctf_trace *trace,
+		struct bt_ctf_visitor *visitor)
+{
+	int ret, i;
+	GString *absolute_path = NULL;
+
+	if (!trace || !visitor) {
+		ret = -1;
+		goto end;
+	}
+
+	memset(&visitor->context, 0, sizeof(struct bt_ctf_visitor_context));
+	visitor->context.trace = trace;
+	absolute_path = g_string_new("trace.packet.");
+	if (!absolute_path) {
+		ret = -1;
+		goto end;
+	}
+
+	visitor->context.absolute_path = absolute_path;
+
+	/* Visit trace.packet.header */
+	if (trace->packet_header_type) {
+		ret = bt_ctf_field_type_visit(trace->packet_header_type,
+			"header", visitor);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* Visit streams */
+	for (i = 0; i < trace->stream_classes->len; i++) {
+		struct bt_ctf_stream_class *stream_class =
+			g_ptr_array_index(trace->stream_classes, i);
+
+		ret = bt_ctf_stream_class_visit(stream_class, visitor);
+		if (ret) {
+			goto end;
+		}
+	}
+end:
+	if (absolute_path) {
+		g_string_free(absolute_path, TRUE);
+	}
+	if (visitor) {
+		visitor->context.trace = NULL;
+	}
+	return ret;
 }
 
 static

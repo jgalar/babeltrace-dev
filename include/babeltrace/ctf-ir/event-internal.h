@@ -30,6 +30,7 @@
 #include <babeltrace/ctf-writer/ref-internal.h>
 #include <babeltrace/ctf-writer/event-types.h>
 #include <babeltrace/ctf-writer/event-fields.h>
+#include <babeltrace/ctf-ir/visitor-internal.h>
 #include <babeltrace/babeltrace-internal.h>
 #include <babeltrace/objects.h>
 #include <babeltrace/ctf/types.h>
@@ -80,6 +81,10 @@ BT_HIDDEN
 void bt_ctf_event_class_set_native_byte_order(
 		struct bt_ctf_event_class *event_class,
 		int byte_order);
+
+BT_HIDDEN
+int bt_ctf_event_class_visit(struct bt_ctf_event_class *event_class,
+		struct bt_ctf_visitor *visitor);
 
 BT_HIDDEN
 int bt_ctf_event_validate(struct bt_ctf_event *event);
