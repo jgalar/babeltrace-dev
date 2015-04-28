@@ -37,9 +37,24 @@
 #include <babeltrace/ctf/events.h>
 #include <glib.h>
 
-typedef void(*type_freeze_func)(struct bt_ctf_field_type *);
-typedef int(*type_serialize_func)(struct bt_ctf_field_type *,
+typedef void (*type_freeze_func)(struct bt_ctf_field_type *);
+typedef int (*type_serialize_func)(struct bt_ctf_field_type *,
 		struct metadata_context *);
+
+enum bt_ctf_node {
+	CTF_NODE_UNKNOWN = -1,
+	CTF_NODE_TRACE_PACKET_HEADER = 0,
+	CTF_NODE_STREAM_PACKET_CONTEXT = 1,
+	CTF_NODE_STREAM_EVENT_HEADER = 2,
+	CTF_NODE_STREAM_EVENT_CONTEXT = 3,
+	CTF_NODE_EVENT_CONTEXT = 4,
+	CTF_NODE_EVENT_PAYLOAD = 5,
+};
+
+struct bt_ctf_field_path {
+	enum bt_ctf_node root;
+	GArray *path_indexes;
+};
 
 struct bt_ctf_field_type {
 	struct bt_ctf_ref ref_count;
