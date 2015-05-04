@@ -53,6 +53,14 @@
 			&unused_name, &field, i);			\
 	field; })
 
+static int field_type_visit(struct bt_ctf_field_type *type,
+		struct ctf_type_visitor_context *context,
+		ctf_type_visitor_func func);
+
+static int field_type_recursive_visit(struct bt_ctf_field_type *type,
+		struct ctf_type_visitor_context *context,
+		ctf_type_visitor_func func);
+
 BT_HIDDEN
 ctf_type_stack *ctf_type_stack_create(void)
 {
@@ -123,7 +131,21 @@ int field_type_visit(struct bt_ctf_field_type *type,
 	}
 
 	type_id = bt_ctf_field_type_get_type_id(type);
-	if (type_id != CTF_TYPE_STRUCT && type_id != CTF_TYPE_VARIANT) {
+	if (type_id == CTF_TYPE_SEQUENCE || type_id == CTF_TYPE_ARRAY) {
+		struct bt_ctf_field_type *element =
+			type_id == CTF_TYPE_SEQUENCE ?
+			bt_ctf_field_type_sequence_get_element_type(type) :
+			bt_ctf_field_type_array_get_element_type(type);
+
+		ret = field_type_recursive_visit(element, context, func);
+		bt_ctf_field_type_put(element);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	if (type_id != CTF_TYPE_STRUCT &&
+		type_id != CTF_TYPE_VARIANT) {
 		/* No need to create a new stack frame */
 		goto end;
 	}
