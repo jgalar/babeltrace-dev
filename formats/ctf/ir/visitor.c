@@ -30,6 +30,7 @@
 #include <babeltrace/ctf-ir/stream-class.h>
 #include <babeltrace/ctf-ir/visitor-internal.h>
 #include <babeltrace/ctf-ir/event-types-internal.h>
+#include <babeltrace/ctf-ir/event-internal.h>
 
 #define TYPE_FIELD_COUNT(type)						\
 	({ int field_count = -1;					\
@@ -232,7 +233,7 @@ int bt_ctf_event_class_visit(struct bt_ctf_event_class *event_class,
 
 	/* Visit stream event context */
 	context->root_node = CTF_NODE_EVENT_PAYLOAD;
-	type = bt_ctf_event_class_get_payload_field(event_class);
+	type = bt_ctf_event_class_get_payload_type(event_class);
 	if (type) {
 		ret = field_type_recursive_visit(type, context, func);
 		bt_ctf_field_type_put(type);
