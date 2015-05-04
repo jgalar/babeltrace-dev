@@ -206,9 +206,71 @@ end:
 
 static
 int bt_ctf_stream_class_visit(struct bt_ctf_stream_class *stream_class,
+		struct ctf_type_visitor_context *context,
 		ctf_type_visitor_func func)
 {
-	return -1;
+	int ret = 0, event_count;
+	struct bt_ctf_field_type *type;
+
+	if (!stream_class || !context || !func) {
+		ret = -1;
+		goto end;
+	}
+
+	/* Visit stream packet context header */
+	visitor_ctx.root_node = CTF_NODE_STREAM_PACKET_CONTEXT;
+	type = bt_ctf_stream_class_get_packet_context_type(stream_class);
+	if (type) {
+		ret = field_type_recursive_visit(type, &visitor_ctx, func);
+		if (ret) {
+			goto end;
+		}
+		bt_ctf_field_type_put(type);
+		type = NULL;
+	}
+
+	/* Visit stream event header */
+	visitor_ctx.root_node = CTF_NODE_STREAM_EVENT_HEADER;
+	type = bt_ctf_stream_class_get_event_header_type(stream_class);
+	if (type) {
+		ret = field_type_recursive_visit(type, &visitor_ctx, func);
+		if (ret) {
+			goto end;
+		}
+		bt_ctf_field_type_put(type);
+		type = NULL;
+	}
+
+	/* Visit stream event context */
+	visitor_ctx.root_node = CTF_NODE_STREAM_EVENT_CONTEXT;
+	type = bt_ctf_stream_class_get_event_context_type(stream_class);
+	if (type) {
+		ret = field_type_recursive_visit(type, &visitor_ctx, func);
+		if (ret) {
+			goto end;
+		}
+		bt_ctf_field_type_put(type);
+		type = NULL;
+	}
+
+	/* Visit event classes */
+	event_count = bt_ctf_stream_class_get_event_class_count(stream_class);
+	if (event_count < 0) {
+		ret = event_count;
+		goto end;
+	}
+	for (i = 0; i < event_count; i++) {
+		struct bt_ctf_event_class *event_class =
+			bt_ctf_stream_class_get_event_class(stream_class, i);
+
+		ret = bt_ctf_event_class_visit(event_class, context, func);
+		bt_ctf_event_class_put(event_class);
+		if (ret) {
+			goto end;
+		}
+	}
+end:
+	return ret;
 }
 
 static
@@ -239,15 +301,16 @@ int bt_ctf_trace_visit(struct bt_ctf_trace *trace,
 	}
 
 	/* Visit trace packet header */
-	visitor_ctx.root_node = CTF_NODE_TRACE_PACKET_HEADER;
 	type = bt_ctf_trace_get_packet_header_type(trace);
-	ret = field_type_recursive_visit(type, &visitor_ctx,
-		func);
-	if (ret) {
-		goto end;
+	if (type) {
+		visitor_ctx.root_node = CTF_NODE_TRACE_PACKET_HEADER;
+		ret = field_type_recursive_visit(type, &visitor_ctx, func);
+		bt_ctf_field_type_put(type);
+		type = NULL;
+		if (ret) {
+			goto end;
+		}
 	}
-	bt_ctf_field_type_put(type);
-	type = NULL;
 
 	stream_count = bt_ctf_trace_get_stream_class_count(trace);
 	for (i = 0; i < stream_count; i++) {
@@ -263,10 +326,6 @@ int bt_ctf_trace_visit(struct bt_ctf_trace *trace,
 		}
 	}
 end:
-	if (type) {
-		bt_ctf_field_type_put(type);
-	}
-
 	if (visitor_ctx.stack) {
 		ctf_type_stack_destroy(visitor_ctx.stack);
 	}
