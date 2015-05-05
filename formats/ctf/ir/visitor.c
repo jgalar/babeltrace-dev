@@ -387,11 +387,10 @@ struct bt_ctf_field_path *get_field_name_path(
 		token = strtok_r(NULL, ".", &save_ptr);
 	}
 
-	field_path = g_new0(struct bt_ctf_field_path, 1);
+	field_path = bt_ctf_field_path_create();
 	if (!field_path) {
 		goto error;
 	}
-	field_path->root = CTF_NODE_UNKNOWN;
 
 	/* Check if the path is absolute */
 	for (i = 0; i < sizeof(absolute_path_prefixes) / sizeof(char *); i++) {
@@ -438,7 +437,8 @@ end:
 	return field_path;
 error:
 	if (field_path) {
-		g_free(field_path);
+		bt_ctf_field_path_destroy(field_path);
+		field_path = NULL;
 	}
 	goto end;
 }
