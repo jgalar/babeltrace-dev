@@ -361,7 +361,23 @@ end:
 }
 
 static
-struct bt_ctf_field_path *get_field_name_path(
+int set_field_path_relative(struct ctf_type_visitor_context *context,
+		struct bt_ctf_field_path *field_path,
+		GList *path_tokens)
+{
+	return -1;
+}
+
+static
+int set_field_path_absolute(struct ctf_type_visitor_context *context,
+		struct bt_ctf_field_path *field_path,
+		GList *path_tokens)
+{
+	return -1;
+}
+
+static
+struct bt_ctf_field_path *get_field_path(
 		struct ctf_type_visitor_context *context,
 		const char *path)
 {
@@ -423,10 +439,19 @@ struct bt_ctf_field_path *get_field_name_path(
 
 	if (field_path->root == CTF_NODE_UNKNOWN) {
 		/* Relative path */
+		int ret = set_field_path_relative(context,
+			field_path, path_tokens);
+		if (ret) {
+			goto error;
+		}
 	} else {
 		/* Absolute path */
+		int ret = set_field_path_absolute(context,
+			field_path, path_tokens);
+		if (ret) {
+			goto error;
+		}
 	}
-
 end:
 	if (name_copy) {
 		g_free(name_copy);
@@ -465,7 +490,7 @@ int type_resolve_func(struct bt_ctf_field_type *type,
 		goto end;
 	}
 
-	field_path = get_field_name_path(context, field_name);
+	field_path = get_field_path(context, field_name);
 	if (!field_path) {
 		ret = -1;
 		goto end;
