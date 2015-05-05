@@ -339,10 +339,75 @@ end:
 }
 
 static
+void free_string(gpointer string) {
+	g_string_free((GString *) string, TRUE);
+}
+
+static
 int type_resolve_func(struct bt_ctf_field_type *type,
 		struct ctf_type_visitor_context *context)
 {
-	return -1;
+	int ret = 0;
+	enum ctf_type_id type_id = bt_ctf_field_type_get_type_id(type);
+	const char *field_name = NULL;
+	char *name_copy = NULL, *save_ptr, *token;
+	GPtrArray *path_tokens = NULL;
+	struct bt_ctf_field_path *field_path = NULL;
+
+	if (type_id != CTF_TYPE_SEQUENCE &&
+	    type_id != CTF_TYPE_VARIANT) {
+		goto end;
+	}
+
+	field_name = type_id == CTF_TYPE_SEQUENCE ?
+		bt_ctf_field_type_sequence_get_length_field_name(type) :
+		bt_ctf_field_type_variant_get_tag_name(type);
+	if (!field_name) {
+		ret = -1;
+		goto end;
+	}
+
+	/* Tokenize field name */
+	name_copy = strdup(field_name);
+	if (!name_copy) {
+		ret = -1;
+		goto end;
+	}
+
+	path_tokens = g_ptr_array_new_with_free_func(free_string);
+	if (!path_tokens) {
+		ret = -1;
+		goto end;
+	}
+
+	token = strtok_r(name_copy, ".", &save_ptr);
+	while (token) {
+		GString *token_string = g_string_new(token);
+
+		if (!token_string) {
+			ret = -1;
+			goto end;
+		}
+		g_ptr_array_add(path_tokens, token_string);
+		token = strtok_r(NULL, ".", &save_ptr);
+	}
+
+	field_path = get_field_name_path(context, path_tokens);
+	if (!field_path) {
+		ret = -1;
+		goto end;
+	}
+
+	/* Set type's path */
+	/* ... */
+end:
+	if (name_copy) {
+		free(name_copy);
+	}
+	if (path_tokens) {
+		g_ptr_array_free(path_tokens, TRUE);
+	}
+	return ret;
 }
 
 BT_HIDDEN
