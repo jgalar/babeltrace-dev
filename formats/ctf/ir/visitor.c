@@ -344,6 +344,26 @@ void free_string(gpointer string) {
 }
 
 static
+struct bt_ctf_field_path *get_field_name_path(
+		struct ctf_type_visitor_context *context,
+		GPtrArray *path_tokens)
+{
+	struct bt_ctf_field_path *path = NULL;
+
+	path = g_new0(struct bt_ctf_field_path, 1);
+	if (!path) {
+		goto end;
+	}
+
+	
+end:
+	return path;
+error:
+	g_free(path);
+	return NULL;
+}
+
+static
 int type_resolve_func(struct bt_ctf_field_type *type,
 		struct ctf_type_visitor_context *context)
 {

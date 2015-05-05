@@ -118,6 +118,7 @@ struct bt_ctf_field_type_variant {
 	struct bt_ctf_field_type parent;
 	GString *tag_name;
 	struct bt_ctf_field_type_enumeration *tag;
+	struct bt_ctf_field_path *tag_path;
 	GHashTable *field_name_to_index;
 	GPtrArray *fields; /* Array of pointers to struct structure_field */
 	struct declaration_variant declaration;
@@ -134,6 +135,7 @@ struct bt_ctf_field_type_sequence {
 	struct bt_ctf_field_type parent;
 	struct bt_ctf_field_type *element_type;
 	GString *length_field_name;
+	struct bt_ctf_field_path *length_field_path;
 	struct declaration_sequence declaration;
 };
 
