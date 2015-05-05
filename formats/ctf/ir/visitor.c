@@ -31,6 +31,28 @@
 #include <babeltrace/ctf-ir/visitor-internal.h>
 #include <babeltrace/ctf-ir/event-types-internal.h>
 #include <babeltrace/ctf-ir/event-internal.h>
+#include <babeltrace/babeltrace-internal.h>
+
+/* TSDL dynamic scope prefixes defined in CTF Section 7.3.2 */
+static const char * const absolute_path_prefixes[] = {
+	[CTF_NODE_ENV] = "env.",
+	[CTF_NODE_TRACE_PACKET_HEADER] = "trace.packet.header.",
+	[CTF_NODE_STREAM_PACKET_CONTEXT] = "stream.packet.context.",
+	[CTF_NODE_STREAM_EVENT_HEADER] = "stream.event.header.",
+	[CTF_NODE_STREAM_EVENT_CONTEXT] = "stream.event.context.",
+	[CTF_NODE_EVENT_CONTEXT] = "event.context.",
+	[CTF_NODE_EVENT_FIELDS] = "event.fields.",
+};
+
+const int absolute_path_prefix_token_counts[] = {
+	[CTF_NODE_ENV] = 1,
+	[CTF_NODE_TRACE_PACKET_HEADER] = 3,
+	[CTF_NODE_STREAM_PACKET_CONTEXT] = 3,
+	[CTF_NODE_STREAM_EVENT_HEADER] = 3,
+	[CTF_NODE_STREAM_EVENT_CONTEXT] = 3,
+	[CTF_NODE_EVENT_CONTEXT] = 2,
+	[CTF_NODE_EVENT_FIELDS] = 2,
+};
 
 #define TYPE_FIELD_COUNT(type)						\
 	({ int field_count = -1;					\
@@ -254,7 +276,7 @@ int bt_ctf_event_class_visit(struct bt_ctf_event_class *event_class,
 	}
 
 	/* Visit stream event context */
-	context->root_node = CTF_NODE_EVENT_PAYLOAD;
+	context->root_node = CTF_NODE_EVENT_FIELDS;
 	type = bt_ctf_event_class_get_payload_type(event_class);
 	if (type) {
 		ret = field_type_recursive_visit(type, context, func);
@@ -339,28 +361,86 @@ end:
 }
 
 static
-void free_string(gpointer string) {
-	g_string_free((GString *) string, TRUE);
-}
-
-static
 struct bt_ctf_field_path *get_field_name_path(
 		struct ctf_type_visitor_context *context,
-		GPtrArray *path_tokens)
+		const char *path)
 {
-	struct bt_ctf_field_path *path = NULL;
+	int i;
+	char *name_copy, *save_ptr, *token;
+	struct bt_ctf_field_path *field_path = NULL;
+	GList *path_tokens = NULL;
 
-	path = g_new0(struct bt_ctf_field_path, 1);
-	if (!path) {
-		goto end;
+	/* Tokenize path to a list of strings */
+	name_copy = strdup(path);
+	if (!name_copy) {
+		goto error;
 	}
 
-	
+	token = strtok_r(name_copy, ".", &save_ptr);
+	while (token) {
+		char *token_string = strdup(token);
+
+		if (!token_string) {
+			goto error;
+		}
+		path_tokens = g_list_append(path_tokens, token_string);
+		token = strtok_r(NULL, ".", &save_ptr);
+	}
+
+	field_path = g_new0(struct bt_ctf_field_path, 1);
+	if (!field_path) {
+		goto error;
+	}
+	field_path->root = CTF_NODE_UNKNOWN;
+
+	/* Check if the path is absolute */
+	for (i = 0; i < sizeof(absolute_path_prefixes) / sizeof(char *); i++) {
+		int j;
+
+		/*
+		 * Chech if "path" starts with a known absolute path prefix.
+		 * Refer to CTF 7.3.2 STATIC AND DYNAMIC SCOPES.
+		 */
+		if (strncmp(path, absolute_path_prefixes[i],
+			sizeof(absolute_path_prefixes[i]) - 1)) {
+			/* Wrong prefix, try the next */
+			continue;
+		}
+
+		/*
+		 * Remove the first n tokens of this prefix.
+		 * e.g. trace.packet.header: remove the first 3 tokens.
+		 */
+		for (j = 0; j < absolute_path_prefix_token_counts[i]; j++) {
+			free(path_tokens->data);
+			path_tokens = g_list_delete_link(
+				path_tokens, path_tokens);
+		}
+
+		/* i maps to enum bt_ctf_node constants */
+		field_path->root = (enum bt_ctf_node) i;
+		break;
+	}
+
+	if (field_path->root == CTF_NODE_UNKNOWN) {
+		/* Relative path */
+	} else {
+		/* Absolute path */
+	}
+
 end:
-	return path;
+	if (name_copy) {
+		g_free(name_copy);
+	}
+	if (path_tokens) {
+		g_list_free_full(path_tokens, free);
+	}
+	return field_path;
 error:
-	g_free(path);
-	return NULL;
+	if (field_path) {
+		g_free(field_path);
+	}
+	goto end;
 }
 
 static
@@ -370,8 +450,6 @@ int type_resolve_func(struct bt_ctf_field_type *type,
 	int ret = 0;
 	enum ctf_type_id type_id = bt_ctf_field_type_get_type_id(type);
 	const char *field_name = NULL;
-	char *name_copy = NULL, *save_ptr, *token;
-	GPtrArray *path_tokens = NULL;
 	struct bt_ctf_field_path *field_path = NULL;
 
 	if (type_id != CTF_TYPE_SEQUENCE &&
@@ -387,32 +465,7 @@ int type_resolve_func(struct bt_ctf_field_type *type,
 		goto end;
 	}
 
-	/* Tokenize field name */
-	name_copy = strdup(field_name);
-	if (!name_copy) {
-		ret = -1;
-		goto end;
-	}
-
-	path_tokens = g_ptr_array_new_with_free_func(free_string);
-	if (!path_tokens) {
-		ret = -1;
-		goto end;
-	}
-
-	token = strtok_r(name_copy, ".", &save_ptr);
-	while (token) {
-		GString *token_string = g_string_new(token);
-
-		if (!token_string) {
-			ret = -1;
-			goto end;
-		}
-		g_ptr_array_add(path_tokens, token_string);
-		token = strtok_r(NULL, ".", &save_ptr);
-	}
-
-	field_path = get_field_name_path(context, path_tokens);
+	field_path = get_field_name_path(context, field_name);
 	if (!field_path) {
 		ret = -1;
 		goto end;
@@ -421,12 +474,6 @@ int type_resolve_func(struct bt_ctf_field_type *type,
 	/* Set type's path */
 	/* ... */
 end:
-	if (name_copy) {
-		free(name_copy);
-	}
-	if (path_tokens) {
-		g_ptr_array_free(path_tokens, TRUE);
-	}
 	return ret;
 }
 
