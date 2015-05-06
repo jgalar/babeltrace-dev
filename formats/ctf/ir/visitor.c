@@ -349,8 +349,10 @@ int bt_ctf_stream_class_visit(struct bt_ctf_stream_class *stream_class,
 		struct bt_ctf_event_class *event_class =
 			bt_ctf_stream_class_get_event_class(stream_class, i);
 
+		context->event_class = event_class;
 		ret = bt_ctf_event_class_visit(event_class, context, func);
 		bt_ctf_event_class_put(event_class);
+		context->event_class = NULL;
 		if (ret) {
 			goto end;
 		}
@@ -373,7 +375,77 @@ int set_field_path_absolute(struct ctf_type_visitor_context *context,
 		struct bt_ctf_field_path *field_path,
 		GList *path_tokens)
 {
-	return -1;
+	int ret = 0;
+	size_t token_count = g_list_length(path_tokens), i;
+	struct bt_ctf_field_type *field = NULL;
+
+	if (field_path->root > context->root_node) {
+		/*
+		 * The target path's root is higher in the dynamic scope
+		 * hierarchy than the current field being visited. This
+		 * is invalid since it would not be possible to have read
+		 * the target before the current field.
+		 */
+		ret = -1;
+		printf_verbose("The target path's root is higher in the dynamic scope than the current field.\n");
+		goto end;
+	}
+
+	/* Set the appropriate root field */
+	switch (field_path->field) {
+	case CTF_NODE_TRACE_PACKET_HEADER:
+		field = bt_ctf_trace_get_packet_header_type(context->trace);
+		break;
+	case CTF_NODE_STREAM_PACKET_CONTEXT:
+		field = bt_ctf_stream_class_get_packet_context_type(
+			context->stream_class);
+		break;
+	case CTF_NODE_STREAM_EVENT_HEADER:
+		field = bt_ctf_stream_class_get_event_header_type(
+			context->stream_class);
+		break;
+	case CTF_NODE_STREAM_EVENT_CONTEXT:
+		field = bt_ctf_stream_class_get_event_context_type(
+			context->stream_class);
+		break;
+	case CTF_NODE_EVENT_CONTEXT:
+		field = bt_ctf_event_class_get_context_type(
+			context->event_class);
+		break;
+	case CTF_NODE_EVENT_FIELDS:
+		field = bt_ctf_event_class_get_payload_type(
+			context->event_class);
+		break;
+	default:
+		ret = -1;
+		goto end;
+	}
+
+	if (!field) {
+		ret = -1;
+		goto end;
+	}
+
+	for (i = 0; i < token_count; i++) {
+		int j, field_count = TYPE_FIELD_COUNT(field);
+
+		if (field_count < 0 && i != token_count - 1) {
+			/* Non-iterable field encoutered before the end */
+			ret = -1;
+			goto end;
+		}
+
+		for (j = 0; j < field_count; j++) {
+			struct bt_ctf_field_type *ret;
+		}
+		free(path_tokens->data);
+		path_tokens = g_list_delete_link(path_tokens, path_tokens);
+	}
+end:
+	if (field) {
+		bt_ctf_field_type_put(field);
+	}
+	return ret;
 }
 
 static

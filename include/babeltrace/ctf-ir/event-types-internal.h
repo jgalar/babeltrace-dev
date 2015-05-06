@@ -54,6 +54,7 @@ enum bt_ctf_node {
 
 struct bt_ctf_field_path {
 	enum bt_ctf_node root;
+	/* Array of int */
 	GArray *path_indexes;
 };
 
@@ -188,5 +189,8 @@ struct bt_ctf_field_path *bt_ctf_field_path_create(void);
 
 BT_HIDDEN
 void bt_ctf_field_path_destroy(struct bt_ctf_field_path *path);
+
+BT_HIDDEN
+int bt_ctf_field_type_structure_
 
 #endif /* BABELTRACE_CTF_IR_EVENT_TYPES_INTERNAL_H */

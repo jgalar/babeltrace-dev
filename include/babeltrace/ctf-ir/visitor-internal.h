@@ -42,6 +42,7 @@ typedef GPtrArray ctf_type_stack;
 struct ctf_type_visitor_context {
 	struct bt_ctf_trace *trace;
 	struct bt_ctf_stream_class *stream_class;
+	struct bt_ctf_event_class *event_class;
 	/* Root node being visited */
 	enum bt_ctf_node root_node;
 	ctf_type_stack *stack;
