@@ -58,9 +58,11 @@ const int absolute_path_prefix_token_counts[] = {
 	({ int field_count = -1;					\
 	enum ctf_type_id type_id = bt_ctf_field_type_get_type_id(type);	\
 	if (type_id == CTF_TYPE_STRUCT)					\
-		field_count = bt_ctf_field_type_structure_get_field_count(type);\
+		field_count =						\
+			bt_ctf_field_type_structure_get_field_count(type);\
 	else if (type_id == CTF_TYPE_VARIANT)				\
-		field_count = bt_ctf_field_type_variant_get_field_count(type);\
+		field_count =						\
+			bt_ctf_field_type_variant_get_field_count(type);\
 	field_count; })
 
 #define TYPE_FIELD(type, i)						\
@@ -74,6 +76,19 @@ const int absolute_path_prefix_token_counts[] = {
 		bt_ctf_field_type_variant_get_field(type,		\
 			&unused_name, &field, i);			\
 	field; })
+
+#define TYPE_FIELD_INDEX(type, name)					\
+	({								\
+	int field_index = -1;						\
+	enum ctf_type_id type_id = bt_ctf_field_type_get_type_id(type);	\
+	if (type_id == CTF_TYPE_STRUCT)					\
+		field_index =						\
+			bt_ctf_field_type_structure_get_field_name_index(type, name); \
+	else if (type_id == CTF_TYPE_VARIANT)				\
+		field_index =						\
+			bt_ctf_field_type_variant_get_field_name_index(type, name); \
+	field_index;							\
+	})
 
 static int field_type_visit(struct bt_ctf_field_type *type,
 		struct ctf_type_visitor_context *context,
@@ -365,15 +380,17 @@ end:
 static
 int set_field_path_relative(struct ctf_type_visitor_context *context,
 		struct bt_ctf_field_path *field_path,
-		GList *path_tokens)
+		GList *path_tokens, struct bt_ctf_field_type **resolved_field)
 {
+	/* TODO */
+	assert(0);
 	return -1;
 }
 
 static
 int set_field_path_absolute(struct ctf_type_visitor_context *context,
 		struct bt_ctf_field_path *field_path,
-		GList *path_tokens)
+		GList *path_tokens, struct bt_ctf_field_type **resolved_field)
 {
 	int ret = 0;
 	size_t token_count = g_list_length(path_tokens), i;
@@ -381,18 +398,18 @@ int set_field_path_absolute(struct ctf_type_visitor_context *context,
 
 	if (field_path->root > context->root_node) {
 		/*
-		 * The target path's root is higher in the dynamic scope
+		 * The target path's root is lower in the dynamic scope
 		 * hierarchy than the current field being visited. This
 		 * is invalid since it would not be possible to have read
 		 * the target before the current field.
 		 */
 		ret = -1;
-		printf_verbose("The target path's root is higher in the dynamic scope than the current field.\n");
+		printf_verbose("The target path's root is lower in the dynamic scope than the current field.\n");
 		goto end;
 	}
 
 	/* Set the appropriate root field */
-	switch (field_path->field) {
+	switch (field_path->root) {
 	case CTF_NODE_TRACE_PACKET_HEADER:
 		field = bt_ctf_trace_get_packet_header_type(context->trace);
 		break;
@@ -427,17 +444,33 @@ int set_field_path_absolute(struct ctf_type_visitor_context *context,
 	}
 
 	for (i = 0; i < token_count; i++) {
-		int j, field_count = TYPE_FIELD_COUNT(field);
+		int field_index = TYPE_FIELD_INDEX(field, path_tokens->data);
+		struct bt_ctf_field_type *next_field = NULL;
 
-		if (field_count < 0 && i != token_count - 1) {
-			/* Non-iterable field encoutered before the end */
+		if (field_index < 0) {
+			/* Field name not found, abort */
+			printf_verbose("Could not resolve field \"%s\"\n",
+				       (char *) path_tokens->data);
 			ret = -1;
 			goto end;
 		}
 
-		for (j = 0; j < field_count; j++) {
-			struct bt_ctf_field_type *ret;
+		next_field = TYPE_FIELD(field, field_index);
+		if (!next_field) {
+			ret = -1;
+			goto end;
 		}
+
+		bt_ctf_field_type_put(field);
+		field = next_field;
+		g_array_append_val(field_path->path_indexes, field_index);
+
+		/*
+		 * Free token and remove from list. This function does not
+		 * assume the ownership of path_tokens; it is therefore _not_
+		 * a leak to leave elements in this list. The caller should
+		 * clean-up what is left (in case of error).
+		 */
 		free(path_tokens->data);
 		path_tokens = g_list_delete_link(path_tokens, path_tokens);
 	}
@@ -449,14 +482,13 @@ end:
 }
 
 static
-struct bt_ctf_field_path *get_field_path(
-		struct ctf_type_visitor_context *context,
-		const char *path)
+int get_field_path(struct ctf_type_visitor_context *context,
+		const char *path, struct bt_ctf_field_path **field_path,
+		struct bt_ctf_field_type **resolved_field)
 {
-	int i;
-	char *name_copy, *save_ptr, *token;
-	struct bt_ctf_field_path *field_path = NULL;
+	int i, ret = 0;
 	GList *path_tokens = NULL;
+	char *name_copy, *save_ptr, *token;
 
 	/* Tokenize path to a list of strings */
 	name_copy = strdup(path);
@@ -469,14 +501,16 @@ struct bt_ctf_field_path *get_field_path(
 		char *token_string = strdup(token);
 
 		if (!token_string) {
+			ret = -1;
 			goto error;
 		}
 		path_tokens = g_list_append(path_tokens, token_string);
 		token = strtok_r(NULL, ".", &save_ptr);
 	}
 
-	field_path = bt_ctf_field_path_create();
-	if (!field_path) {
+	*field_path = bt_ctf_field_path_create();
+	if (!*field_path) {
+		ret = -1;
 		goto error;
 	}
 
@@ -505,21 +539,21 @@ struct bt_ctf_field_path *get_field_path(
 		}
 
 		/* i maps to enum bt_ctf_node constants */
-		field_path->root = (enum bt_ctf_node) i;
+		*field_path->root = (enum bt_ctf_node) i;
 		break;
 	}
 
-	if (field_path->root == CTF_NODE_UNKNOWN) {
+	if (*field_path->root == CTF_NODE_UNKNOWN) {
 		/* Relative path */
-		int ret = set_field_path_relative(context,
-			field_path, path_tokens);
+	        ret = set_field_path_relative(context,
+			*field_path, path_tokens, resolved_field);
 		if (ret) {
 			goto error;
 		}
 	} else {
 		/* Absolute path */
-		int ret = set_field_path_absolute(context,
-			field_path, path_tokens);
+	        ret = set_field_path_absolute(context,
+			*field_path, path_tokens, resolved_field);
 		if (ret) {
 			goto error;
 		}
@@ -531,11 +565,11 @@ end:
 	if (path_tokens) {
 		g_list_free_full(path_tokens, free);
 	}
-	return field_path;
+	return ret;
 error:
-	if (field_path) {
-		bt_ctf_field_path_destroy(field_path);
-		field_path = NULL;
+	if (*field_path) {
+		bt_ctf_field_path_destroy(*field_path);
+		*field_path = NULL;
 	}
 	goto end;
 }
@@ -548,6 +582,7 @@ int type_resolve_func(struct bt_ctf_field_type *type,
 	enum ctf_type_id type_id = bt_ctf_field_type_get_type_id(type);
 	const char *field_name = NULL;
 	struct bt_ctf_field_path *field_path = NULL;
+	struct bt_ctf_field_type *resolved_type = NULL;
 
 	if (type_id != CTF_TYPE_SEQUENCE &&
 	    type_id != CTF_TYPE_VARIANT) {
@@ -562,14 +597,13 @@ int type_resolve_func(struct bt_ctf_field_type *type,
 		goto end;
 	}
 
-	field_path = get_field_path(context, field_name);
-	if (!field_path) {
-		ret = -1;
+        ret = get_field_path(context, field_name,
+		&field_path, &resolved_type);
+	if (ret) {
 		goto end;
 	}
 
 	/* Set type's path */
-	/* ... */
 end:
 	return ret;
 }
