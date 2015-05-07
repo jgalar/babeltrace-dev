@@ -2015,6 +2015,12 @@ int bt_ctf_field_type_structure_get_field_name_index(
 	GQuark name_quark;
 	struct bt_ctf_field_type_structure *structure;
 
+	if (!type || !name ||
+		bt_ctf_field_type_get_type_id(type) != CTF_TYPE_STRUCT) {
+		ret = -1;
+		goto end;
+	}
+
 	name_quark = g_quark_try_string(name);
 	if (!name_quark) {
 		ret = -1;
@@ -2042,6 +2048,12 @@ int bt_ctf_field_type_variant_get_field_name_index(
 	GQuark name_quark;
 	struct bt_ctf_field_type_variant *variant;
 
+	if (!type || !name ||
+		bt_ctf_field_type_get_type_id(type) != CTF_TYPE_VARIANT) {
+		ret = -1;
+		goto end;
+	}
+
 	name_quark = g_quark_try_string(name);
 	if (!name_quark) {
 		ret = -1;
@@ -2066,15 +2078,67 @@ int bt_ctf_field_type_sequence_set_length_field_path(
 		struct bt_ctf_field_path *path)
 {
 	int ret = 0;
+	struct bt_ctf_field_type_sequence *sequence;
+
+	if (!type || bt_ctf_field_type_get_type_id(type) != CTF_TYPE_SEQUENCE) {
+		ret = -1;
+		goto end;
+	}
+
+	sequence = container_of(type, struct bt_ctf_field_type_sequence,
+		parent);
+	if (sequence->length_field_path) {
+		bt_ctf_field_path_destroy(sequence->length_field_path);
+	}
+	sequence->length_field_path = path;
+end:
 	return ret;
 }
 
 BT_HIDDEN
-int bt_ctf_field_type_sequence_set_length_field_path(
-		struct bt_ctf_field_type *type,
+int bt_ctf_field_type_variant_set_tag_field_path(struct bt_ctf_field_type *type,
 		struct bt_ctf_field_path *path)
 {
 	int ret = 0;
+	struct bt_ctf_field_type_variant *variant;
+
+	if (!type || bt_ctf_field_type_get_type_id(type) != CTF_TYPE_VARIANT) {
+		ret = -1;
+		goto end;
+	}
+
+	variant = container_of(type, struct bt_ctf_field_type_variant,
+		parent);
+	if (variant->tag_path) {
+		bt_ctf_field_path_destroy(variant->tag_path);
+	}
+	variant->tag_path = path;
+end:
+	return ret;
+}
+
+BT_HIDDEN
+int bt_ctf_field_type_variant_set_tag(struct bt_ctf_field_type *type,
+		struct bt_ctf_field_type *tag)
+{
+	int ret = 0;
+	struct bt_ctf_field_type_variant *variant;
+
+	if (!type || !tag || type->frozen ||
+		bt_ctf_field_type_get_type_id(tag) != CTF_TYPE_ENUM) {
+		ret = -1;
+		goto end;
+	}
+
+	variant = container_of(type, struct bt_ctf_field_type_variant,
+		parent);
+	bt_ctf_field_type_get(tag);
+	if (variant->tag) {
+		bt_ctf_field_type_put(&variant->tag->parent);
+	}
+	variant->tag = container_of(tag, struct bt_ctf_field_type_enumeration,
+		parent);
+end:
 	return ret;
 }
 

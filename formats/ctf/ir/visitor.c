@@ -539,11 +539,11 @@ int get_field_path(struct ctf_type_visitor_context *context,
 		}
 
 		/* i maps to enum bt_ctf_node constants */
-		*field_path->root = (enum bt_ctf_node) i;
+		(*field_path)->root = (enum bt_ctf_node) i;
 		break;
 	}
 
-	if (*field_path->root == CTF_NODE_UNKNOWN) {
+	if ((*field_path)->root == CTF_NODE_UNKNOWN) {
 		/* Relative path */
 	        ret = set_field_path_relative(context,
 			*field_path, path_tokens, resolved_field);
