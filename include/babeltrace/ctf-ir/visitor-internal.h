@@ -72,4 +72,16 @@ BT_HIDDEN
 int bt_ctf_trace_visit(struct bt_ctf_trace *trace,
 		ctf_type_visitor_func func);
 
+BT_HIDDEN
+int bt_ctf_trace_resolve_types(struct bt_ctf_trace *trace);
+
+BT_HIDDEN
+int bt_ctf_stream_class_resolve_types(struct bt_ctf_stream_class *stream_class,
+		struct bt_ctf_trace *trace);
+
+BT_HIDDEN
+int bt_ctf_event_class_resolve_types(struct bt_ctf_event_class *event_class,
+		struct bt_ctf_trace *trace,
+		struct bt_ctf_stream_class *stream_class);
+
 #endif /* BABELTRACE_CTF_IR_VISITOR_INTERNAL_H */

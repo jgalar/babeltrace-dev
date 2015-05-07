@@ -33,6 +33,7 @@
 #include <babeltrace/ctf-writer/functor-internal.h>
 #include <babeltrace/ctf-ir/event-types-internal.h>
 #include <babeltrace/ctf-ir/attributes-internal.h>
+#include <babeltrace/ctf-ir/visitor-internal.h>
 #include <babeltrace/ctf-ir/utils.h>
 #include <babeltrace/compiler.h>
 #include <babeltrace/objects.h>
@@ -884,6 +885,7 @@ struct bt_ctf_field_type *get_field_type(enum field_type_alias alias)
 static
 void bt_ctf_trace_freeze(struct bt_ctf_trace *trace)
 {
+	bt_ctf_trace_resolve_types(trace);
 	bt_ctf_attributes_freeze(trace->environment);
 	trace->frozen = 1;
 }
