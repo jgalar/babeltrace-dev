@@ -597,13 +597,52 @@ int type_resolve_func(struct bt_ctf_field_type *type,
 		goto end;
 	}
 
-        ret = get_field_path(context, field_name,
+	ret = get_field_path(context, field_name,
 		&field_path, &resolved_type);
 	if (ret) {
 		goto end;
 	}
 
+	assert(field_path && resolved_type);
+
 	/* Set type's path */
+	if (type_id == CTF_TYPE_VARIANT) {
+		if (bt_ctf_field_type_get_type_id(resolved_type) !=
+			CTF_TYPE_ENUM) {
+			printf_verbose("Invalid variant tag \"%s\"; expected enum\n", field_name);
+			ret = -1;
+			goto end;
+		}
+		ret = bt_ctf_field_type_variant_set_tag(type, resolved_type);
+		if (ret) {
+			goto end;
+		}
+
+		ret = bt_ctf_field_type_variant_set_tag_field_path(type,
+			field_path);
+		if (ret) {
+			goto end;
+		}
+	} else {
+		if (bt_ctf_field_type_get_type_id(resolved_type) !=
+			CTF_TYPE_INTEGER) {
+			printf_verbose("Invalid sequence length field \"%s\"; expected integer\n", field_name);
+			ret = -1;
+			goto end;
+		}
+
+		if (bt_ctf_field_type_integer_get_signed(resolved_type) != 0) {
+			printf_verbose("Invalid sequence length field \"%s\"; integer should be unsigned\n", field_name);
+			ret = -1;
+			goto end;
+		}
+
+		ret = bt_ctf_field_type_sequence_set_length_field_path(type,
+			field_path);
+		if (ret) {
+			goto end;
+		}
+	}
 end:
 	return ret;
 }
