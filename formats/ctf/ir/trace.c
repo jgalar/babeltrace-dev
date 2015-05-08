@@ -444,9 +444,15 @@ int bt_ctf_trace_add_stream_class(struct bt_ctf_trace *trace,
 
 	for (i = 0; i < trace->stream_classes->len; i++) {
 		if (trace->stream_classes->pdata[i] == stream_class) {
+			/* Stream already registered to the trace */
 			ret = -1;
 			goto end;
 		}
+	}
+
+	ret = bt_ctf_stream_class_resolve_types(stream_class, trace);
+	if (ret) {
+		goto end;
 	}
 
 	stream_id = bt_ctf_stream_class_get_id(stream_class);
@@ -463,7 +469,8 @@ int bt_ctf_trace_add_stream_class(struct bt_ctf_trace *trace,
 			}
 		}
 
-		if (bt_ctf_stream_class_set_id_no_check(stream_class, stream_id)) {
+		if (bt_ctf_stream_class_set_id_no_check(stream_class,
+			stream_id)) {
 			/* TODO Should retry with a different stream id */
 			ret = -1;
 			goto end;
