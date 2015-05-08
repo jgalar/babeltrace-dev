@@ -766,7 +766,7 @@ void append_complex_event(struct bt_ctf_stream_class *stream_class,
 		bt_ctf_field_type_enumeration_create(uint_3_type);
 	struct bt_ctf_field_type *variant_type =
 		bt_ctf_field_type_variant_create(enum_variant_type,
-			"variant_selector");
+			"event.fields.complex_structure.variant_selector");
 	struct bt_ctf_field_type *string_type =
 		bt_ctf_field_type_string_create();
 	struct bt_ctf_field_type *sequence_type;
@@ -797,7 +797,7 @@ void append_complex_event(struct bt_ctf_stream_class *stream_class,
 
 	array_type = bt_ctf_field_type_array_create(int_16_type, ARRAY_TEST_LENGTH);
 	sequence_type = bt_ctf_field_type_sequence_create(int_16_type,
-		"seq_len");
+		"event.fields.complex_structure.inner_structure.seq_len");
 
 	ok(bt_ctf_field_type_array_get_element_type(NULL) == NULL,
 		"bt_ctf_field_type_array_get_element_type handles NULL correctly");
@@ -862,7 +862,7 @@ void append_complex_event(struct bt_ctf_stream_class *stream_class,
 	ok(bt_ctf_field_type_variant_get_tag_name(NULL) == NULL,
 		"bt_ctf_field_type_variant_get_tag_name handles NULL correctly");
 	ret_string = bt_ctf_field_type_variant_get_tag_name(variant_type);
-	ok(!strcmp(ret_string, "variant_selector"),
+	ok(!strcmp(ret_string, "event.fields.complex_structure.variant_selector"),
 		"bt_ctf_field_type_variant_get_tag_name returns the correct variant tag name");
 	ok(bt_ctf_field_type_variant_get_field_type_by_name(NULL,
 		"INT16_TYPE") == NULL,
