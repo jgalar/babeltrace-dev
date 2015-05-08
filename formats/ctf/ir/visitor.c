@@ -54,49 +54,64 @@ const int absolute_path_prefix_token_counts[] = {
 	[CTF_NODE_EVENT_FIELDS] = 2,
 };
 
-#define TYPE_FIELD_COUNT(type)						\
-	({ int field_count = -1;					\
-	enum ctf_type_id type_id = bt_ctf_field_type_get_type_id(type);	\
-	if (type_id == CTF_TYPE_STRUCT)					\
-		field_count =						\
-			bt_ctf_field_type_structure_get_field_count(type);\
-	else if (type_id == CTF_TYPE_VARIANT)				\
-		field_count =						\
-			bt_ctf_field_type_variant_get_field_count(type);\
-	field_count; })
-
-#define TYPE_FIELD(type, i)						\
-	({ struct bt_ctf_field_type *field = NULL;			\
-	const char *unused_name;					\
-	enum ctf_type_id type_id = bt_ctf_field_type_get_type_id(type);	\
-	if (type_id == CTF_TYPE_STRUCT)					\
-		bt_ctf_field_type_structure_get_field(type,		\
-			&unused_name, &field, i);			\
-	else if (type_id == CTF_TYPE_VARIANT)				\
-		bt_ctf_field_type_variant_get_field(type,		\
-			&unused_name, &field, i);			\
-	field; })
-
-#define TYPE_FIELD_INDEX(type, name)					\
-	({								\
-	int field_index = -1;						\
-	enum ctf_type_id type_id = bt_ctf_field_type_get_type_id(type);	\
-	if (type_id == CTF_TYPE_STRUCT)					\
-		field_index =						\
-			bt_ctf_field_type_structure_get_field_name_index(type, name); \
-	else if (type_id == CTF_TYPE_VARIANT)				\
-		field_index =						\
-			bt_ctf_field_type_variant_get_field_name_index(type, name); \
-	field_index;							\
-	})
-
-static int field_type_visit(struct bt_ctf_field_type *type,
+static
+int field_type_visit(struct bt_ctf_field_type *type,
 		struct ctf_type_visitor_context *context,
 		ctf_type_visitor_func func);
 
-static int field_type_recursive_visit(struct bt_ctf_field_type *type,
+static
+int field_type_recursive_visit(struct bt_ctf_field_type *type,
 		struct ctf_type_visitor_context *context,
 		ctf_type_visitor_func func);
+
+static inline
+int get_type_field_count(struct bt_ctf_field_type *type)
+{
+	int field_count = -1;
+	enum ctf_type_id type_id = bt_ctf_field_type_get_type_id(type);
+
+	if (type_id == CTF_TYPE_STRUCT) {
+		field_count = bt_ctf_field_type_structure_get_field_count(type);
+	} else if (type_id == CTF_TYPE_VARIANT) {
+		field_count = bt_ctf_field_type_variant_get_field_count(type);
+	}
+	return field_count;
+}
+
+static inline
+struct bt_ctf_field_type *get_type_field(struct bt_ctf_field_type *type, int i)
+{
+	struct bt_ctf_field_type *field = NULL;
+	const char *unused_name;
+	enum ctf_type_id type_id = bt_ctf_field_type_get_type_id(type);
+
+	if (type_id == CTF_TYPE_STRUCT) {
+		bt_ctf_field_type_structure_get_field(type, &unused_name,
+			&field, i);
+	} else if (type_id == CTF_TYPE_VARIANT) {
+		bt_ctf_field_type_variant_get_field(type,
+			&unused_name, &field, i);
+	}
+
+	return field;
+}
+
+static inline
+int get_type_field_index(struct bt_ctf_field_type *type, const char *name)
+{
+	int field_index = -1;
+	enum ctf_type_id type_id = bt_ctf_field_type_get_type_id(type);
+
+	if (type_id == CTF_TYPE_STRUCT) {
+		field_index = bt_ctf_field_type_structure_get_field_name_index(
+			type, name);
+	} else if (type_id == CTF_TYPE_VARIANT) {
+		field_index = bt_ctf_field_type_variant_get_field_name_index(
+			type, name);
+	}
+
+	return field_index;
+}
 
 BT_HIDDEN
 ctf_type_stack *ctf_type_stack_create(void)
@@ -226,7 +241,7 @@ int field_type_recursive_visit(struct bt_ctf_field_type *type,
 		struct bt_ctf_field_type *field;
 		struct ctf_type_stack_frame *entry =
 			ctf_type_stack_peek(context->stack);
-		int field_count = TYPE_FIELD_COUNT(entry->type);
+		int field_count = get_type_field_count(entry->type);
 
 		if (field_count <= 0) {
 			/*
@@ -238,7 +253,7 @@ int field_type_recursive_visit(struct bt_ctf_field_type *type,
 			goto end;
 		}
 
-		if (entry->index == field_count - 1) {
+		if (entry->index == field_count) {
 			/* This level has been completely visited */
 			entry = ctf_type_stack_pop(context->stack);
 			if (entry) {
@@ -253,12 +268,13 @@ int field_type_recursive_visit(struct bt_ctf_field_type *type,
 			}
 		}
 
-		field = TYPE_FIELD(entry->type, entry->index);
+		field = get_type_field(entry->type, entry->index);
 		ret = field_type_visit(field, context, func);
 		bt_ctf_field_type_put(field);
 		if (ret) {
 			goto end;
 		}
+
 		entry->index++;
 	}
 end:
@@ -289,7 +305,7 @@ int bt_ctf_event_class_visit(struct bt_ctf_event_class *event_class,
 		goto end;
 	}
 
-	/* Visit stream event context */
+	/* Visit event context */
 	context.root_node = CTF_NODE_EVENT_CONTEXT;
 	type = bt_ctf_event_class_get_context_type(event_class);
 	if (type) {
@@ -301,7 +317,7 @@ int bt_ctf_event_class_visit(struct bt_ctf_event_class *event_class,
 		}
 	}
 
-	/* Visit stream event context */
+	/* Visit event payload */
 	context.root_node = CTF_NODE_EVENT_FIELDS;
 	type = bt_ctf_event_class_get_payload_type(event_class);
 	if (type) {
@@ -404,7 +420,7 @@ end:
 static
 int set_field_path_relative(struct ctf_type_visitor_context *context,
 		struct bt_ctf_field_path *field_path,
-		GList *path_tokens, struct bt_ctf_field_type **resolved_field)
+		GList **path_tokens, struct bt_ctf_field_type **resolved_field)
 {
 	/* TODO */
 	assert(0);
@@ -414,10 +430,10 @@ int set_field_path_relative(struct ctf_type_visitor_context *context,
 static
 int set_field_path_absolute(struct ctf_type_visitor_context *context,
 		struct bt_ctf_field_path *field_path,
-		GList *path_tokens, struct bt_ctf_field_type **resolved_field)
+		GList **path_tokens, struct bt_ctf_field_type **resolved_field)
 {
 	int ret = 0;
-	size_t token_count = g_list_length(path_tokens), i;
+	size_t token_count = g_list_length(*path_tokens), i;
 	struct bt_ctf_field_type *field = NULL;
 
 	if (field_path->root > context->root_node) {
@@ -468,18 +484,19 @@ int set_field_path_absolute(struct ctf_type_visitor_context *context,
 	}
 
 	for (i = 0; i < token_count; i++) {
-		int field_index = TYPE_FIELD_INDEX(field, path_tokens->data);
+		int field_index = get_type_field_index(field,
+			(*path_tokens)->data);
 		struct bt_ctf_field_type *next_field = NULL;
 
 		if (field_index < 0) {
 			/* Field name not found, abort */
 			printf_verbose("Could not resolve field \"%s\"\n",
-				       (char *) path_tokens->data);
+				(char *) (*path_tokens)->data);
 			ret = -1;
 			goto end;
 		}
 
-		next_field = TYPE_FIELD(field, field_index);
+		next_field = get_type_field(field, field_index);
 		if (!next_field) {
 			ret = -1;
 			goto end;
@@ -495,12 +512,13 @@ int set_field_path_absolute(struct ctf_type_visitor_context *context,
 		 * a leak to leave elements in this list. The caller should
 		 * clean-up what is left (in case of error).
 		 */
-		free(path_tokens->data);
-		path_tokens = g_list_delete_link(path_tokens, path_tokens);
+		free((*path_tokens)->data);
+		*path_tokens = g_list_delete_link(*path_tokens, *path_tokens);
 	}
 end:
 	if (field) {
 		bt_ctf_field_type_put(field);
+		*resolved_field = field;
 	}
 	return ret;
 }
@@ -547,8 +565,8 @@ int get_field_path(struct ctf_type_visitor_context *context,
 		 * Refer to CTF 7.3.2 STATIC AND DYNAMIC SCOPES.
 		 */
 		if (strncmp(path, absolute_path_prefixes[i],
-			sizeof(absolute_path_prefixes[i]) - 1)) {
-			/* Wrong prefix, try the next */
+			strlen(absolute_path_prefixes[i]))) {
+			/* Wrong prefix, try the next one */
 			continue;
 		}
 
@@ -570,14 +588,14 @@ int get_field_path(struct ctf_type_visitor_context *context,
 	if ((*field_path)->root == CTF_NODE_UNKNOWN) {
 		/* Relative path */
 	        ret = set_field_path_relative(context,
-			*field_path, path_tokens, resolved_field);
+			*field_path, &path_tokens, resolved_field);
 		if (ret) {
 			goto error;
 		}
 	} else {
 		/* Absolute path */
 	        ret = set_field_path_absolute(context,
-			*field_path, path_tokens, resolved_field);
+			*field_path, &path_tokens, resolved_field);
 		if (ret) {
 			goto error;
 		}
