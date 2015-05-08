@@ -422,9 +422,78 @@ int set_field_path_relative(struct ctf_type_visitor_context *context,
 		struct bt_ctf_field_path *field_path,
 		GList **path_tokens, struct bt_ctf_field_type **resolved_field)
 {
-	/* TODO */
-	assert(0);
-	return -1;
+	int ret = 0;
+	struct bt_ctf_field_type *field = NULL;
+	struct ctf_type_stack_frame *frame =
+		ctf_type_stack_peek(context->stack);
+	size_t token_count = g_list_length(*path_tokens), i;
+
+	if (!frame) {
+		ret = -1;
+		goto end;
+	}
+
+	field = frame->type;
+	for (i = 0; i < token_count; i++) {
+		struct bt_ctf_field_type *next_field = NULL;
+		int field_index = get_type_field_index(field,
+			(*path_tokens)->data);
+
+		if (field_index < 0) {
+			/* Field name not found, abort */
+			printf_verbose("Could not resolve field \"%s\"\n",
+				(char *) (*path_tokens)->data);
+			ret = -1;
+			goto end;
+		}
+
+		if (field_index >= frame->index) {
+			printf_verbose("Invalid relative path refers to a member after the current one\n");
+			ret = -1;
+			goto end;
+		}
+
+		next_field = get_type_field(field, field_index);
+		if (!next_field) {
+			ret = -1;
+			goto end;
+		}
+
+		bt_ctf_field_type_put(field);
+		field = next_field;
+		g_array_append_val(field_path->path_indexes, field_index);
+
+		/*
+		 * Free token and remove from list. This function does not
+		 * assume the ownership of path_tokens; it is therefore _not_
+		 * a leak to leave elements in this list. The caller should
+		 * clean-up what is left (in case of error).
+		 */
+		free((*path_tokens)->data);
+		*path_tokens = g_list_delete_link(*path_tokens, *path_tokens);
+	}
+end:
+	if (field) {
+		bt_ctf_field_type_put(field);
+		*resolved_field = field;
+	}
+
+	if (!ret) {
+		/* Set the current root node as the resolved type's root */
+		field_path->root = context->root_node;
+		/*
+		 * Prepend the current fields' path to the relative path that
+		 * was found by walking the stack.
+		 */
+		for (i = 0; i < context->stack->len - 1; i++) {
+			struct ctf_type_stack_frame *frame =
+				g_ptr_array_index(context->stack, i);
+
+			g_array_prepend_val(field_path->path_indexes,
+				frame->index);
+		}
+	}
+	return ret;
 }
 
 static
@@ -433,8 +502,8 @@ int set_field_path_absolute(struct ctf_type_visitor_context *context,
 		GList **path_tokens, struct bt_ctf_field_type **resolved_field)
 {
 	int ret = 0;
-	size_t token_count = g_list_length(*path_tokens), i;
 	struct bt_ctf_field_type *field = NULL;
+	size_t token_count = g_list_length(*path_tokens), i;
 
 	if (field_path->root > context->root_node) {
 		/*
@@ -587,14 +656,14 @@ int get_field_path(struct ctf_type_visitor_context *context,
 
 	if ((*field_path)->root == CTF_NODE_UNKNOWN) {
 		/* Relative path */
-	        ret = set_field_path_relative(context,
+		ret = set_field_path_relative(context,
 			*field_path, &path_tokens, resolved_field);
 		if (ret) {
 			goto error;
 		}
 	} else {
 		/* Absolute path */
-	        ret = set_field_path_absolute(context,
+		ret = set_field_path_absolute(context,
 			*field_path, &path_tokens, resolved_field);
 		if (ret) {
 			goto error;
@@ -627,7 +696,7 @@ int type_resolve_func(struct bt_ctf_field_type *type,
 	struct bt_ctf_field_type *resolved_type = NULL;
 
 	if (type_id != CTF_TYPE_SEQUENCE &&
-	    type_id != CTF_TYPE_VARIANT) {
+		type_id != CTF_TYPE_VARIANT) {
 		goto end;
 	}
 
