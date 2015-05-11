@@ -165,6 +165,15 @@ BT_HIDDEN
 struct bt_ctf_field_type *bt_ctf_field_type_copy(
 		struct bt_ctf_field_type *type);
 
+BT_HIDDEN
+struct bt_ctf_field_path *bt_ctf_field_path_create(void);
+
+BT_HIDDEN
+struct bt_ctf_field_path *bt_ctf_field_path_copy(
+		struct bt_ctf_field_path *path);
+
+BT_HIDDEN
+void bt_ctf_field_path_destroy(struct bt_ctf_field_path *path);
 
 BT_HIDDEN
 int bt_ctf_field_type_structure_get_field_name_index(
