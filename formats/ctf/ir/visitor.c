@@ -54,6 +54,19 @@ const int absolute_path_prefix_token_counts[] = {
 	[CTF_NODE_EVENT_FIELDS] = 2,
 };
 
+static const char * const type_names[] = {
+	[CTF_TYPE_UNKNOWN] = "unknown",
+	[CTF_TYPE_INTEGER] = "integer",
+	[CTF_TYPE_FLOAT] = "float",
+	[CTF_TYPE_ENUM] = "enumeration",
+	[CTF_TYPE_STRING] = "string",
+	[CTF_TYPE_STRUCT] = "structure",
+	[CTF_TYPE_UNTAGGED_VARIANT] = "untagged variant",
+	[CTF_TYPE_VARIANT] = "variant",
+	[CTF_TYPE_ARRAY] = "array",
+	[CTF_TYPE_SEQUENCE] = "sequence",
+};
+
 static
 int field_type_visit(struct bt_ctf_field_type *type,
 		struct ctf_type_visitor_context *context,
@@ -269,6 +282,7 @@ int field_type_recursive_visit(struct bt_ctf_field_type *type,
 		}
 
 		field = get_type_field(entry->type, entry->index);
+		/* Will push a new stack frame if field is struct or variant */
 		ret = field_type_visit(field, context, func);
 		bt_ctf_field_type_put(field);
 		if (ret) {
@@ -423,6 +437,7 @@ int set_field_path_relative(struct ctf_type_visitor_context *context,
 		GList **path_tokens, struct bt_ctf_field_type **resolved_field)
 {
 	int ret = 0;
+	GArray *root_path;
 	struct bt_ctf_field_type *field = NULL;
 	struct ctf_type_stack_frame *frame =
 		ctf_type_stack_peek(context->stack);
@@ -472,27 +487,38 @@ int set_field_path_relative(struct ctf_type_visitor_context *context,
 		free((*path_tokens)->data);
 		*path_tokens = g_list_delete_link(*path_tokens, *path_tokens);
 	}
+
+	root_path = g_array_sized_new(FALSE, FALSE,
+		sizeof(int), context->stack->len - 1);
+	if (!root_path) {
+		ret = -1;
+		goto end;
+	}
+
+	/* Set the current root node as the resolved type's root */
+	field_path->root = context->root_node;
+	/*
+	 * Prepend the current fields' path to the relative path that
+	 * was found by walking the stack.
+	 */
+	for (i = 0; i < context->stack->len - 1; i++) {
+		int index;
+		struct ctf_type_stack_frame *frame =
+			g_ptr_array_index(context->stack, i);
+
+		/* Decrement "index" since it points to the next field */
+		index = frame->index - 1;
+		g_array_append_val(root_path, index);
+	}
+	g_array_prepend_vals(field_path->path_indexes, root_path->data,
+		root_path->len);
+	g_array_free(root_path, TRUE);
 end:
 	if (field) {
 		bt_ctf_field_type_put(field);
 		*resolved_field = field;
 	}
 
-	if (!ret) {
-		/* Set the current root node as the resolved type's root */
-		field_path->root = context->root_node;
-		/*
-		 * Prepend the current fields' path to the relative path that
-		 * was found by walking the stack.
-		 */
-		for (i = 0; i < context->stack->len - 1; i++) {
-			struct ctf_type_stack_frame *frame =
-				g_ptr_array_index(context->stack, i);
-
-			g_array_prepend_val(field_path->path_indexes,
-				frame->index);
-		}
-	}
 	return ret;
 }
 
@@ -685,6 +711,25 @@ error:
 	goto end;
 }
 
+void print_path(const char *field_name,
+		struct bt_ctf_field_type *resolved_type,
+		struct bt_ctf_field_path *field_path)
+{
+	int i;
+
+	printf_verbose("Resolved field \"%s\" as type \"%s\", ",
+		field_name,
+		type_names[bt_ctf_field_type_get_type_id(resolved_type)]);
+	printf_verbose("path: %s",
+		absolute_path_prefixes[field_path->root]);
+
+	for (i = 0; i < field_path->path_indexes->len; i++) {
+		printf_verbose(" %d",
+			g_array_index(field_path->path_indexes, int, i));
+	}
+	printf_verbose("\n");
+}
+
 static
 int type_resolve_func(struct bt_ctf_field_type *type,
 		struct ctf_type_visitor_context *context)
@@ -716,6 +761,9 @@ int type_resolve_func(struct bt_ctf_field_type *type,
 
 	assert(field_path && resolved_type);
 
+	/* Print path if in verbose mode */
+	print_path(field_name, resolved_type, field_path);
+
 	/* Set type's path */
 	if (type_id == CTF_TYPE_VARIANT) {
 		if (bt_ctf_field_type_get_type_id(resolved_type) !=
@@ -735,6 +783,7 @@ int type_resolve_func(struct bt_ctf_field_type *type,
 			goto end;
 		}
 	} else {
+		/* Sequence */
 		if (bt_ctf_field_type_get_type_id(resolved_type) !=
 			CTF_TYPE_INTEGER) {
 			printf_verbose("Invalid sequence length field \"%s\"; expected integer\n", field_name);
