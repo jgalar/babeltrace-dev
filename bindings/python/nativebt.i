@@ -534,7 +534,7 @@ void bt_ctf_field_get(struct bt_ctf_field *field);
 void bt_ctf_field_put(struct bt_ctf_field *field);
 
 
-/* event-class.h */
+/* event.h - Event Class */
 %rename("_bt_ctf_event_class_create") bt_ctf_event_class_create(const char *name);
 %rename("_bt_ctf_event_class_get_name") bt_ctf_event_class_get_name(struct bt_ctf_event_class *event_class);
 %rename("_bt_ctf_event_class_get_id") bt_ctf_event_class_get_id(struct bt_ctf_event_class *event_class);
@@ -551,11 +551,20 @@ struct bt_ctf_event_class *bt_ctf_event_class_create(const char *name);
 const char *bt_ctf_event_class_get_name(struct bt_ctf_event_class *event_class);
 int64_t bt_ctf_event_class_get_id(struct bt_ctf_event_class *event_class);
 int bt_ctf_event_class_set_id(struct bt_ctf_event_class *event_class, uint32_t id);
+int bt_ctf_event_class_set_attribute(struct bt_ctf_event_class *event_class, const char *name, struct bt_object *value);
+int bt_ctf_event_class_get_attribute_count(struct bt_ctf_event_class *event_class);
+const char *bt_ctf_event_class_get_attribute_name(struct bt_ctf_event_class *event_class, int index);
+struct bt_object *bt_ctf_event_class_get_attribute_value(struct bt_ctf_event_class *event_class, int index);
+struct bt_object *bt_ctf_event_class_get_attribute_value_by_name(struct bt_ctf_event_class *event_class, const char *name);
 struct bt_ctf_stream_class *bt_ctf_event_class_get_stream_class(struct bt_ctf_event_class *event_class);
+struct bt_ctf_field_type *bt_ctf_event_class_get_payload_type(struct bt_ctf_event_class *event_class);
+int bt_ctf_event_class_set_payload_type(struct bt_ctf_event_class *event_class, struct bt_ctf_field_type *payload);
 int bt_ctf_event_class_add_field(struct bt_ctf_event_class *event_class, struct bt_ctf_field_type *type, const char *name);
 int bt_ctf_event_class_get_field_count(struct bt_ctf_event_class *event_class);
 int bt_ctf_event_class_get_field(struct bt_ctf_event_class *event_class, const char **field_name, struct bt_ctf_field_type **field_type, int index);
 struct bt_ctf_field_type *bt_ctf_event_class_get_field_by_name(struct bt_ctf_event_class *event_class, const char *name);
+struct bt_ctf_field_type *bt_ctf_event_class_get_context_type(struct bt_ctf_event_class *event_class);
+int bt_ctf_event_class_set_context_type(struct bt_ctf_event_class *event_class, struct bt_ctf_field_type *context);
 void bt_ctf_event_class_get(struct bt_ctf_event_class *event_class);
 void bt_ctf_event_class_put(struct bt_ctf_event_class *event_class);
 
