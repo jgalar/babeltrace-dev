@@ -483,11 +483,13 @@ void bt_ctf_field_type_put(struct bt_ctf_field_type *type);
 /* event-fields.h */
 %rename("_bt_ctf_field_create") bt_ctf_field_create(struct bt_ctf_field_type *type);
 %rename("_bt_ctf_field_structure_get_field") bt_ctf_field_structure_get_field(struct bt_ctf_field *structure, const char *name);
+%rename("_bt_ctf_field_structure_get_field_by_index") bt_ctf_field_structure_get_field_by_index(struct bt_ctf_field *structure, int index);
 %rename("_bt_ctf_field_array_get_field") bt_ctf_field_array_get_field(struct bt_ctf_field *array, uint64_t index);
 %rename("_bt_ctf_field_sequence_get_length") bt_ctf_field_sequence_get_length(struct bt_ctf_field *sequence);
 %rename("_bt_ctf_field_sequence_set_length") bt_ctf_field_sequence_set_length(struct bt_ctf_field *sequence, struct bt_ctf_field *length_field);
 %rename("_bt_ctf_field_sequence_get_field") bt_ctf_field_sequence_get_field(struct bt_ctf_field *sequence, uint64_t index);
 %rename("_bt_ctf_field_variant_get_field") bt_ctf_field_variant_get_field(struct bt_ctf_field *variant, struct bt_ctf_field *tag);
+%rename("_bt_ctf_field_variant_get_current_field") bt_ctf_field_variant_get_current_field(struct bt_ctf_field *variant);
 %rename("_bt_ctf_field_enumeration_get_container") bt_ctf_field_enumeration_get_container(struct bt_ctf_field *enumeration);
 %rename("_bt_ctf_field_enumeration_get_mapping_name") bt_ctf_field_enumeration_get_mapping_name(struct bt_ctf_field *enumeration);
 %rename("_bt_ctf_field_signed_integer_get_value") bt_ctf_field_signed_integer_get_value(struct bt_ctf_field *integer, int64_t *value);
@@ -498,17 +500,22 @@ void bt_ctf_field_type_put(struct bt_ctf_field_type *type);
 %rename("_bt_ctf_field_floating_point_set_value") bt_ctf_field_floating_point_set_value(struct bt_ctf_field *floating_point, double value);
 %rename("_bt_ctf_field_string_get_value") bt_ctf_field_string_get_value(struct bt_ctf_field *string_field);
 %rename("_bt_ctf_field_string_set_value") bt_ctf_field_string_set_value(struct bt_ctf_field *string_field, const char *value);
+%rename("_bt_ctf_field_string_append") bt_ctf_field_string_append(struct bt_ctf_field *string_field, const char *value);
+%rename("_bt_ctf_field_string_append_len") bt_ctf_field_string_append_len(struct bt_ctf_field *string_field, const char *value, unsigned int length);
 %rename("_bt_ctf_field_get_type") bt_ctf_field_get_type(struct bt_ctf_field *field);
+%rename("_bt_ctf_field_copy") bt_ctf_field_copy(struct bt_ctf_field *field);
 %rename("_bt_ctf_field_get") bt_ctf_field_get(struct bt_ctf_field *field);
 %rename("_bt_ctf_field_put") bt_ctf_field_put(struct bt_ctf_field *field);
 
 struct bt_ctf_field *bt_ctf_field_create(struct bt_ctf_field_type *type);
 struct bt_ctf_field *bt_ctf_field_structure_get_field(struct bt_ctf_field *structure, const char *name);
+struct bt_ctf_field *bt_ctf_field_structure_get_field_by_index(struct bt_ctf_field *structure, int index);
 struct bt_ctf_field *bt_ctf_field_array_get_field(struct bt_ctf_field *array, uint64_t index);
 struct bt_ctf_field * bt_ctf_field_sequence_get_length(struct bt_ctf_field *sequence);
 int bt_ctf_field_sequence_set_length(struct bt_ctf_field *sequence, struct bt_ctf_field *length_field);
 struct bt_ctf_field *bt_ctf_field_sequence_get_field(struct bt_ctf_field *sequence, uint64_t index);
 struct bt_ctf_field *bt_ctf_field_variant_get_field(struct bt_ctf_field *variant, struct bt_ctf_field *tag);
+struct bt_ctf_field *bt_ctf_field_variant_get_current_field(struct bt_ctf_field *variant);
 struct bt_ctf_field *bt_ctf_field_enumeration_get_container(struct bt_ctf_field *enumeration);
 const char *bt_ctf_field_enumeration_get_mapping_name(struct bt_ctf_field *enumeration);
 int bt_ctf_field_signed_integer_get_value(struct bt_ctf_field *integer, int64_t *OUTPUT);
@@ -519,7 +526,10 @@ int bt_ctf_field_floating_point_get_value(struct bt_ctf_field *floating_point, d
 int bt_ctf_field_floating_point_set_value(struct bt_ctf_field *floating_point, double value);
 const char *bt_ctf_field_string_get_value(struct bt_ctf_field *string_field);
 int bt_ctf_field_string_set_value(struct bt_ctf_field *string_field, const char *value);
+int bt_ctf_field_string_append(struct bt_ctf_field *string_field, const char *value);
+int bt_ctf_field_string_append_len(struct bt_ctf_field *string_field, const char *value, unsigned int length);
 struct bt_ctf_field_type *bt_ctf_field_get_type(struct bt_ctf_field *field);
+struct bt_ctf_field *bt_ctf_field_copy(struct bt_ctf_field *field);
 void bt_ctf_field_get(struct bt_ctf_field *field);
 void bt_ctf_field_put(struct bt_ctf_field *field);
 
