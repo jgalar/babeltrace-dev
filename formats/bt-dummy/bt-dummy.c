@@ -38,6 +38,18 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+static void bt_dummy_init(void);
+static void bt_dummy_exit(void);
+
+/*
+ * Store our init and fini functions as part of the plugin_init_ptrs and
+ * plugin_fini_ptrs sections.
+ */
+static bt_format_init_cb init_cb
+	__attribute__((used, section("__plugin_init_ptrs"))) = bt_dummy_init;
+static bt_format_fini_cb fini_cb
+	__attribute__((used, section("__plugin_fini_ptrs"))) = bt_dummy_exit;
+
 static
 int bt_dummy_write_event(struct bt_stream_pos *ppos, struct ctf_stream_definition *stream)
 {
@@ -75,7 +87,7 @@ struct bt_format bt_dummy_format = {
 };
 
 static
-void __attribute__((constructor)) bt_dummy_init(void)
+void bt_dummy_init(void)
 {
 	int ret;
 
@@ -85,7 +97,7 @@ void __attribute__((constructor)) bt_dummy_init(void)
 }
 
 static
-void __attribute__((destructor)) bt_dummy_exit(void)
+void bt_dummy_exit(void)
 {
 	bt_unregister_format(&bt_dummy_format);
 }

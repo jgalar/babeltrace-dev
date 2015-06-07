@@ -61,6 +61,19 @@
 #define NET4_URL_PREFIX	"net4://"
 #define NET6_URL_PREFIX	"net6://"
 
+/*
+ * Declare plugin initialization and cleanup sections which will contain
+ * pointers to functions the plug-in host must call on init.
+ */
+extern struct lttng_ust_tracepoint * const __start___plugin_init_ptrs[]
+	__attribute__((weak, visibility("hidden")));
+extern struct lttng_ust_tracepoint * const __stop___plugin_init_ptrs[]
+	__attribute__((weak, visibility("hidden")));
+extern struct lttng_ust_tracepoint * const __start___plugin_fini_ptrs[]
+	__attribute__((weak, visibility("hidden")));
+extern struct lttng_ust_tracepoint * const __stop___plugin_fini_ptrs[]
+	__attribute__((weak, visibility("hidden")));
+
 static char *opt_input_format, *opt_output_format;
 
 /*
@@ -134,6 +147,16 @@ static struct poptOption long_options[] = {
 	{ "clock-force-correlate", 0, POPT_ARG_NONE, NULL, OPT_CLOCK_FORCE_CORRELATE, NULL, NULL },
 	{ NULL, 0, 0, NULL, 0, NULL, NULL },
 };
+
+static void plugins_init(void)
+{
+	return;
+}
+
+static void plugins_fini(void)
+{
+	return;
+}
 
 static void list_formats(FILE *fp)
 {
@@ -665,6 +688,8 @@ int main(int argc, char **argv)
 	struct bt_context *ctx;
 	int i;
 
+        plugins_init();
+
 	opt_input_paths = g_ptr_array_new();
 
 	ret = parse_options(argc, argv);
@@ -804,6 +829,7 @@ error_td_read:
 
 	/* teardown and exit */
 end:
+	plugins_fini();
 	free(opt_input_format);
 	free(opt_output_format);
 	free(opt_output_path);

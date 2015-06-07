@@ -39,6 +39,8 @@ extern "C" {
 #endif
 
 typedef int bt_intern_str;
+typedef void (*bt_format_init_cb)(void);
+typedef void (*bt_format_fini_cb)(void);
 
 /* forward declaration */
 struct bt_stream_pos;
