@@ -54,7 +54,7 @@ struct bt_component {
 };
 
 BT_HIDDEN
-enum bt_component_status bt_component_init(struct bt_plugin *plugin,
+enum bt_component_status bt_component_init(struct bt_component *plugin,
 		const char *name, void *user_data,
 		bt_component_destroy_cb destroy_func,
 		enum bt_component_type component_type,
