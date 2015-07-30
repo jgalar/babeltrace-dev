@@ -1,11 +1,12 @@
-#ifndef BABELTRACE_CTF_IR_COMMON_INTERNAL_H
-#define BABELTRACE_CTF_IR_COMMON_INTERNAL_H
+#ifndef BABELTRACE_OBJECT_INTERNAL_H
+#define BABELTRACE_OBJECT_INTERNAL_H
 
 /*
- * Babeltrace - CTF IR: common data structures
+ * Babeltrace - Base object
  *
- * Copyright (c) 2015 EfficiOS Inc. and Linux Foundation
- * Copyright (c) 2015 Philippe Proulx <pproulx@efficios.com>
+ * Copyright 2015 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ *
+ * Author: Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,22 +27,26 @@
  * SOFTWARE.
  */
 
+#include <babeltrace/babeltrace-internal.h>
 #include <babeltrace/ref-internal.h>
+#include <assert.h>
 
-/*
- * bt_ctf_trace  must be the base class of _all_ CTF IR classes and is assumed
- * to be the first member of all bt_ctf_* structures.
+struct bt_object;
+
+/**
+ * All objects publicly exposed by Babeltrace APIs must contain this structure
+ * as their first member. This allows the unification of all ref counting
+ * mechanism and may be used to provide more base functionality to all
+ * objects.
  */
-struct bt_ctf_base {
+struct bt_object {
 	struct bt_ref ref_count;
 };
 
 static inline
-void bt_ctf_base_init(void *obj, bt_ref_release_func_t release_func)
+void bt_object_init(void *obj, bt_object_release_func release)
 {
-	struct bt_ctf_base *base = obj;
-
-	bt_ref_init(&base->ref_count, release_func);
+	bt_ref_init(&((struct bt_object *) obj)->ref_count, release);
 }
 
-#endif /* BABELTRACE_CTF_IR_COMMON_INTERNAL_H */
+#endif /* BABELTRACE_OBJECT_INTERNAL_H */
