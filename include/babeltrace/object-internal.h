@@ -28,6 +28,7 @@
  */
 
 #include <babeltrace/ref-internal.h>
+#include <babeltrace/ref.h>
 
 /**
  * All objects publicly exposed by Babeltrace APIs must contain this structure
@@ -37,12 +38,32 @@
  */
 struct bt_object {
 	struct bt_ref ref_count;
+	/* Class-specific release function. */
+	bt_object_release_func release;
+	/* Parented object specific; see doc/ref-counting.md. */
+	struct bt_object *parent;
 };
 
-static inline
-void bt_object_init(void *obj, bt_object_release_func release)
+static
+void parented_release(struct bt_object *obj)
 {
-	bt_ref_init(&((struct bt_object *) obj)->ref_count, release);
+	if (obj->parent) {
+		bt_put(obj->parent);
+	} else {
+		/* Objects are not forced to opt-in reference counting.  */
+		if (obj->release) {
+			obj->release(obj);
+		}
+	}
+}
+
+static inline
+void bt_object_init(void *ptr, bt_object_release_func release)
+{
+	struct bt_object *obj = ptr;
+
+	obj->release = release;
+	bt_ref_init(&obj->ref_count, parented_release);
 }
 
 #endif /* BABELTRACE_OBJECT_INTERNAL_H */
