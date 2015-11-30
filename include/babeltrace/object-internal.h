@@ -66,4 +66,15 @@ void bt_object_init(void *ptr, bt_object_release_func release)
 	bt_ref_init(&obj->ref_count, parented_release);
 }
 
+/**
+ * This method shall only be used by tests.
+ */
+static inline
+long bt_object_get_ref_count(const void *ptr)
+{
+	const struct bt_object *obj = ptr;
+
+	return obj->ref_count.count;
+}
+
 #endif /* BABELTRACE_OBJECT_INTERNAL_H */
