@@ -40,17 +40,16 @@ struct bt_object {
 	struct bt_ref ref_count;
 	/* Class-specific release function. */
 	bt_object_release_func release;
-	/* Parented object specific; see doc/ref-counting.md. */
+	/* @see doc/ref-counting.md */
 	struct bt_object *parent;
 };
 
 static
-void parented_release(struct bt_object *obj)
+void generic_release(struct bt_object *obj)
 {
 	if (obj->parent) {
 		bt_put(obj->parent);
 	} else {
-		/* Objects are not forced to opt-in reference counting.  */
 		if (obj->release) {
 			obj->release(obj);
 		}
@@ -63,7 +62,7 @@ void bt_object_init(void *ptr, bt_object_release_func release)
 	struct bt_object *obj = ptr;
 
 	obj->release = release;
-	bt_ref_init(&obj->ref_count, parented_release);
+	bt_ref_init(&obj->ref_count, generic_release);
 }
 
 /**
