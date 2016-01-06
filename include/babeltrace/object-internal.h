@@ -57,6 +57,14 @@ void generic_release(struct bt_object *obj)
 }
 
 static inline
+struct bt_object *bt_object_get_parent(void *ptr)
+{
+	struct bt_object *obj = ptr;
+
+	return obj ? bt_get(obj->parent) : NULL;
+}
+
+static inline
 void bt_object_init(void *ptr, bt_object_release_func release)
 {
 	struct bt_object *obj = ptr;
