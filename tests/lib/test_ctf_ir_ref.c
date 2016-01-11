@@ -313,23 +313,25 @@ error:
         goto end;
 }
 
-static void init_weak_refs(struct bt_ctf_trace *tc1,
+static void init_weak_refs(struct bt_ctf_trace *tc,
+		struct bt_ctf_trace **tc1,
 		struct bt_ctf_stream_class **sc1,
 		struct bt_ctf_stream_class **sc2,
 		struct bt_ctf_event_class **ec1,
 		struct bt_ctf_event_class **ec2,
 		struct bt_ctf_event_class **ec3)
 {
-	*sc1 = bt_ctf_trace_get_stream_class(tc1, 0);
-	*sc2 = bt_ctf_trace_get_stream_class(tc1, 1);
+	*tc1 = tc;
+	*sc1 = bt_ctf_trace_get_stream_class(tc, 0);
+	*sc2 = bt_ctf_trace_get_stream_class(tc, 1);
 	*ec1 = bt_ctf_stream_class_get_event_class(*sc1, 0);
 	*ec2 = bt_ctf_stream_class_get_event_class(*sc1, 1);
 	*ec3 = bt_ctf_stream_class_get_event_class(*sc2, 0);
-	bt_put(sc1);
-	bt_put(sc2);
-	bt_put(ec1);
-	bt_put(ec2);
-	bt_put(ec3);
+	bt_put(*sc1);
+	bt_put(*sc2);
+	bt_put(*ec1);
+	bt_put(*ec2);
+	bt_put(*ec3);
 }
 
 /**
@@ -363,8 +365,8 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
-	init_weak_refs(tc1, &weak_sc1, &weak_sc2, &weak_ec1, &weak_ec2,
-			&weak_ec3);
+	init_weak_refs(tc1, &weak_tc1, &weak_sc1, &weak_sc2, &weak_ec1,
+			&weak_ec2, &weak_ec3);
 	plan_no_plan();
 
 	ok(bt_object_get_ref_count(weak_sc1) == 0,
