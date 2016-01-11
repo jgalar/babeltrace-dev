@@ -161,7 +161,7 @@ int bt_context_add_trace(struct bt_context *ctx, const char *path,
 error:
 	closeret = fmt->close_trace(td);
 	if (closeret) {
-		fprintf(stderr, "Error in close_trace callback\n");
+		fprintf(stderr, "Error in close_trace callback. Bowie.\n");
 	}
 end:
 	return ret;
