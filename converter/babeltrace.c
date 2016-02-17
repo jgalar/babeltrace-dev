@@ -38,6 +38,8 @@
 #include <babeltrace/ctf-text/types.h>
 #include <babeltrace/iterator.h>
 #include <babeltrace/plugin/component-factory.h>
+#include <babeltrace/plugin/plugin.h>
+#include <babeltrace/plugin/component-class.h>
 #include <babeltrace/ref.h>
 #include <babeltrace/values.h>
 #include <popt.h>
@@ -665,14 +667,87 @@ error_iter:
 	return ret;
 }
 
+static
+const char *component_type_str(enum bt_component_type type)
+{
+	switch (type) {
+	case BT_COMPONENT_TYPE_SOURCE:
+		return "source";
+	case BT_COMPONENT_TYPE_SINK:
+		return "sink";
+	case BT_COMPONENT_TYPE_FILTER:
+		return "filter";
+	case BT_COMPONENT_TYPE_UNKNOWN:
+	default:
+		return "unknown";
+	}
+}
+
+static
+void print_detected_component_classes(struct bt_component_factory *factory)
+{
+	int count, i;
+
+	if (!babeltrace_verbose) {
+		return;
+	}
+
+	count = bt_component_factory_get_component_class_count(factory);
+	if (count <= 0) {
+		fprintf(stderr, "No component classes found. Please make sure your plug-in search path is set correctly.");
+		return;
+	}
+
+	printf_verbose("Found %d component classes.\n", count);
+	for (i = 0; i < count; i++) {
+		struct bt_component_class *component_class =
+				bt_component_factory_get_component_class_index(
+				factory, i);
+		struct bt_plugin *plugin = bt_component_class_get_plugin(
+				component_class);
+		const char *plugin_name = bt_plugin_get_name(plugin);
+		const char *component_name = bt_component_class_get_name(
+				component_class);
+		const char *path = bt_plugin_get_path(plugin);
+		const char *author = bt_plugin_get_author(plugin);
+		const char *license = bt_plugin_get_license(plugin);
+		const char *plugin_description = bt_plugin_get_description(
+				plugin);
+		const char *component_description =
+				bt_component_class_get_description(
+					component_class);
+		enum bt_component_type type = bt_component_class_get_type(
+				component_class);
+
+		printf_verbose("[%s - %s (%s)]\n", plugin_name, component_name,
+			       component_type_str(type));
+		printf_verbose("\tpath: %s\n", path);
+		printf_verbose("\tauthor: %s\n", author);
+		printf_verbose("\tlicense: %s\n", license);
+		printf_verbose("\tplugin description: %s\n",
+				plugin_description ? plugin_description : "None");
+		printf_verbose("\tcomponent description: %s\n",
+				component_description ? component_description : "None");
+	}
+}
+
+static
+void test_sink_notifications(struct bt_component *sink)
+{
+	return;
+}
+
 int main(int argc, char **argv)
 {
 	int ret, partial_error = 0, open_success = 0;
 	struct bt_format *fmt_write;
 	struct bt_trace_descriptor *td_write;
 	struct bt_context *ctx;
-	struct bt_component_factory *component_factory;
-	struct bt_value *components = NULL;
+	struct bt_component_factory *component_factory = NULL;
+	struct bt_component_class *source_class = NULL;
+	struct bt_component_class *sink_class = NULL;
+	struct bt_component *source = NULL, *sink = NULL;
+	struct bt_value *source_params = NULL, *sink_params = NULL;
 	int i;
 
 	opt_input_paths = g_ptr_array_new();
@@ -695,7 +770,7 @@ int main(int argc, char **argv)
 		ret = -1;
 		goto end;
 	}
-	printf_verbose("Looking-up plugins at %s",
+	printf_verbose("Looking-up plugins at %s\n",
 			opt_plugin_path ? opt_plugin_path : "Invalid");
 	component_factory = bt_component_factory_create();
 	if (!component_factory) {
@@ -710,10 +785,25 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
-	ret = bt_component_factory_get_component_class_count(component_factory);
-	if (ret <= 0) {
+	print_detected_component_classes(component_factory);
+
+	sink_class = bt_component_factory_get_component_class(component_factory,
+			NULL, BT_COMPONENT_TYPE_SINK, "text");
+	if (!sink_class) {
+		fprintf(stderr, "Could not find text output component class. Aborting...\n");
+		ret = -1;
 		goto end;
 	}
+
+	sink = bt_component_create(sink_class, "bt_text_output", sink_params);
+	if (!sink) {
+		fprintf(stderr, "Failed to instanciate text output. Aborting...\n");
+		ret = -1;
+		goto end;
+	}
+
+	test_sink_notifications(sink);
+	goto end;
 
 	if (opt_input_paths->len == 0) {
 		ret = -1;
@@ -848,8 +938,14 @@ end:
 	free(opt_output_format);
 	free(opt_output_path);
 	g_ptr_array_free(opt_input_paths, TRUE);
-	BT_PUT(components);
 	BT_PUT(component_factory);
+	BT_PUT(sink_class);
+	BT_PUT(source_class);
+	BT_PUT(source);
+	BT_PUT(sink);
+	BT_PUT(source_params);
+	BT_PUT(sink_params);
+
 	if (partial_error)
 		exit(EXIT_FAILURE);
 	else
