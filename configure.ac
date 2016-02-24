@@ -180,6 +180,17 @@ AC_CHECK_FUNCS([uuid_generate],
 AM_CONDITIONAL([BABELTRACE_BUILD_WITH_LIBUUID], [test "x$link_with_libuuid" = "xyes"])
 AM_CONDITIONAL([BABELTRACE_BUILD_WITH_LIBC_UUID], [test "x$link_with_libc_uuid" = "xyes"])
 
+# Check for yajl
+AX_CHECK_YAJL
+
+if test x$YAJL_2_EXISTS = xyes; then
+	AC_DEFINE_UNQUOTED([BABELTRACE_YAJL_VERSION], 2, [yajl version 1.x])
+elif test x$YAJL_1_EXISTS = xyes; then
+	AC_DEFINE_UNQUOTED([BABELTRACE_YAJL_VERSION], 1, [yajl version 2.x])
+else
+	AC_MSG_ERROR([Cannot find yajl.])
+fi
+
 # Check for fmemopen
 AC_CHECK_LIB([c], [fmemopen],
 [
