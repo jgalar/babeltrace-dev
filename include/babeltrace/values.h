@@ -121,10 +121,10 @@ enum bt_value_status {
 
 	/** Invalid arguments. */
 	/* -22 for compatibility with -EINVAL */
-	BT_VALUE_STATUS_INVAL =	-22,
+	BT_VALUE_STATUS_INVAL =		-22,
 
 	/** General error. */
-	BT_VALUE_STATUS_ERROR =	-1,
+	BT_VALUE_STATUS_ERROR =		-1,
 
 	/** Okay, no error. */
 	BT_VALUE_STATUS_OK =		0,
