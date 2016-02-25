@@ -1,5 +1,5 @@
 /*
- * Values.c: value objects
+ * Value objects
  *
  * Babeltrace Library
  *
