@@ -23,9 +23,296 @@
 #include <babeltrace/values.h>
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <inttypes.h>
 #include "tap/tap.h"
 
-#define NR_TESTS 238
+#define NR_TESTS 299
+
+static
+void test_from_json_complex(void)
+{
+	static const char *json =
+		"{"
+		"    \"null\": null,"
+		"    \"true\": true,"
+		"    \"false\": false,"
+		"    \"map\": {"
+		"        \"long min\": -2147483647,"
+		"        \"long max\": 2147483647,"
+		"        \"long long min\": -9223372036854775807,"
+		"        \"long long max\": 9223372036854775807,"
+		"        \"array\": ["
+		"            \"a\\tstring\\nnewline\", 23, null, true, {}"
+		"        ],"
+		"        \"\": \"empty string\","
+		"        \"floating point\": 4.94065645,"
+		"        \"-pi\": -3.14159265359,"
+		"        \"1 GHz\": 1e9"
+		"    },"
+		"    \"empty array\": [],"
+		"    \"result\": -1001"
+		"}";
+	enum bt_value_status status;
+	struct bt_value *root_map;
+	struct bt_value *root_map_map;
+	struct bt_value *root_map_map_array;
+	struct bt_value *root_map_from_json;
+
+	/* Create compound expected values */
+	root_map = bt_value_map_create();
+	assert(root_map);
+	root_map_map = bt_value_map_create();
+	assert(root_map_map);
+	root_map_map_array = bt_value_array_create();
+	assert(root_map_map_array);
+
+	/* Fill expected values */
+	status = bt_value_array_append_string(root_map_map_array,
+		"a\tstring\nnewline");
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_array_append_integer(root_map_map_array, 23);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_array_append(root_map_map_array, bt_value_null);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_array_append_bool(root_map_map_array, true);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_array_append_empty_map(root_map_map_array);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_map_insert_integer(root_map_map, "long min",
+		-2147483647);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_map_insert_integer(root_map_map, "long max",
+		2147483647);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_map_insert_integer(root_map_map, "long long min",
+		-9223372036854775807LL);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_map_insert_integer(root_map_map, "long long max",
+		9223372036854775807LL);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_map_insert(root_map_map, "array", root_map_map_array);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_map_insert_string(root_map_map, "", "empty string");
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_map_insert_float(root_map_map, "floating point",
+		4.94065645);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_map_insert_float(root_map_map, "-pi", -3.14159265359);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_map_insert_float(root_map_map, "1 GHz", 1e9);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_map_insert(root_map, "null", bt_value_null);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_map_insert_bool(root_map, "true", true);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_map_insert_bool(root_map, "false", false);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_map_insert(root_map, "map", root_map_map);
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_map_insert_empty_array(root_map, "empty array");
+	assert(status == BT_VALUE_STATUS_OK);
+	status = bt_value_map_insert_integer(root_map, "result", -1001);
+	assert(status == BT_VALUE_STATUS_OK);
+
+	/* Create value from JSON string */
+	root_map_from_json = bt_value_from_json(json);
+	ok(bt_value_is_map(root_map_from_json),
+		"bt_value_from_json() converts a JSON object");
+	ok(bt_value_compare(root_map_from_json, root_map),
+		"bt_value_from_json() converts a complex JSON object with correct values");
+
+	BT_PUT(root_map_from_json);
+	BT_PUT(root_map);
+	BT_PUT(root_map_map);
+	BT_PUT(root_map_map_array);
+}
+
+static
+void test_from_json_invalid_input(const char *json_input)
+{
+	ok(!bt_value_from_json(json_input),
+		"bt_value_from_json() returns NULL with an invalid input: '%s'",
+		json_input);
+}
+
+static
+void test_from_json_invalid(void)
+{
+	test_from_json_invalid_input(NULL);
+	test_from_json_invalid_input("");
+	test_from_json_invalid_input("{\"hello\": }");
+	test_from_json_invalid_input("\"some string");
+	test_from_json_invalid_input("   tru");
+	test_from_json_invalid_input("1238x");
+}
+
+static
+void test_from_json_null(void)
+{
+	struct bt_value *value;
+
+	value = bt_value_from_json("null");
+	ok(bt_value_is_null(value),
+		"bt_value_from_json() converts a null JSON value");
+	BT_PUT(value);
+}
+
+static
+void test_from_json_bool_compare(const char *json_input, bool expected_value)
+{
+	enum bt_value_status status;
+	struct bt_value *value;
+	bool val;
+
+	value = bt_value_from_json(json_input);
+	ok(bt_value_is_bool(value),
+		"bt_value_from_json() converts a boolean JSON value (%s)",
+		json_input);
+	status = bt_value_bool_get(value, &val);
+	assert(status == BT_VALUE_STATUS_OK);
+	ok(val == expected_value,
+		"bt_value_from_json() reads a correct JSON boolean value (%s)",
+		json_input);
+	BT_PUT(value);
+}
+
+static
+void test_from_json_bool(void)
+{
+	test_from_json_bool_compare("false", false);
+	test_from_json_bool_compare("true", true);
+}
+
+static
+void test_from_json_int_compare(const char *json_input, int64_t expected_value)
+{
+	enum bt_value_status status;
+	struct bt_value *value;
+	int64_t val;
+
+	value = bt_value_from_json(json_input);
+	ok(bt_value_is_integer(value),
+		"bt_value_from_json() converts an integer JSON value (%s)",
+		json_input);
+	status = bt_value_integer_get(value, &val);
+	assert(status == BT_VALUE_STATUS_OK);
+	ok(val == expected_value,
+		"bt_value_from_json() reads a correct JSON integer value (%s)",
+		json_input);
+	BT_PUT(value);
+}
+
+static
+void test_from_json_int(void)
+{
+	test_from_json_int_compare("0", 0);
+	test_from_json_int_compare("-1", -1);
+	test_from_json_int_compare("123456789", 123456789);
+	test_from_json_int_compare("-123456789", -123456789);
+
+	/* Min long */
+	test_from_json_int_compare("-2147483647", -2147483647);
+
+	/* Max long */
+	test_from_json_int_compare("2147483647", 2147483647);
+
+	/* Min long long */
+	test_from_json_int_compare("-9223372036854775807", -9223372036854775807LL);
+
+	/* Max long long */
+	test_from_json_int_compare("9223372036854775807", 9223372036854775807LL);
+}
+
+static
+void test_from_json_float_compare(const char *json_input, double expected_value)
+{
+	enum bt_value_status status;
+	struct bt_value *value;
+	double val;
+
+	value = bt_value_from_json(json_input);
+	ok(bt_value_is_float(value),
+		"bt_value_from_json() converts a floating point JSON value (%s)",
+		json_input);
+	status = bt_value_float_get(value, &val);
+	assert(status == BT_VALUE_STATUS_OK);
+	ok(val == expected_value,
+		"bt_value_from_json() reads a correct JSON floating point value (%s)",
+		json_input);
+	BT_PUT(value);
+}
+
+static
+void test_from_json_float(void)
+{
+	test_from_json_float_compare("1.23456", 1.23456);
+	test_from_json_float_compare("-0.1234567", -0.1234567);
+	test_from_json_float_compare("1e9", 1e9);
+
+	/* Max normal number */
+	test_from_json_float_compare("1.7976931348623157e+308",
+		1.7976931348623157e+308);
+
+	/* Min positive normal number */
+	test_from_json_float_compare("2.2250738585072014e-308",
+		2.2250738585072014e-308);
+
+	/* Max subnormal number */
+	test_from_json_float_compare("2.2250738585072009e-308",
+		2.2250738585072009e-308);
+
+	/* Min positive subnormal number */
+	test_from_json_float_compare("4.9406564584124654e-324",
+		4.9406564584124654e-324);
+}
+
+static
+void test_from_json_string_compare(const char *json_input,
+		const char *expected_value)
+{
+	enum bt_value_status status;
+	struct bt_value *value;
+	const char *val;
+
+	value = bt_value_from_json(json_input);
+	ok(bt_value_is_string(value),
+		"bt_value_from_json() converts a string JSON value (%s)",
+		json_input);
+	status = bt_value_string_get(value, &val);
+	assert(status == BT_VALUE_STATUS_OK);
+	ok(!strcmp(val, expected_value),
+		"bt_value_from_json() reads a correct JSON string value (%s)",
+		json_input);
+	BT_PUT(value);
+}
+
+static
+void test_from_json_string(void)
+{
+	test_from_json_string_compare("\"hello there\"", "hello there");
+	test_from_json_string_compare("\"L'éthanol\"", "L'éthanol");
+	test_from_json_string_compare("\"a\\ttab\"", "a\ttab");
+	test_from_json_string_compare("\"a\\nnewline\"", "a\nnewline");
+	test_from_json_string_compare("\"a\\rcarriage return\"", "a\rcarriage return");
+	test_from_json_string_compare("\"a\\u0020space\"", "a space");
+	test_from_json_string_compare("\"a\\\\backslash\"", "a\\backslash");
+	test_from_json_string_compare("\"a\\\"double quote\"", "a\"double quote");
+	test_from_json_string_compare("\"\"", "");
+}
+
+static
+void test_from_json(void)
+{
+	test_from_json_invalid();
+	test_from_json_null();
+	test_from_json_bool();
+	test_from_json_int();
+	test_from_json_float();
+	test_from_json_string();
+	test_from_json_complex();
+}
 
 static
 void test_null(void)
@@ -1163,6 +1450,7 @@ int main(void)
 	test_types();
 	test_compare();
 	test_copy();
+	test_from_json();
 
 	return 0;
 }
