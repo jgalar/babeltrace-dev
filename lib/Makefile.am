@@ -11,6 +11,7 @@ libbabeltrace_la_SOURCES = babeltrace.c \
 			   trace-collection.c \
 			   registry.c \
 			   values.c \
+			   values-json.c \
 			   ref.c
 
 libbabeltrace_la_LDFLAGS = -version-info $(BABELTRACE_LIBRARY_VERSION)
@@ -19,4 +20,5 @@ libbabeltrace_la_LIBADD = \
 	prio_heap/libprio_heap.la \
 	$(top_builddir)/types/libbabeltrace_types.la \
 	$(top_builddir)/compat/libcompat.la \
-	plugin-system/libplugin-system.la
+	plugin-system/libplugin-system.la \
+	-lyajl

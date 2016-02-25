@@ -969,6 +969,20 @@ extern struct bt_value *bt_value_copy(const struct bt_value *object);
 extern bool bt_value_compare(const struct bt_value *object_a,
 		const struct bt_value *object_b);
 
+/**
+ * Returns the value object corresponding to the JSON string
+ * \p json_string.
+ *
+ * JavaScript-style comments are allowed in the JSON string.
+ *
+ * The created map value object's reference count is set to 1.
+ *
+ * @param json_string	JSON string to decode
+ * @returns		Value object built from decoding \p json_string,
+ *			or \c NULL on error
+ */
+extern struct bt_value *bt_value_from_json(const char *json_string);
+
 #ifdef __cplusplus
 }
 #endif
