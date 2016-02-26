@@ -4,7 +4,8 @@ AM_LDFLAGS = -lpopt
 bin_PROGRAMS = babeltrace babeltrace-log
 
 babeltrace_SOURCES = \
-	babeltrace.c
+	babeltrace.c \
+	babeltrace-cfg.c
 
 # -Wl,--no-as-needed is needed for recent gold linker who seems to think
 # it knows better and considers libraries with constructors having
