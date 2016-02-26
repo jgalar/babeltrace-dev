@@ -38,83 +38,7 @@
 #include <popt.h>
 #include <string.h>
 #include <stdio.h>
-
-static char *opt_plugin_path;
-
-enum {
-	OPT_NONE = 0,
-	OPT_PLUGIN_PATH,
-	OPT_VERBOSE,
-	OPT_DEBUG,
-	OPT_HELP,
-};
-
-/*
- * We are _not_ using POPT_ARG_STRING's ability to store directly into
- * variables, because we want to cast the return to non-const, which is
- * not possible without using poptGetOptArg explicitly. This helps us
- * controlling memory allocation correctly without making assumptions
- * about undocumented behaviors. poptGetOptArg is documented as
- * requiring the returned const char * to be freed by the caller.
- */
-static struct poptOption long_options[] = {
-	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "plugin-path", 0, POPT_ARG_STRING, NULL, OPT_PLUGIN_PATH, NULL, NULL },
-	{ "verbose", 'v', POPT_ARG_NONE, NULL, OPT_VERBOSE, NULL, NULL },
-	{ "debug", 'd', POPT_ARG_NONE, NULL, OPT_DEBUG, NULL, NULL },
-	{ NULL, 0, 0, NULL, 0, NULL, NULL },
-};
-
-/*
- * Return 0 if caller should continue, < 0 if caller should return
- * error, > 0 if caller should exit without reporting error.
- */
-static int parse_options(int argc, char **argv)
-{
-	poptContext pc;
-	int opt, ret = 0;
-
-	if (argc == 1) {
-		return 1;	/* exit cleanly */
-	}
-
-	pc = poptGetContext(NULL, argc, (const char **) argv, long_options, 0);
-	poptReadDefaultConfig(pc, 0);
-
-	/* set default */
-	opt_context_field_names = 1;
-	opt_payload_field_names = 1;
-
-	while ((opt = poptGetNextOpt(pc)) != -1) {
-		switch (opt) {
-		case OPT_HELP:
-			ret = 1;	/* exit cleanly */
-			goto end;
-		case OPT_PLUGIN_PATH:
-			opt_plugin_path = (char *) poptGetOptArg(pc);
-			if (!opt_plugin_path) {
-				ret = -EINVAL;
-				goto end;
-			}			;
-			break;
-		case OPT_VERBOSE:
-			babeltrace_verbose = 1;
-			break;
-		case OPT_DEBUG:
-			babeltrace_debug = 1;
-			break;
-		default:
-			ret = -EINVAL;
-			goto end;
-		}
-	}
-
-end:
-	if (pc) {
-		poptFreeContext(pc);
-	}
-	return ret;
-}
+#include "babeltrace-cfg.h"
 
 static
 const char *component_type_str(enum bt_component_type type)
@@ -136,6 +60,8 @@ static
 void print_detected_component_classes(struct bt_component_factory *factory)
 {
 	int count, i;
+
+	babeltrace_verbose = 1;
 
 	if (!babeltrace_verbose) {
 		return;
@@ -189,33 +115,162 @@ void test_sink_notifications(struct bt_component *sink)
 	return;
 }
 
+static
+void print_indent(size_t indent)
+{
+	size_t i;
+
+	for (i = 0; i < indent; i++) {
+		printf(" ");
+	}
+}
+
+static
+void print_value(struct bt_value *, size_t, bool);
+
+static
+bool print_map_value(const char *key, struct bt_value *object, void *data)
+{
+	size_t indent = (size_t) data;
+
+	print_indent(indent);
+	printf("\"%s\": ", key);
+	print_value(object, indent, false);
+
+	return true;
+}
+
+static
+void print_value(struct bt_value *value, size_t indent, bool do_indent)
+{
+	bool bool_val;
+	int64_t int_val;
+	double dbl_val;
+	const char *str_val;
+	int size;
+	int i;
+
+	if (!value) {
+		return;
+	}
+
+	if (do_indent) {
+		print_indent(indent);
+	}
+
+	switch (bt_value_get_type(value)) {
+	case BT_VALUE_TYPE_NULL:
+		printf("null\n");
+		break;
+	case BT_VALUE_TYPE_BOOL:
+		bt_value_bool_get(value, &bool_val);
+		printf("%s\n", bool_val ? "true" : "false");
+		break;
+	case BT_VALUE_TYPE_INTEGER:
+		bt_value_integer_get(value, &int_val);
+		printf("%" PRId64 "\n", int_val);
+		break;
+	case BT_VALUE_TYPE_FLOAT:
+		bt_value_float_get(value, &dbl_val);
+		printf("%lf\n", dbl_val);
+		break;
+	case BT_VALUE_TYPE_STRING:
+		bt_value_string_get(value, &str_val);
+		printf("\"%s\"\n", str_val);
+		break;
+	case BT_VALUE_TYPE_ARRAY:
+		size = bt_value_array_size(value);
+		printf("[\n");
+
+		for (i = 0; i < size; i++) {
+			struct bt_value *element =
+				bt_value_array_get(value, i);
+
+			print_value(element, indent + 2, true);
+			BT_PUT(element);
+		}
+
+		print_indent(indent);
+		printf("]\n");
+		break;
+	case BT_VALUE_TYPE_MAP:
+		if (bt_value_map_is_empty(value)) {
+			printf("{}\n");
+			return;
+		}
+
+		printf("{\n");
+		bt_value_map_foreach(value, print_map_value,
+			(void *) (indent + 2));
+		print_indent(indent);
+		printf("}\n");
+		break;
+	default:
+		assert(false);
+	}
+}
+
+static
+void print_bt_cfg_component(struct bt_cfg_component *bt_cfg_component)
+{
+	printf("  %s/%s\n", bt_cfg_component->plugin_name->str,
+		bt_cfg_component->component_name->str);
+	printf("    params:\n");
+	print_value(bt_cfg_component->params, 6, true);
+}
+
+static
+void print_bt_cfg_components(GPtrArray *array)
+{
+	size_t i;
+
+	for (i = 0; i < array->len; i++) {
+		print_bt_cfg_component(bt_cfg_get_cfg_component(array, i));
+	}
+}
+
+static
+void print_cfg(struct bt_cfg *cfg)
+{
+	printf("debug:           %d\n", cfg->debug);
+	printf("verbose:         %d\n", cfg->verbose);
+	printf("do list:         %d\n", cfg->do_list);
+	printf("force correlate: %d\n", cfg->force_correlate);
+	printf("plugin paths:\n");
+	print_value(cfg->plugin_paths, 2, true);
+	printf("sources:\n");
+	print_bt_cfg_components(cfg->sources);
+	printf("sinks:\n");
+	print_bt_cfg_components(cfg->sinks);
+}
+
 int main(int argc, char **argv)
 {
 	int ret;
+	int exit_code;
 	struct bt_component_factory *component_factory = NULL;
 	struct bt_component_class *source_class = NULL;
 	struct bt_component_class *sink_class = NULL;
 	struct bt_component *source = NULL, *sink = NULL;
 	struct bt_value *source_params = NULL, *sink_params = NULL;
+	struct bt_cfg *cfg;
 
-	ret = parse_options(argc, argv);
-	if (ret < 0) {
-		fprintf(stderr, "Error parsing options.\n\n");
-		exit(EXIT_FAILURE);
-	} else if (ret > 0) {
-		exit(EXIT_SUCCESS);
+	cfg = bt_cfg_from_args(argc, argv, &exit_code);
+
+	if (cfg) {
+		print_cfg(cfg);
+	} else {
+		return exit_code;
 	}
 
 	printf_verbose("Verbose mode active.\n");
 	printf_debug("Debug mode active.\n");
 
-	if (!opt_plugin_path) {
+	if (bt_value_array_is_empty(cfg->plugin_paths)) {
 		fprintf(stderr, "No plugin path specified, aborting...\n");
 		ret = -1;
 		goto end;
 	}
-	printf_verbose("Looking-up plugins at %s\n",
-			opt_plugin_path ? opt_plugin_path : "Invalid");
 	component_factory = bt_component_factory_create();
 	if (!component_factory) {
 		fprintf(stderr, "Failed to create component factory.\n");
@@ -223,7 +278,14 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
-	ret = bt_component_factory_load(component_factory, opt_plugin_path);
+	struct bt_value *first_plugin_path_value;
+	const char *first_plugin_path;
+
+	first_plugin_path_value = bt_value_array_get(cfg->plugin_paths, 0);
+	bt_value_string_get(first_plugin_path_value, &first_plugin_path);
+	BT_PUT(first_plugin_path_value);
+
+	ret = bt_component_factory_load(component_factory, first_plugin_path);
 	if (ret) {
 		fprintf(stderr, "Failed to load plugins.\n");
 		goto end;
@@ -247,7 +309,7 @@ int main(int argc, char **argv)
 	}
 
 	test_sink_notifications(sink);
-
+	goto end;
 	/* teardown and exit */
 end:
 	BT_PUT(component_factory);
@@ -257,5 +319,6 @@ end:
 	BT_PUT(sink);
 	BT_PUT(source_params);
 	BT_PUT(sink_params);
+	bt_cfg_destroy(cfg);
 	return ret ? 1 : 0;
 }
