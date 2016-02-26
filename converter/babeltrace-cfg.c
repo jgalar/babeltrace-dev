@@ -42,12 +42,6 @@ enum state_expecting {
 	STATE_EXPECTING_COMMA,
 };
 
-enum symbol_values {
-	SYMVAL_NULL,
-	SYMVAL_TRUE,
-	SYMVAL_FALSE,
-};
-
 struct state {
 	enum state_expecting expecting;
 	char *last_map_key;
@@ -183,39 +177,44 @@ int handle_state(struct state *state, GScanner *scanner,
 			value = bt_value_float_create_init(
 				scanner->value.v_float);
 			break;
-		case G_TOKEN_SYMBOL:
-		{
-			/* null/true/false symbol */
-			int symbol = (int) GPOINTER_TO_UINT(
-				scanner->value.v_symbol);
-
-			switch (symbol) {
-			case SYMVAL_NULL:
-				value = bt_value_null;
-				break;
-			case SYMVAL_FALSE:
-				value = bt_value_bool_create_init(
-					false);
-				break;
-			case SYMVAL_TRUE:
-				value = bt_value_bool_create_init(
-					true);
-				break;
-			default:
-				assert(false);
-			}
-			break;
-		}
 		case G_TOKEN_STRING:
 			/* Quoted string */
 			value = bt_value_string_create_init(
 				scanner->value.v_string);
 			break;
 		case G_TOKEN_IDENTIFIER:
-			/* Unquoted string which is not a symbol */
-			value = bt_value_string_create_init(
-				scanner->value.v_identifier);
+		{
+			const char *id;
+
+			/*
+			 * Using symbols would be appropriate here,
+			 * but said symbols are allowed as map key,
+			 * so it's easier to consider everything an
+			 * identifier.
+			 *
+			 * If one of the known symbols is not
+			 * recognized here, then fall back to creating
+			 * a string.
+			 */
+			id = scanner->value.v_identifier;
+
+			if (!strcmp(id, "null") || !strcmp(id, "NULL") ||
+					!strcmp(id, "nul")) {
+				value = bt_value_null;
+			} else if (!strcmp(id, "true") || !strcmp(id, "TRUE") ||
+					!strcmp(id, "yes") ||
+					!strcmp(id, "YES")) {
+				value = bt_value_bool_create_init(true);
+			} else if (!strcmp(id, "false") ||
+					!strcmp(id, "FALSE") ||
+					!strcmp(id, "no") ||
+					!strcmp(id, "NO")) {
+				value = bt_value_bool_create_init(false);
+			} else {
+				value = bt_value_string_create_init(id);
+			}
 			break;
+		}
 		default:
 			break;
 		}
@@ -322,7 +321,7 @@ struct bt_value *bt_value_from_ini(const char *arg, GString *ini_error)
 		.scan_identifier_1char = TRUE,
 		.scan_identifier_NULL = FALSE,
 		.scan_symbols = TRUE,
-		.scan_binary = FALSE,
+		.scan_binary = TRUE,
 		.scan_octal = TRUE,
 		.scan_float = TRUE,
 		.scan_hex = TRUE,
@@ -355,29 +354,7 @@ struct bt_value *bt_value_from_ini(const char *arg, GString *ini_error)
 		goto error;
 	}
 
-	/* Add known symbols */
-	g_scanner_scope_add_symbol(scanner, 0, "NULL",
-		GUINT_TO_POINTER(SYMVAL_NULL));
-	g_scanner_scope_add_symbol(scanner, 0, "null",
-		GUINT_TO_POINTER(SYMVAL_NULL));
-	g_scanner_scope_add_symbol(scanner, 0, "nul",
-		GUINT_TO_POINTER(SYMVAL_NULL));
-	g_scanner_scope_add_symbol(scanner, 0, "TRUE",
-		GUINT_TO_POINTER(SYMVAL_TRUE));
-	g_scanner_scope_add_symbol(scanner, 0, "true",
-		GUINT_TO_POINTER(SYMVAL_TRUE));
-	g_scanner_scope_add_symbol(scanner, 0, "YES",
-		GUINT_TO_POINTER(SYMVAL_TRUE));
-	g_scanner_scope_add_symbol(scanner, 0, "yes",
-		GUINT_TO_POINTER(SYMVAL_TRUE));
-	g_scanner_scope_add_symbol(scanner, 0, "FALSE",
-		GUINT_TO_POINTER(SYMVAL_FALSE));
-	g_scanner_scope_add_symbol(scanner, 0, "false",
-		GUINT_TO_POINTER(SYMVAL_FALSE));
-	g_scanner_scope_add_symbol(scanner, 0, "NO",
-		GUINT_TO_POINTER(SYMVAL_FALSE));
-	g_scanner_scope_add_symbol(scanner, 0, "no",
-		GUINT_TO_POINTER(SYMVAL_FALSE));
+	/* Let the scan begin */
 	g_scanner_input_text(scanner, arg, strlen(arg));
 
 	while (true) {
@@ -597,8 +574,8 @@ void show_usage(FILE *fp)
 	fprintf(fp, "        * \"null\", \"nul\", \"NULL\": null value\n");
 	fprintf(fp, "        * \"true\", \"TRUE\", \"yes\", \"YES\": true boolean value\n");
 	fprintf(fp, "        * \"false\", \"FALSE\", \"no\", \"NO\": false boolean value\n");
-	fprintf(fp, "        * Octal, decimal, or hexadecimal integer fitting in a signed\n");
-	fprintf(fp, "          64-bit integer\n");
+	fprintf(fp, "        * Binary (\"0b\" prefix), octal (\"0\" prefix), decimal, or\n");
+	fprintf(fp, "          hexadecimal (\"0x\" prefix) integer fitting in a signed 64-bit integer\n");
 	fprintf(fp, "        * Floating point number\n");
 	fprintf(fp, "        * Unquoted string with no special characters, and not matching any of\n");
 	fprintf(fp, "          the null, true boolean, and false boolean value symbols above\n");
