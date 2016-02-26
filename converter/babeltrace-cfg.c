@@ -58,7 +58,7 @@ void print_error_expecting(struct state *state, GScanner *scanner,
 	size_t pos;
 
 	/* Only print error if there's one line */
-	if (strchr(state->arg, '\n') != NULL) {
+	if (strchr(state->arg, '\n') != NULL || strlen(state->arg) == 0) {
 		return;
 	}
 
