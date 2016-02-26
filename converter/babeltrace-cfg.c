@@ -286,10 +286,7 @@ error:
 
 end:
 	if (value) {
-		int insert_ret = bt_value_map_insert(params,
-			state->last_map_key, value);
-
-		if (insert_ret) {
+		if (bt_value_map_insert(params, state->last_map_key, value)) {
 			/* Only override return value on error */
 			ret = -1;
 		}
@@ -767,7 +764,6 @@ GScanner *create_simple_scanner(void)
 static
 struct bt_value *names_from_arg(const char *arg)
 {
-	int ret;
 	GScanner *scanner;
 	struct bt_value *names = NULL;
 
@@ -794,25 +790,22 @@ struct bt_value *names_from_arg(const char *arg)
 			if (!strcmp(identifier, "payload") ||
 					!strcmp(identifier, "args") ||
 					!strcmp(identifier, "arg")) {
-				ret = bt_value_array_append_string(names,
-					"payload");
-				if (ret) {
+				if (bt_value_array_append_string(names,
+						"payload")) {
 					goto error;
 				}
 			} else if (!strcmp(identifier, "context") ||
 					!strcmp(identifier, "ctx")) {
-				ret = bt_value_array_append_string(names,
-					"context");
-				if (ret) {
+				if (bt_value_array_append_string(names,
+						"context")) {
 					goto error;
 				}
 			} else if (!strcmp(identifier, "none") ||
 					!strcmp(identifier, "all") ||
 					!strcmp(identifier, "scope") ||
 					!strcmp(identifier, "header")) {
-				ret = bt_value_array_append_string(names,
-					identifier);
-				if (ret) {
+				if (bt_value_array_append_string(names,
+						identifier)) {
 					goto error;
 				}
 			} else {
@@ -845,7 +838,6 @@ end:
 static
 struct bt_value *fields_from_arg(const char *arg)
 {
-	int ret;
 	GScanner *scanner;
 	struct bt_value *fields = NULL;
 
@@ -878,9 +870,8 @@ struct bt_value *fields_from_arg(const char *arg)
 					!strcmp(identifier, "loglevel") ||
 					!strcmp(identifier, "emf") ||
 					!strcmp(identifier, "callsite")) {
-				ret = bt_value_array_append_string(fields,
-					identifier);
-				if (ret) {
+				if (bt_value_array_append_string(fields,
+						identifier)) {
 					goto error;
 				}
 			} else {
@@ -1203,10 +1194,10 @@ struct bt_cfg *bt_cfg_from_args(int argc, char *argv[], int *exit_code)
 {
 	struct bt_cfg *cfg = NULL;
 	poptContext pc = NULL;
-	int opt, ret = 0;
 	char *arg = NULL;
 	struct ctf_legacy_opts ctf_legacy_opts = { 0 };
 	struct ctf_text_legacy_opts ctf_text_legacy_opts = { 0 };
+	int opt;
 
 	*exit_code = 0;
 
@@ -1399,8 +1390,7 @@ struct bt_cfg *bt_cfg_from_args(int argc, char *argv[], int *exit_code)
 				goto error;
 			}
 
-			ret = parse_int64(arg, &val);
-			if (ret) {
+			if (parse_int64(arg, &val)) {
 				fprintf(stderr,
 					"Invalid --clock-offset option's argument\n");
 				goto error;
@@ -1420,8 +1410,7 @@ struct bt_cfg *bt_cfg_from_args(int argc, char *argv[], int *exit_code)
 				goto error;
 			}
 
-			ret = parse_int64(arg, &val);
-			if (ret) {
+			if (parse_int64(arg, &val)) {
 				fprintf(stderr,
 					"Invalid --clock-offset-ns option's argument\n");
 				goto error;
@@ -1483,9 +1472,8 @@ struct bt_cfg *bt_cfg_from_args(int argc, char *argv[], int *exit_code)
 			break;
 		}
 
-		ret = bt_value_array_append_string(cfg->legacy_input_paths,
-			input_path);
-		if (ret) {
+		if (bt_value_array_append_string(cfg->legacy_input_paths,
+				input_path)) {
 			goto error;
 		}
 	}
