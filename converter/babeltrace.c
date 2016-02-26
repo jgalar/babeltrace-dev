@@ -239,11 +239,17 @@ void print_cfg(struct bt_cfg *cfg)
 	printf("plugin paths:\n");
 	print_value(cfg->plugin_paths, 2, true);
 
-	if (cfg->legacy_ctf_input || cfg->legacy_lttng_live_input) {
-		if (cfg->legacy_ctf_input) {
+	if (cfg->legacy_input_format) {
+		switch (cfg->legacy_input_format) {
+		case LEGACY_INPUT_FORMAT_CTF:
 			printf("legacy ctf input:\n");
-		} else {
+			break;
+		case LEGACY_INPUT_FORMAT_LTTNG_LIVE:
 			printf("legacy lttng-live input:\n");
+			break;
+		default:
+			assert(false);
+			break;
 		}
 
 		printf("  input paths:\n");
@@ -256,14 +262,20 @@ void print_cfg(struct bt_cfg *cfg)
 		print_bt_cfg_components(cfg->sources);
 	}
 
-	if (cfg->legacy_ctf_text_output || cfg->legacy_ctf_metadata_output ||
-			cfg->legacy_dummy_output) {
-		if (cfg->legacy_ctf_text_output) {
+	if (cfg->legacy_output_format) {
+		switch (cfg->legacy_output_format) {
+		case LEGACY_OUTPUT_FORMAT_TEXT:
 			printf("legacy text output:\n");
-		} else if (cfg->legacy_ctf_metadata_output) {
+			break;
+		case LEGACY_OUTPUT_FORMAT_CTF_METADATA:
 			printf("legacy ctf-metadata output:\n");
-		} else {
+			break;
+		case LEGACY_OUTPUT_FORMAT_DUMMY:
 			printf("legacy dummy output:\n");
+			break;
+		default:
+			assert(false);
+			break;
 		}
 
 		if (cfg->legacy_output_base_params) {

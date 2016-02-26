@@ -908,7 +908,7 @@ struct ctf_legacy_opts {
 	bool offset_ns_is_set;
 };
 
-struct ctf_text_legacy_opts {
+struct text_legacy_opts {
 	GString *output;
 	struct bt_value *names;
 	struct bt_value *fields;
@@ -921,8 +921,8 @@ struct ctf_text_legacy_opts {
 };
 
 static
-struct bt_value *base_params_from_ctf_text_legacy_opts(
-		struct ctf_text_legacy_opts *ctf_text_legacy_opts)
+struct bt_value *base_params_from_text_legacy_opts(
+		struct text_legacy_opts *text_legacy_opts)
 {
 	struct bt_value *base_params;
 
@@ -931,49 +931,49 @@ struct bt_value *base_params_from_ctf_text_legacy_opts(
 		goto error;
 	}
 
-	if (ctf_text_legacy_opts->output->len > 0) {
+	if (text_legacy_opts->output->len > 0) {
 		if (bt_value_map_insert_string(base_params, "output-path",
-				ctf_text_legacy_opts->output->str)) {
+				text_legacy_opts->output->str)) {
 			goto error;
 		}
 	}
 
-	if (ctf_text_legacy_opts->names) {
+	if (text_legacy_opts->names) {
 		if (bt_value_map_insert(base_params, "names",
-				ctf_text_legacy_opts->names)) {
+				text_legacy_opts->names)) {
 			goto error;
 		}
 	}
 
-	if (ctf_text_legacy_opts->fields) {
+	if (text_legacy_opts->fields) {
 		if (bt_value_map_insert(base_params, "fields",
-				ctf_text_legacy_opts->fields)) {
+				text_legacy_opts->fields)) {
 			goto error;
 		}
 	}
 
 	if (bt_value_map_insert_bool(base_params, "no-delta",
-			ctf_text_legacy_opts->no_delta)) {
+			text_legacy_opts->no_delta)) {
 		goto error;
 	}
 
 	if (bt_value_map_insert_bool(base_params, "clock-cycles",
-			ctf_text_legacy_opts->clock_cycles)) {
+			text_legacy_opts->clock_cycles)) {
 		goto error;
 	}
 
 	if (bt_value_map_insert_bool(base_params, "clock-seconds",
-			ctf_text_legacy_opts->clock_seconds)) {
+			text_legacy_opts->clock_seconds)) {
 		goto error;
 	}
 
 	if (bt_value_map_insert_bool(base_params, "clock-date",
-			ctf_text_legacy_opts->clock_date)) {
+			text_legacy_opts->clock_date)) {
 		goto error;
 	}
 
 	if (bt_value_map_insert_bool(base_params, "clock-gmt",
-			ctf_text_legacy_opts->clock_gmt)) {
+			text_legacy_opts->clock_gmt)) {
 		goto error;
 	}
 
@@ -1018,44 +1018,34 @@ end:
 
 static
 bool validate_cfg(struct bt_cfg *cfg, struct ctf_legacy_opts *ctf_legacy_opts,
-		struct ctf_text_legacy_opts *ctf_text_legacy_opts)
+		struct text_legacy_opts *text_legacy_opts)
 {
 	bool legacy_input = false;
 	bool legacy_output = false;
 
 	/* Determine if the input and output should be legacy-style */
-	if (cfg->legacy_ctf_input || cfg->legacy_lttng_live_input ||
-			cfg->sources->len == 0 ||
+	if (cfg->legacy_input_format || cfg->sources->len == 0 ||
 			!bt_value_array_is_empty(cfg->legacy_input_paths) ||
 			ctf_legacy_opts->offset_s_is_set ||
 			ctf_legacy_opts->offset_ns_is_set) {
 		legacy_input = true;
 	}
 
-	if (cfg->legacy_ctf_text_output || cfg->legacy_dummy_output ||
-			cfg->legacy_ctf_metadata_output ||
-			cfg->sinks->len == 0 ||
-			ctf_text_legacy_opts->any_is_set) {
+	if (cfg->legacy_output_format || cfg->sinks->len == 0 ||
+			text_legacy_opts->any_is_set) {
 		legacy_output = true;
 	}
 
 	if (legacy_input) {
 		/* If no legacy input plugin was specified, default to CTF */
-		if (!cfg->legacy_lttng_live_input) {
-			cfg->legacy_ctf_input = true;
+		if (!cfg->legacy_input_format) {
+			cfg->legacy_input_format = LEGACY_INPUT_FORMAT_CTF;
 		}
 
 		/* Make sure no non-legacy sources are specified */
 		if (cfg->sources->len != 0) {
 			fprintf(stderr,
 				"Both legacy and non-legacy inputs specified\n");
-			goto error;
-		}
-
-		/* Make sure zero or one legacy input is specified */
-		if (cfg->legacy_ctf_input && cfg->legacy_lttng_live_input) {
-			fprintf(stderr,
-				"Both \"ctf\" and \"lttng-live\" legacy input plugins specified\n");
 			goto error;
 		}
 
@@ -1068,15 +1058,12 @@ bool validate_cfg(struct bt_cfg *cfg, struct ctf_legacy_opts *ctf_legacy_opts,
 	}
 
 	if (legacy_output) {
-		int total;
-
 		/*
 		 * If no legacy output plugin was specified, default to
 		 * CTF-text.
 		 */
-		if (!cfg->legacy_dummy_output &&
-				!cfg->legacy_ctf_metadata_output) {
-			cfg->legacy_ctf_text_output = true;
+		if (!cfg->legacy_output_format) {
+			cfg->legacy_output_format = LEGACY_OUTPUT_FORMAT_TEXT;
 		}
 
 		/* Make sure no non-legacy sources are specified */
@@ -1086,21 +1073,13 @@ bool validate_cfg(struct bt_cfg *cfg, struct ctf_legacy_opts *ctf_legacy_opts,
 			goto error;
 		}
 
-		/* Make sure zero or one legacy output is specified */
-		total = cfg->legacy_dummy_output + cfg->legacy_ctf_text_output +
-			cfg->legacy_ctf_metadata_output;
-		if (total != 1) {
-			fprintf(stderr,
-				"More than one legacy output plugin specified\n");
-			goto error;
-		}
-
 		/*
 		 * If any CTF-text option was specified, the output must be
 		 * legacy CTF-text.
 		 */
-		if (ctf_text_legacy_opts->any_is_set &&
-				!cfg->legacy_ctf_text_output) {
+		if (text_legacy_opts->any_is_set &&
+				cfg->legacy_output_format !=
+				LEGACY_OUTPUT_FORMAT_TEXT) {
 			fprintf(stderr,
 				"Options for \"text\" specified with different legacy output plugin\n");
 			goto error;
@@ -1111,9 +1090,10 @@ bool validate_cfg(struct bt_cfg *cfg, struct ctf_legacy_opts *ctf_legacy_opts,
 	 * If the output is the legacy CTF-metadata plugin, then the
 	 * input should be the legacy CTF input plugin.
 	 */
-	if (cfg->legacy_ctf_metadata_output && !cfg->legacy_ctf_input) {
+	if (cfg->legacy_output_format == LEGACY_OUTPUT_FORMAT_CTF_METADATA &&
+			cfg->legacy_input_format != LEGACY_INPUT_FORMAT_CTF) {
 		fprintf(stderr,
-			"\"ctf-metadata\" legacy output plugin requires legacy \"ctf\" input plugin\n");
+			"\"ctf-metadata\" legacy output plugin requires using legacy \"ctf\" input plugin\n");
 		goto error;
 	}
 
@@ -1196,7 +1176,7 @@ struct bt_cfg *bt_cfg_from_args(int argc, char *argv[], int *exit_code)
 	poptContext pc = NULL;
 	char *arg = NULL;
 	struct ctf_legacy_opts ctf_legacy_opts = { 0 };
-	struct ctf_text_legacy_opts ctf_text_legacy_opts = { 0 };
+	struct text_legacy_opts text_legacy_opts = { 0 };
 	int opt;
 
 	*exit_code = 0;
@@ -1206,8 +1186,8 @@ struct bt_cfg *bt_cfg_from_args(int argc, char *argv[], int *exit_code)
 		goto end;
 	}
 
-	ctf_text_legacy_opts.output = g_string_new(NULL);
-	if (!ctf_text_legacy_opts.output) {
+	text_legacy_opts.output = g_string_new(NULL);
+	if (!text_legacy_opts.output) {
 		goto error;
 	}
 
@@ -1258,13 +1238,13 @@ struct bt_cfg *bt_cfg_from_args(int argc, char *argv[], int *exit_code)
 			}
 			break;
 		case OPT_OUTPUT_PATH:
-			if (ctf_text_legacy_opts.output->len > 0) {
+			if (text_legacy_opts.output->len > 0) {
 				fprintf(stderr, "Duplicate --output option\n");
 				goto error;
 			}
 
-			g_string_assign(ctf_text_legacy_opts.output, arg);
-			ctf_text_legacy_opts.any_is_set = true;
+			g_string_assign(text_legacy_opts.output, arg);
+			text_legacy_opts.any_is_set = true;
 			break;
 		case OPT_INPUT_FORMAT:
 		case OPT_SOURCE:
@@ -1274,11 +1254,25 @@ struct bt_cfg *bt_cfg_from_args(int argc, char *argv[], int *exit_code)
 			if (opt == OPT_INPUT_FORMAT) {
 				if (!strcmp(arg, "ctf")) {
 					/* Legacy CTF input plugin */
-					cfg->legacy_ctf_input = true;
+					if (cfg->legacy_input_format) {
+						fprintf(stderr,
+							"Duplicate legacy input plugin specified\n");
+						goto error;
+					}
+
+					cfg->legacy_input_format =
+						LEGACY_INPUT_FORMAT_CTF;
 					break;
 				} else if (!strcmp(arg, "lttng-live")) {
 					/* Legacy LTTng-live input plugin */
-					cfg->legacy_lttng_live_input = true;
+					if (cfg->legacy_input_format) {
+						fprintf(stderr,
+							"Duplicate legacy input plugin specified\n");
+						goto error;
+					}
+
+					cfg->legacy_input_format =
+						LEGACY_INPUT_FORMAT_LTTNG_LIVE;
 					break;
 				}
 			}
@@ -1304,15 +1298,36 @@ struct bt_cfg *bt_cfg_from_args(int argc, char *argv[], int *exit_code)
 			if (opt == OPT_OUTPUT_FORMAT) {
 				if (!strcmp(arg, "text")) {
 					/* Legacy CTF-text output plugin */
-					cfg->legacy_ctf_text_output = true;
+					if (cfg->legacy_output_format) {
+						fprintf(stderr,
+							"Duplicate legacy output plugin specified\n");
+						goto error;
+					}
+
+					cfg->legacy_output_format =
+						LEGACY_OUTPUT_FORMAT_TEXT;
 					break;
 				} else if (!strcmp(arg, "dummy")) {
 					/* Legacy dummy output plugin */
-					cfg->legacy_dummy_output = true;
+					if (cfg->legacy_output_format) {
+						fprintf(stderr,
+							"Duplicate legacy output plugin specified\n");
+						goto error;
+					}
+
+					cfg->legacy_output_format =
+						LEGACY_OUTPUT_FORMAT_DUMMY;
 					break;
 				} else if (!strcmp(arg, "ctf-metadata")) {
 					/* Legacy CTF-metadata output plugin */
-					cfg->legacy_ctf_metadata_output = true;
+					if (cfg->legacy_output_format) {
+						fprintf(stderr,
+							"Duplicate legacy output plugin specified\n");
+						goto error;
+					}
+
+					cfg->legacy_output_format =
+						LEGACY_OUTPUT_FORMAT_CTF_METADATA;
 					break;
 				}
 			}
@@ -1331,54 +1346,54 @@ struct bt_cfg *bt_cfg_from_args(int argc, char *argv[], int *exit_code)
 			break;
 		}
 		case OPT_NAMES:
-			if (ctf_text_legacy_opts.names) {
+			if (text_legacy_opts.names) {
 				fprintf(stderr, "Duplicate --names option\n");
 				goto error;
 			}
 
-			ctf_text_legacy_opts.names = names_from_arg(arg);
-			if (!ctf_text_legacy_opts.names) {
+			text_legacy_opts.names = names_from_arg(arg);
+			if (!text_legacy_opts.names) {
 				fprintf(stderr,
 					"Invalid --names option's argument\n");
 				goto error;
 			}
 
-			ctf_text_legacy_opts.any_is_set = true;
+			text_legacy_opts.any_is_set = true;
 			break;
 		case OPT_FIELDS:
-			if (ctf_text_legacy_opts.fields) {
+			if (text_legacy_opts.fields) {
 				fprintf(stderr, "Duplicate --fields option\n");
 				goto error;
 			}
 
-			ctf_text_legacy_opts.fields = fields_from_arg(arg);
-			if (!ctf_text_legacy_opts.fields) {
+			text_legacy_opts.fields = fields_from_arg(arg);
+			if (!text_legacy_opts.fields) {
 				fprintf(stderr,
 					"Invalid --fields option's argument\n");
 				goto error;
 			}
 
-			ctf_text_legacy_opts.any_is_set = true;
+			text_legacy_opts.any_is_set = true;
 			break;
 		case OPT_NO_DELTA:
-			ctf_text_legacy_opts.no_delta = true;
-			ctf_text_legacy_opts.any_is_set = true;
+			text_legacy_opts.no_delta = true;
+			text_legacy_opts.any_is_set = true;
 			break;
 		case OPT_CLOCK_CYCLES:
-			ctf_text_legacy_opts.clock_cycles = true;
-			ctf_text_legacy_opts.any_is_set = true;
+			text_legacy_opts.clock_cycles = true;
+			text_legacy_opts.any_is_set = true;
 			break;
 		case OPT_CLOCK_SECONDS:
-			ctf_text_legacy_opts.clock_seconds = true;
-			ctf_text_legacy_opts.any_is_set = true;
+			text_legacy_opts.clock_seconds = true;
+			text_legacy_opts.any_is_set = true;
 			break;
 		case OPT_CLOCK_DATE:
-			ctf_text_legacy_opts.clock_date = true;
-			ctf_text_legacy_opts.any_is_set = true;
+			text_legacy_opts.clock_date = true;
+			text_legacy_opts.any_is_set = true;
 			break;
 		case OPT_CLOCK_GMT:
-			ctf_text_legacy_opts.clock_gmt = true;
-			ctf_text_legacy_opts.any_is_set = true;
+			text_legacy_opts.clock_gmt = true;
+			text_legacy_opts.any_is_set = true;
 			break;
 		case OPT_CLOCK_OFFSET:
 		{
@@ -1479,7 +1494,7 @@ struct bt_cfg *bt_cfg_from_args(int argc, char *argv[], int *exit_code)
 	}
 
 	/* Validate legacy/non-legacy options */
-	if (!validate_cfg(cfg, &ctf_legacy_opts, &ctf_text_legacy_opts)) {
+	if (!validate_cfg(cfg, &ctf_legacy_opts, &text_legacy_opts)) {
 		fprintf(stderr, "Invalid options\n");
 		goto error;
 	}
@@ -1488,7 +1503,7 @@ struct bt_cfg *bt_cfg_from_args(int argc, char *argv[], int *exit_code)
 	 * If the input is the legacy input plugin CTF or LTTng-live,
 	 * get the base parameters for the eventual components.
 	 */
-	if (cfg->legacy_ctf_input || cfg->legacy_lttng_live_input) {
+	if (cfg->legacy_input_format) {
 		cfg->legacy_input_base_params =
 			base_params_from_ctf_legacy_opts(&ctf_legacy_opts);
 		if (!cfg->legacy_input_base_params) {
@@ -1500,10 +1515,10 @@ struct bt_cfg *bt_cfg_from_args(int argc, char *argv[], int *exit_code)
 	 * If the output is the legacy output plugin CTF-text,
 	 * get the base parameters for the eventual component.
 	 */
-	if (cfg->legacy_ctf_text_output) {
+	if (cfg->legacy_output_format == LEGACY_OUTPUT_FORMAT_TEXT) {
 		cfg->legacy_output_base_params =
-			base_params_from_ctf_text_legacy_opts(
-				&ctf_text_legacy_opts);
+			base_params_from_text_legacy_opts(
+				&text_legacy_opts);
 		if (!cfg->legacy_output_base_params) {
 			goto error;
 		}
@@ -1521,13 +1536,13 @@ end:
 		poptFreeContext(pc);
 	}
 
-	if (ctf_text_legacy_opts.output) {
-		g_string_free(ctf_text_legacy_opts.output, TRUE);
+	if (text_legacy_opts.output) {
+		g_string_free(text_legacy_opts.output, TRUE);
 	}
 
 	free(arg);
-	BT_PUT(ctf_text_legacy_opts.names);
-	BT_PUT(ctf_text_legacy_opts.fields);
+	BT_PUT(text_legacy_opts.names);
+	BT_PUT(text_legacy_opts.fields);
 
 	return cfg;
 }

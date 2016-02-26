@@ -35,16 +35,26 @@ struct bt_cfg_component {
 	struct bt_value *params;
 };
 
+enum legacy_input_format {
+	LEGACY_INPUT_FORMAT_NONE = 0,
+	LEGACY_INPUT_FORMAT_CTF,
+	LEGACY_INPUT_FORMAT_LTTNG_LIVE,
+};
+
+enum legacy_output_format {
+	LEGACY_OUTPUT_FORMAT_NONE = 0,
+	LEGACY_OUTPUT_FORMAT_TEXT,
+	LEGACY_OUTPUT_FORMAT_CTF_METADATA,
+	LEGACY_OUTPUT_FORMAT_DUMMY,
+};
+
 struct bt_cfg {
 	bool debug;
 	bool verbose;
 	bool do_list;
 	bool force_correlate;
-	bool legacy_ctf_input;
-	bool legacy_lttng_live_input;
-	bool legacy_ctf_text_output;
-	bool legacy_ctf_metadata_output;
-	bool legacy_dummy_output;
+	enum legacy_input_format legacy_input_format;
+	enum legacy_output_format legacy_output_format;
 	struct bt_value *legacy_input_base_params;
 	struct bt_value *legacy_output_base_params;
 	struct bt_value *legacy_input_paths;
