@@ -34,7 +34,8 @@ babeltracectfirinclude_HEADERS = \
 	babeltrace/ctf-ir/packet.h \
 	babeltrace/ctf-ir/stream-class.h \
 	babeltrace/ctf-ir/trace.h \
-	babeltrace/ctf-ir/utils.h
+	babeltrace/ctf-ir/utils.h \
+	babeltrace/ctf-ir/visitor.h
 
 babeltraceplugininclude_HEADERS = \
 	babeltrace/plugin/plugin.h \
@@ -86,6 +87,7 @@ noinst_HEADERS = \
 	babeltrace/ctf-ir/packet-internal.h \
 	babeltrace/ctf-ir/trace-internal.h \
 	babeltrace/ctf-ir/validation-internal.h \
+	babeltrace/ctf-ir/visitor-internal.h \
 	babeltrace/ctf-writer/functor-internal.h \
 	babeltrace/trace-handle-internal.h \
 	babeltrace/compat/uuid.h \
