@@ -31,6 +31,7 @@
 #include <babeltrace/ref.h>
 #include <babeltrace/object-internal.h>
 #include <babeltrace/compiler.h>
+#include <babeltrace/compat/string.h>
 #include <inttypes.h>
 
 static
