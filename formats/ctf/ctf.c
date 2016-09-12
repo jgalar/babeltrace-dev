@@ -47,7 +47,7 @@
 #include <fcntl.h>
 #include <ftw.h>
 #include <glib.h>
-#include <unistd.h>
+#include <babeltrace/compat/unistd.h>
 #include <stdlib.h>
 #include <pthread.h>
 
@@ -60,16 +60,6 @@
 
 #define LOG2_CHAR_BIT	3
 #define OPEN_TRACE_NFDOPEN_MAX	8
-
-/*
- * Length of first attempt at mapping a packet header, in bits.
- */
-#define DEFAULT_HEADER_LEN	(getpagesize() * CHAR_BIT)
-
-/*
- * Lenght of packet to write, in bits.
- */
-#define WRITE_PACKET_LEN	(getpagesize() * 8 * CHAR_BIT)
 
 #define NSEC_PER_SEC 1000000000LL
 
@@ -175,6 +165,31 @@ void bt_ctf_hook(void)
 	 * Dummy function to prevent the linker from discarding this format as
 	 * "unused" in static builds.
 	 */
+}
+
+/*
+ * Length of first attempt at mapping a packet header, in bits.
+ */
+static
+size_t get_default_header_len(void)
+{
+	int page_size;
+
+	page_size = bt_sysconf(_SC_PAGESIZE);
+	if (page_size < 0) {
+		return 0;
+	}
+
+	return page_size * CHAR_BIT;
+}
+
+/*
+ * Length of packet to write, in bits.
+ */
+static
+size_t get_write_packet_len(void)
+{
+	return get_default_header_len() * 8;
 }
 
 static
@@ -735,7 +750,7 @@ int find_data_offset(struct ctf_stream_pos *pos,
 		struct ctf_file_stream *file_stream,
 		struct packet_index *packet_index)
 {
-	uint64_t packet_map_len = DEFAULT_HEADER_LEN, tmp_map_len;
+	uint64_t packet_map_len, tmp_map_len;
 	struct stat filestats;
 	size_t filesize;
 	int ret;
@@ -750,6 +765,11 @@ int find_data_offset(struct ctf_stream_pos *pos,
 	/* Deal with empty files */
 	if (!filesize) {
 		return 0;
+	}
+
+	packet_map_len = get_default_header_len();
+	if (packet_map_len == 0) {
+		return -1;
 	}
 
 begin:
@@ -1157,7 +1177,10 @@ void ctf_packet_seek(struct bt_stream_pos *stream_pos, size_t index, int whence)
 			assert(0);
 		}
 		pos->content_size = -1U;	/* Unknown at this point */
-		pos->packet_size = WRITE_PACKET_LEN;
+		pos->packet_size = get_write_packet_len();
+		if (pos->packet_size == 0) {
+			assert(0);
+		}
 		do {
 			ret = bt_posix_fallocate(pos->fd, pos->mmap_offset,
 					      pos->packet_size / CHAR_BIT);
@@ -1758,10 +1781,15 @@ int create_stream_one_packet_index(struct ctf_stream_pos *pos,
 {
 	struct packet_index packet_index;
 	uint64_t stream_id = 0;
-	uint64_t packet_map_len = DEFAULT_HEADER_LEN, tmp_map_len;
+	uint64_t packet_map_len, tmp_map_len;
 	int first_packet = 0;
 	int len_index;
 	int ret;
+
+	packet_map_len = get_default_header_len();
+	if (packet_map_len == 0) {
+		return -1;
+	}
 
 begin:
 	memset(&packet_index, 0, sizeof(packet_index));

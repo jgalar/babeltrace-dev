@@ -32,8 +32,7 @@
 #include <babeltrace/ref.h>
 #include <babeltrace/compiler.h>
 #include <babeltrace/compat/fcntl.h>
-
-#define PACKET_LEN_INCREMENT	(getpagesize() * 8 * CHAR_BIT)
+#include <babeltrace/compat/unistd.h>
 
 static
 struct bt_ctf_field *bt_ctf_field_integer_create(struct bt_ctf_field_type *);
@@ -2315,6 +2314,7 @@ static
 int increase_packet_size(struct ctf_stream_pos *pos)
 {
 	int ret;
+	int packet_len_increment;
 
 	assert(pos);
 	ret = munmap_align(pos->base_mma);
@@ -2322,7 +2322,13 @@ int increase_packet_size(struct ctf_stream_pos *pos)
 		goto end;
 	}
 
-	pos->packet_size += PACKET_LEN_INCREMENT;
+	packet_len_increment = bt_sysconf(_SC_PAGESIZE) * 8 * CHAR_BIT;
+	if (packet_len_increment < 0) {
+		ret = -1;
+		goto end;
+	}
+
+	pos->packet_size += packet_len_increment;
 	do {
 		ret = bt_posix_fallocate(pos->fd, pos->mmap_offset,
 			pos->packet_size / CHAR_BIT);
