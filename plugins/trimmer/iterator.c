@@ -28,6 +28,7 @@
 
 #include "trimmer.h"
 #include "iterator.h"
+#include <babeltrace/compat/time.h>
 #include <babeltrace/plugin/notification/iterator.h>
 #include <babeltrace/plugin/notification/notification.h>
 #include <babeltrace/plugin/notification/event.h>
@@ -147,8 +148,8 @@ int update_lazy_bound(struct trimmer_bound *bound, const char *name,
 
 	if (bound->lazy_values.gmt) {
 		/* Get day, month, year. */
-		if (!gmtime_r(&timeval, &tm)) {
-			printf_error("Failure in gmtime_r()");
+		if (!bt_gmtime_r(&timeval, &tm)) {
+			printf_error("Failure in bt_gmtime_r()");
 			goto error;
 		}
 		tm.tm_sec = bound->lazy_values.ss;
@@ -162,8 +163,8 @@ int update_lazy_bound(struct trimmer_bound *bound, const char *name,
 		}
 	} else {
 		/* Get day, month, year. */
-		if (!localtime_r(&timeval, &tm)) {
-			printf_error("Failure in localtime_r()");
+		if (!bt_localtime_r(&timeval, &tm)) {
+			printf_error("Failure in bt_localtime_r()");
 			goto error;
 		}
 		tm.tm_sec = bound->lazy_values.ss;

@@ -57,6 +57,7 @@
 #include "events-private.h"
 #include <babeltrace/compat/memstream.h>
 #include <babeltrace/compat/fcntl.h>
+#include <babeltrace/compat/time.h>
 
 #define LOG2_CHAR_BIT	3
 #define OPEN_TRACE_NFDOPEN_MAX	8
@@ -426,7 +427,7 @@ void ctf_print_timestamp_real(FILE *fp,
 		if (!opt_clock_gmt) {
 			struct tm *res;
 
-			res = localtime_r(&time_s, &tm);
+			res = bt_localtime_r(&time_s, &tm);
 			if (!res) {
 				fprintf(stderr, "[warning] Unable to get localtime.\n");
 				goto seconds;
@@ -434,7 +435,7 @@ void ctf_print_timestamp_real(FILE *fp,
 		} else {
 			struct tm *res;
 
-			res = gmtime_r(&time_s, &tm);
+			res = bt_gmtime_r(&time_s, &tm);
 			if (!res) {
 				fprintf(stderr, "[warning] Unable to get gmtime.\n");
 				goto seconds;
