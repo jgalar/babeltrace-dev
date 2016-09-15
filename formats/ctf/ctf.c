@@ -1519,7 +1519,7 @@ int ctf_trace_metadata_read(struct ctf_trace *td, FILE *metadata_fp,
 			goto end_free;
 		}
 
-		fp = fdopen(metadata_stream->pos.fd, "r");
+		fp = fdopen(metadata_stream->pos.fd, "rb");
 		if (!fp) {
 			fprintf(stderr, "[error] Unable to open metadata stream.\n");
 			perror("Metadata stream open");
@@ -2317,7 +2317,7 @@ int ctf_open_file_stream_read(struct ctf_trace *td, const char *path, int flags,
 			ret = -1;
 			goto error_free;
 		}
-		file_stream->pos.index_fp = fdopen(ret, "r");
+		file_stream->pos.index_fp = fdopen(ret, "rb");
 		if (!file_stream->pos.index_fp) {
 			perror("fdopen() error");
 			goto error_free;

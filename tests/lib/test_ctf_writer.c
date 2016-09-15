@@ -146,14 +146,14 @@ result:
 		size_t len = METADATA_LINE_SIZE;
 		FILE *metadata_fp = NULL, *parser_output_fp = NULL;
 
-		metadata_fp = fdopen(metadata_fd, "r");
+		metadata_fp = fdopen(metadata_fd, "rb");
 		if (!metadata_fp) {
 			perror("fdopen on metadata_fd");
 			goto close_fp;
 		}
 		metadata_fd = -1;
 
-		parser_output_fp = fdopen(parser_output_fd, "r");
+		parser_output_fp = fdopen(parser_output_fd, "rb");
 		if (!parser_output_fp) {
 			perror("fdopen on parser_output_fd");
 			goto close_fp;
@@ -254,7 +254,7 @@ result:
 		size_t len = METADATA_LINE_SIZE;
 		FILE *babeltrace_output_fp = NULL;
 
-		babeltrace_output_fp = fdopen(babeltrace_output_fd, "r");
+		babeltrace_output_fp = fdopen(babeltrace_output_fd, "rb");
 		if (!babeltrace_output_fp) {
 			perror("fdopen on babeltrace_output_fd");
 			goto close_fp;

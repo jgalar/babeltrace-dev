@@ -433,7 +433,7 @@ int main(int argc, char **argv)
 		perror("openat");
 		goto error_closedatastream;
 	}
-	metadata_fp = fdopen(metadata_fd, "w");
+	metadata_fp = fdopen(metadata_fd, "wb");
 	if (!metadata_fp) {
 		perror("fdopen");
 		goto error_closemetadatafd;

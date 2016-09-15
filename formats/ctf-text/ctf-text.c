@@ -567,7 +567,7 @@ struct bt_trace_descriptor *ctf_text_open_trace(const char *path, int flags,
 		if (!path)
 			fp = stdout;
 		else
-			fp = fopen(path, "w");
+			fp = fopen(path, "wb");
 		if (!fp)
 			goto error;
 		pos->fp = fp;
