@@ -28,7 +28,7 @@
 #include <stdbool.h>
 #include <glib.h>
 #include <inttypes.h>
-#include <sys/mman.h>
+#include <babeltrace/compat/mman.h>
 #include <babeltrace/ctf-ir/stream.h>
 #include <babeltrace/plugin/notification/iterator.h>
 #include "file.h"

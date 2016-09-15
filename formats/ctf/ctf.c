@@ -40,7 +40,7 @@
 #include <babeltrace/ctf/ctf-index.h>
 #include <inttypes.h>
 #include <stdio.h>
-#include <sys/mman.h>
+#include <babeltrace/compat/mman.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>

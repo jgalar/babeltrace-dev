@@ -33,7 +33,7 @@
 #include <babeltrace/ctf/events-internal.h>
 #include <babeltrace/trace-debug-info.h>
 #include <inttypes.h>
-#include <sys/mman.h>
+#include <babeltrace/compat/mman.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>

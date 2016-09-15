@@ -27,7 +27,7 @@
  * SOFTWARE.
  */
 
-#include <sys/mman.h>
+#include <babeltrace/compat/mman.h>
 #include <errno.h>
 #include <stdint.h>
 #include <unistd.h>
