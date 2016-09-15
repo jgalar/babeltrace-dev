@@ -48,6 +48,17 @@ test_ir_visit_SOURCES = test_ir_visit.c
 test_trace_listener_SOURCES = test_trace_listener.c
 test_bt_notification_heap_SOURCES = test_bt_notification_heap.c
 
+if BABELTRACE_BUILD_WITH_MINGW
+test_seek_LDADD += -lrpcrt4
+test_bitfield_LDADD += -lrpcrt4
+test_ctf_writer_LDADD += -lrpcrt4
+test_bt_values_LDADD += -lrpcrt4
+test_ctf_ir_ref_LDADD += -lrpcrt4
+test_bt_ctf_field_type_validation_LDADD += -lrpcrt4
+test_ir_visit_LDADD += -lrpcrt4
+test_trace_listener_LDADD += -lrpcrt4
+endif
+
 check_SCRIPTS = test_seek_big_trace \
 		test_seek_empty_packet \
 		test_ctf_writer_complete
