@@ -26,6 +26,7 @@
  * SOFTWARE.
  */
 
+#include <babeltrace/compat/utc.h>
 #include <babeltrace/plugin/plugin-macros.h>
 #include <babeltrace/plugin/component.h>
 #include <babeltrace/plugin/filter.h>
@@ -103,7 +104,7 @@ int timestamp_from_arg(const char *arg, struct trimmer *trimmer,
 		time_t result;
 
 		if (gmt) {
-			result = timegm(&tm);
+			result = bt_timegm(&tm);
 			if (result < 0) {
 				return -1;
 			}
@@ -149,7 +150,7 @@ int timestamp_from_arg(const char *arg, struct trimmer *trimmer,
 			time_t result;
 
 			if (gmt) {
-				result = timegm(&tm);
+				result = bt_timegm(&tm);
 				if (result < 0) {
 					return -1;
 				}
@@ -197,7 +198,7 @@ int timestamp_from_arg(const char *arg, struct trimmer *trimmer,
 		};
 
 		if (gmt) {
-			value = timegm(&tm);
+			value = bt_timegm(&tm);
 			if (value < 0) {
 				return -1;
 			}
@@ -241,7 +242,7 @@ int timestamp_from_arg(const char *arg, struct trimmer *trimmer,
 			time_t result;
 
 			if (gmt) {
-				result = timegm(&tm);
+				result = bt_timegm(&tm);
 				if (result < 0) {
 					return -1;
 				}

@@ -29,6 +29,7 @@
 #include "trimmer.h"
 #include "iterator.h"
 #include <babeltrace/compat/time.h>
+#include <babeltrace/compat/utc.h>
 #include <babeltrace/plugin/notification/iterator.h>
 #include <babeltrace/plugin/notification/notification.h>
 #include <babeltrace/plugin/notification/event.h>
@@ -155,9 +156,9 @@ int update_lazy_bound(struct trimmer_bound *bound, const char *name,
 		tm.tm_sec = bound->lazy_values.ss;
 		tm.tm_min = bound->lazy_values.mm;
 		tm.tm_hour = bound->lazy_values.hh;
-		timeval = timegm(&tm);
+		timeval = bt_timegm(&tm);
 		if (timeval < 0) {
-			printf_error("Failure in timegm(), incorrectly formatted %s timestamp",
+			printf_error("Failure in bt_timegm(), incorrectly formatted %s timestamp",
 					name);
 			goto error;
 		}
