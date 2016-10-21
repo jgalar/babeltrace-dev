@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <glib.h>
+#include <string.h>
 #include <babeltrace/compat/uuid.h>
 #include <babeltrace/compat/memstream.h>
 

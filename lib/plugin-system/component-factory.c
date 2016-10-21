@@ -41,6 +41,7 @@
 #include <stdbool.h>
 #include <ftw.h>
 #include <pthread.h>
+#include <string.h>
 
 #define NATIVE_PLUGIN_SUFFIX ".so"
 #define NATIVE_PLUGIN_SUFFIX_LEN sizeof(NATIVE_PLUGIN_SUFFIX)
