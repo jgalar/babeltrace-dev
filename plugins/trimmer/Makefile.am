@@ -9,6 +9,7 @@ libbabeltrace_plugin_trimmer_la_SOURCES = \
 	trimmer.h trimmer.c iterator.h iterator.c
 
 libbabeltrace_plugin_trimmer_la_LDFLAGS = \
+	$(LT_NO_UNDEFINED) \
 	-version-info $(BABELTRACE_LIBRARY_VERSION)
 
 libbabeltrace_plugin_trimmer_la_LIBADD = \
