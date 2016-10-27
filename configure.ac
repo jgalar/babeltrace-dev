@@ -312,8 +312,18 @@ AS_IF([test "x$_enable_debug_info" = xyes], [
 	    AC_CHECK_LIB([elf], [elf_version], [], [AC_MSG_ERROR(Missing libelf (from elfutils >= 0.154) which is required by debug info. You can disable this feature using --disable-debug-info.)])
 	    AC_CHECK_LIB([dw], [dwarf_begin], [], [AC_MSG_ERROR(Missing libdw (from elfutils >= 0.154) which is required by debug info. You can disable this feature using --disable-debug-info.)])
 	    AX_LIB_ELFUTILS([0], [154], [], [AC_MSG_ERROR(elfutils >= 0.154 is required to use the debug info feature. You can disable this feature using --disable-debug-info.)])
-            AC_DEFINE([ENABLE_DEBUG_INFO], [1], [Define to 1 if you enable the 'debug info' feature])
+            AC_DEFINE([ENABLE_DEBUG_INFO], [1], [Define to 1 to enable the 'debug info' feature])
 ], [])
+
+AC_ARG_VAR([BUILT_IN_PLUGINS], [Statically-link in-tree plug-ins into the babeltrace binary])
+AS_IF([test "x$BUILT_IN_PLUGINS" != x], [
+# Built-in plug-ins are only available when the --disable-shared --enable-static options are used.
+	AS_IF([test "x$enable_static" != "xyes"], [AC_MSG_ERROR(--enable-static must be used to bundle plug-ins in the babeltrace executable)])
+	AS_IF([test "x$enable_shared" = "xyes"], [AC_MSG_ERROR(--disable-shared must be used to bundle plug-ins in the babeltrace executable)])
+	built_in_plugins=yes
+	AC_DEFINE([BT_BUILT_IN_PLUGINS], [1], [Define to 1 to register plug-in attributes in static executable sections])
+])
+AM_CONDITIONAL([BUILT_IN_PLUGINS], [test "x$built_in_plugins" = "xyes"])
 
 PKG_CHECK_MODULES(GMODULE, [gmodule-2.0 >= 2.0.0])
 
@@ -442,6 +452,9 @@ PPRINT_PROP_BOOL([Python bindings doc], $value)
 test "x$_enable_debug_info" = "xyes" && value=1 || value=0
 PPRINT_PROP_BOOL([Debug information output], $value)
 
+# built-in plug-ins enabled/disabled
+test "x$built_in_plugins" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([Built-in plug-ins], $value)
 
 report_bindir="`eval eval echo $bindir`"
 report_libdir="`eval eval echo $libdir`"
