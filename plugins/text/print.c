@@ -137,6 +137,10 @@ enum bt_component_status print_event_header(struct text_component *text,
 		ret = BT_COMPONENT_STATUS_ERROR;
 		goto end;
 	}
+	if (!text->start_line) {
+		fputs(", ", text->out);
+	}
+	text->start_line = false;
 	ret = print_event_timestamp(text, event);
 	if (ret != BT_COMPONENT_STATUS_OK) {
 		goto end;
@@ -692,8 +696,12 @@ enum bt_component_status print_stream_packet_context(struct text_component *text
 		ret = BT_COMPONENT_STATUS_ERROR;
 		goto end;
 	}
+	if (!text->start_line) {
+		fputs(", ", text->out);
+	}
+	text->start_line = false;
 	if (text->options.print_scope_field_names) {
-		fputs(" stream.packet.context = ", text->out);
+		fputs("stream.packet.context = ", text->out);
 	}
 	ret = print_field(text, main_field,
 			text->options.print_context_field_names);
@@ -715,11 +723,15 @@ enum bt_component_status print_event_header_raw(struct text_component *text,
 		ret = BT_COMPONENT_STATUS_ERROR;
 		goto end;
 	}
+	if (!text->start_line) {
+		fputs(", ", text->out);
+	}
+	text->start_line = false;
 	if (text->options.print_scope_field_names) {
-		fputs(" stream.event.header = ", text->out);
+		fputs("stream.event.header = ", text->out);
 	}
 	ret = print_field(text, main_field,
-			text->options.print_context_field_names);
+			text->options.print_header_field_names);
 end:
 	bt_put(main_field);
 	return ret;
@@ -737,8 +749,12 @@ enum bt_component_status print_stream_event_context(struct text_component *text,
 		ret = BT_COMPONENT_STATUS_ERROR;
 		goto end;
 	}
+	if (!text->start_line) {
+		fputs(", ", text->out);
+	}
+	text->start_line = false;
 	if (text->options.print_scope_field_names) {
-		fputs(" stream.event.context = ", text->out);
+		fputs("stream.event.context = ", text->out);
 	}
 	ret = print_field(text, main_field,
 			text->options.print_context_field_names);
@@ -759,8 +775,12 @@ enum bt_component_status print_event_context(struct text_component *text,
 		ret = BT_COMPONENT_STATUS_ERROR;
 		goto end;
 	}
+	if (!text->start_line) {
+		fputs(", ", text->out);
+	}
+	text->start_line = false;
 	if (text->options.print_scope_field_names) {
-		fputs(" event.context = ", text->out);
+		fputs("event.context = ", text->out);
 	}
 	ret = print_field(text, main_field,
 			text->options.print_context_field_names);
@@ -781,8 +801,12 @@ enum bt_component_status print_event_payload(struct text_component *text,
 		ret = BT_COMPONENT_STATUS_ERROR;
 		goto end;
 	}
+	if (!text->start_line) {
+		fputs(", ", text->out);
+	}
+	text->start_line = false;
 	if (text->options.print_scope_field_names) {
-		fputs(" event.fields = ", text->out);
+		fputs("event.fields = ", text->out);
 	}
 	ret = print_field(text, main_field,
 			text->options.print_payload_field_names);
@@ -797,40 +821,31 @@ enum bt_component_status text_print_event(struct text_component *text,
 {
 	enum bt_component_status ret;
 
-	//TEST XXX
-	text->options.print_scope_field_names = true;
-	text->options.print_payload_field_names = true;
-	text->options.print_context_field_names = true;
-
+	text->start_line = true;
 	ret = print_event_header(text, event);
 	if (ret != BT_COMPONENT_STATUS_OK) {
 		goto end;
 	}
-	fputs(",", text->out);
 
 	ret = print_stream_packet_context(text, event);
 	if (ret != BT_COMPONENT_STATUS_OK) {
 		goto end;
 	}
-	fputs(",", text->out);
 
 	ret = print_event_header_raw(text, event);
 	if (ret != BT_COMPONENT_STATUS_OK) {
 		goto end;
 	}
-	fputs(",", text->out);
 
 	ret = print_stream_event_context(text, event);
 	if (ret != BT_COMPONENT_STATUS_OK) {
 		goto end;
 	}
-	fputs(",", text->out);
 
 	ret = print_event_context(text, event);
 	if (ret != BT_COMPONENT_STATUS_OK) {
 		goto end;
 	}
-	fputs(",", text->out);
 
 	ret = print_event_payload(text, event);
 	if (ret != BT_COMPONENT_STATUS_OK) {
