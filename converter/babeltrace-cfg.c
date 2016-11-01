@@ -1121,17 +1121,6 @@ struct bt_value *names_from_arg(const char *arg)
 				}
 			} else if (!strcmp(identifier, "all") ||
 					!strcmp(identifier, "none")) {
-				/*
-				 * "all" and "none" override all the
-				 * specific names.
-				 */
-				BT_PUT(names);
-				names = bt_value_array_create();
-				if (!names) {
-					print_err_oom();
-					goto error;
-				}
-
 				if (bt_value_array_append_string(names,
 						identifier)) {
 					goto error;
@@ -1214,14 +1203,6 @@ struct bt_value *fields_from_arg(const char *arg)
 					goto error;
 				}
 			} else if (!strcmp(identifier, "all")) {
-				/* "all" override all the specific fields */
-				BT_PUT(fields);
-				fields = bt_value_array_create();
-				if (!fields) {
-					print_err_oom();
-					goto error;
-				}
-
 				if (bt_value_array_append_string(fields,
 						identifier)) {
 					goto error;
