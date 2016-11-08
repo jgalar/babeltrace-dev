@@ -52,6 +52,7 @@ AC_HEADER_STDBOOL
 AC_CHECK_HEADERS([ \
 	fcntl.h \
 	float.h \
+	ftw.h \
 	libintl.h \
 	limits.h \
 	malloc.h \

@@ -45,10 +45,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <dirent.h>
+#include <ftw.h>
 #include <glib.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #include "metadata/ctf-scanner.h"
 #include "metadata/ctf-parser.h"
@@ -58,6 +59,7 @@
 #include <babeltrace/compat/fcntl.h>
 
 #define LOG2_CHAR_BIT	3
+#define OPEN_TRACE_NFDOPEN_MAX	8
 
 /*
  * Length of first attempt at mapping a packet header, in bits.
@@ -91,6 +93,14 @@ char *opt_debug_info_target_prefix;
  * with the plugin system redesign.
  */
 int babeltrace_ctf_console_output;
+
+static struct {
+	pthread_mutex_t lock;
+	struct ctf_trace *td;
+	void *	packet_seek;
+} open_trace_info = {
+	.lock = PTHREAD_MUTEX_INITIALIZER
+};
 
 static
 struct bt_trace_descriptor *ctf_open_trace(const char *path, int flags,
@@ -2330,18 +2340,56 @@ error:
 }
 
 static
+int nftw_open_trace(const char *file, const struct stat *sb, int flag,
+		struct FTW *s)
+{
+	int ret = 0;
+	const char *name = file + s->base;
+	char *ext;
+
+	switch (flag) {
+	case FTW_F:
+		/* Ignore hidden files and metadata. */
+		if (!strncmp(name, ".", 1) || !strcmp(name, "metadata")) {
+			goto end;
+		}
+
+		/* Ignore index files : *.idx */
+		ext = strrchr(name, '.');
+		if (ext && (!strcmp(ext, ".idx"))) {
+			goto end;
+		}
+
+		ret = ctf_open_file_stream_read(open_trace_info.td, name,
+				open_trace_info.td->flags,
+				open_trace_info.packet_seek);
+		if (ret) {
+			fprintf(stderr, "[error] Open file stream error.\n");
+		}
+		break;
+	case FTW_DNR:
+		/* Continue to next file / directory. */
+		printf_perror("Failed to read directory: %s\n", file);
+		break;
+	case FTW_NS:
+		/* Continue to next file / directory. */
+		printf_perror("Failed to stat() file: %s\n", file);
+		break;
+}
+
+end:
+	return ret;
+}
+
+static
 int ctf_open_trace_read(struct ctf_trace *td,
 		const char *path, int flags,
 		void (*packet_seek)(struct bt_stream_pos *pos, size_t index,
 			int whence), FILE *metadata_fp)
 {
+	int nftw_flags = FTW_PHYS;
 	struct ctf_scanner *scanner;
 	int ret, closeret;
-	struct dirent *dirent;
-	struct dirent *diriter;
-	size_t dirent_len;
-	int pc_name_max;
-	char *ext;
 
 	td->flags = flags;
 
@@ -2390,51 +2438,21 @@ int ctf_open_trace_read(struct ctf_trace *td,
 	 * the stream array.
 	 */
 
-	pc_name_max = fpathconf(td->dirfd, _PC_NAME_MAX);
-	if (pc_name_max < 0) {
-		perror("Error on fpathconf");
-		fprintf(stderr, "[error] Failed to get _PC_NAME_MAX for path \"%s\".\n", path);
-		ret = -1;
+	pthread_mutex_lock(&open_trace_info.lock);
+
+	open_trace_info.td = td;
+	open_trace_info.packet_seek = packet_seek;
+	ret = nftw(path, nftw_open_trace, OPEN_TRACE_NFDOPEN_MAX, nftw_flags);
+
+	pthread_mutex_unlock(&open_trace_info.lock);
+
+	if (ret != 0) {
+		fprintf(stderr, "[error] nftw error.\n");
 		goto error_metadata;
 	}
 
-	dirent_len = offsetof(struct dirent, d_name) + pc_name_max + 1;
-
-	dirent = malloc(dirent_len);
-
-	for (;;) {
-		ret = readdir_r(td->dir, dirent, &diriter);
-		if (ret) {
-			fprintf(stderr, "[error] Readdir error.\n");
-			goto readdir_error;
-		}
-		if (!diriter)
-			break;
-		/* Ignore hidden files, ., .. and metadata. */
-		if (!strncmp(diriter->d_name, ".", 1)
-				|| !strcmp(diriter->d_name, "..")
-				|| !strcmp(diriter->d_name, "metadata"))
-			continue;
-
-		/* Ignore index files : *.idx */
-		ext = strrchr(diriter->d_name, '.');
-		if (ext && (!strcmp(ext, ".idx"))) {
-			continue;
-		}
-
-		ret = ctf_open_file_stream_read(td, diriter->d_name,
-					flags, packet_seek);
-		if (ret) {
-			fprintf(stderr, "[error] Open file stream error.\n");
-			goto readdir_error;
-		}
-	}
-
-	free(dirent);
 	return 0;
 
-readdir_error:
-	free(dirent);
 error_metadata:
 	closeret = close(td->dirfd);
 	if (closeret) {
