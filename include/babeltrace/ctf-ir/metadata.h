@@ -231,7 +231,6 @@ struct ctf_trace {
 
 	/* Information about trace backing directory and files */
 	DIR *dir;
-	int dirfd;
 	int flags;		/* open flags */
 
 #ifdef ENABLE_DEBUG_INFO

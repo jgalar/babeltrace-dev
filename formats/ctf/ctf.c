@@ -57,6 +57,9 @@
 #include <babeltrace/compat/memstream.h>
 #include <babeltrace/compat/fcntl.h>
 
+// jgalar: What is the proper include file for this define?
+#define CTF_FS_METADATA_FILENAME        "metadata"
+
 #define LOG2_CHAR_BIT	3
 
 /*
@@ -1469,6 +1472,7 @@ int ctf_trace_metadata_read(struct ctf_trace *td, FILE *metadata_fp,
 	FILE *fp;
 	char *buf = NULL;
 	int ret = 0, closeret;
+	char *metadata_path;
 
 	metadata_stream = g_new0(struct ctf_file_stream, 1);
 	metadata_stream->pos.last_offset = LAST_OFFSET_POISON;
@@ -1478,7 +1482,9 @@ int ctf_trace_metadata_read(struct ctf_trace *td, FILE *metadata_fp,
 		metadata_stream->pos.fd = -1;
 	} else {
 		td->metadata = &metadata_stream->parent;
-		metadata_stream->pos.fd = openat(td->dirfd, "metadata", O_RDONLY);
+		metadata_path = g_build_filename(td->parent.path, CTF_FS_METADATA_FILENAME, NULL);
+		metadata_stream->pos.fd = open(metadata_path, O_RDONLY);
+		g_free(metadata_path);
 		if (metadata_stream->pos.fd < 0) {
 			fprintf(stderr, "Unable to open metadata.\n");
 			ret = -1;
@@ -2198,10 +2204,14 @@ int ctf_open_file_stream_read(struct ctf_trace *td, const char *path, int flags,
 	struct ctf_file_stream *file_stream;
 	struct stat statbuf;
 	char *index_name;
+	char *file_path = NULL;
 
-	fd = openat(td->dirfd, path, flags);
+	file_path = g_build_filename(td->parent.path, path, NULL);
+	fd = open(file_path, flags);
+	g_free(file_path);
+	file_path = NULL;
 	if (fd < 0) {
-		perror("File stream openat()");
+		perror("File stream open()");
 		ret = fd;
 		goto error;
 	}
@@ -2231,6 +2241,7 @@ int ctf_open_file_stream_read(struct ctf_trace *td, const char *path, int flags,
 	file_stream->pos.fd = -1;
 	file_stream->pos.index_fp = NULL;
 
+	// jgalar: Should we silently truncate paths?
 	strncpy(file_stream->parent.path, path, PATH_MAX);
 	file_stream->parent.path[PATH_MAX - 1] = '\0';
 
@@ -2265,22 +2276,24 @@ int ctf_open_file_stream_read(struct ctf_trace *td, const char *path, int flags,
 	snprintf(index_name, strlen(path) + sizeof(INDEX_PATH),
 			INDEX_PATH, path);
 
-	if (bt_faccessat(td->dirfd, td->parent.path, index_name, O_RDONLY, 0) < 0) {
+	file_path = g_build_filename(td->parent.path, index_name, NULL);
+	if (access(file_path, O_RDONLY) < 0) {
 		ret = create_stream_packet_index(td, file_stream);
 		if (ret) {
 			fprintf(stderr, "[error] Stream index creation error.\n");
 			goto error_index;
 		}
 	} else {
-		ret = openat(td->dirfd, index_name, flags);
+		ret = open(file_path, flags);
 		if (ret < 0) {
-			perror("Index file openat()");
+			perror("Index file open()");
 			ret = -1;
 			goto error_free;
 		}
 		file_stream->pos.index_fp = fdopen(ret, "r");
 		if (!file_stream->pos.index_fp) {
 			perror("fdopen() error");
+			// jgalar:  Why not set 'ret'?
 			goto error_free;
 		}
 		ret = import_stream_packet_index(td, file_stream);
@@ -2295,6 +2308,8 @@ int ctf_open_file_stream_read(struct ctf_trace *td, const char *path, int flags,
 		}
 	}
 	free(index_name);
+	g_free(file_path);
+	file_path = NULL;
 
 	/* Add stream file to stream class */
 	g_ptr_array_add(file_stream->parent.stream_class->streams,
@@ -2326,6 +2341,8 @@ fstat_error:
 		perror("Error on fd close");
 	}
 error:
+	g_free(file_path);
+	file_path = NULL;
 	return ret;
 }
 
@@ -2353,13 +2370,6 @@ int ctf_open_trace_read(struct ctf_trace *td,
 		goto error;
 	}
 
-	td->dirfd = open(path, 0);
-	if (td->dirfd < 0) {
-		fprintf(stderr, "[error] Unable to open trace directory file descriptor for path \"%s\".\n", path);
-		perror("Trace directory open");
-		ret = -errno;
-		goto error_dirfd;
-	}
 	strncpy(td->parent.path, path, sizeof(td->parent.path));
 	td->parent.path[sizeof(td->parent.path) - 1] = '\0';
 
@@ -2436,11 +2446,6 @@ int ctf_open_trace_read(struct ctf_trace *td,
 readdir_error:
 	free(dirent);
 error_metadata:
-	closeret = close(td->dirfd);
-	if (closeret) {
-		perror("Error on fd close");
-	}
-error_dirfd:
 	closeret = closedir(td->dir);
 	if (closeret) {
 		perror("Error on closedir");
@@ -2665,7 +2670,6 @@ struct bt_trace_descriptor *ctf_open_mmap_trace(
 		goto error;
 	}
 	td = g_new0(struct ctf_trace, 1);
-	td->dirfd = -1;
 	ret = ctf_open_mmap_trace_read(td, mmap_list, packet_seek, metadata_fp);
 	if (ret)
 		goto error_free;
@@ -2811,13 +2815,6 @@ int ctf_close_trace(struct bt_trace_descriptor *tdp)
 	}
 	ctf_destroy_metadata(td);
 	ctf_scanner_free(td->scanner);
-	if (td->dirfd >= 0) {
-		ret = close(td->dirfd);
-		if (ret) {
-			perror("Error closing dirfd");
-			return ret;
-		}
-	}
 	if (td->dir) {
 		ret = closedir(td->dir);
 		if (ret) {

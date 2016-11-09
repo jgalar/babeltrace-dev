@@ -302,6 +302,7 @@ int create_stream_file(struct bt_ctf_writer *writer,
 {
 	int fd;
 	GString *filename = g_string_new(stream->stream_class->name->str);
+	char *file_path;
 
 	if (stream->stream_class->name->len == 0) {
 		int64_t ret;
@@ -316,9 +317,11 @@ int create_stream_file(struct bt_ctf_writer *writer,
 	}
 
 	g_string_append_printf(filename, "_%" PRIu32, stream->id);
-	fd = openat(writer->trace_dir_fd, filename->str,
+	file_path = g_build_filename(writer->path->str, filename->str, NULL);
+	fd = open(file_path,
 		O_RDWR | O_CREAT | O_TRUNC,
 		S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	g_free(file_path);
 error:
 	g_string_free(filename, TRUE);
 	return fd;
