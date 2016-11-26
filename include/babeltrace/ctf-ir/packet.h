@@ -241,6 +241,8 @@ extern int bt_ctf_packet_set_context(
 
 /** @} */
 
+/** @} */
+
 #ifdef __cplusplus
 }
 #endif
