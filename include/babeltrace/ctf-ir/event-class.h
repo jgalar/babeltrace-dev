@@ -370,7 +370,8 @@ extern int bt_ctf_event_class_set_attribute(
 
 @prenotnull{event_class}
 @postrefcountsame{event_class}
-@postsuccessrefcountretinc
+@post <strong>On success, if the return value is a field type</strong>, its
+	reference count is incremented.
 
 @sa bt_ctf_event_class_set_context_type(): Sets the context field type of a
 	given event class.
@@ -398,7 +399,8 @@ As of Babeltrace \btversion, if \p context_type is not \c NULL,
 
 @prenotnull{event_class}
 @prehot{event_class}
-@pre \p context_type, if not \c NULL, is a CTF IR structure field type.
+@pre <strong>If \p context_type is not \c NULL</strong>, \p context_type is a
+	CTF IR structure field type.
 @postrefcountsame{event_class}
 @post <strong>On success, if \p context_type is not \c NULL</strong>,
 	the reference count of \p context_type is incremented.
@@ -420,7 +422,8 @@ extern int bt_ctf_event_class_set_context_type(
 
 @prenotnull{event_class}
 @postrefcountsame{event_class}
-@postsuccessrefcountretinc
+@post <strong>On success, if the return value is a field type</strong>, its
+	reference count is incremented.
 
 @sa bt_ctf_event_class_set_payload_type(): Sets the payload field type of a
 	given event class.
@@ -448,7 +451,8 @@ As of Babeltrace \btversion, if \p payload_type is not \c NULL,
 
 @prenotnull{event_class}
 @prehot{event_class}
-@pre \p payload_type, if not \c NULL, is a CTF IR structure field type.
+@pre <strong>If \p payload_type is not \c NULL</strong>, \p payload_type is a
+	CTF IR structure field type.
 @postrefcountsame{event_class}
 @post <strong>On success, if \p payload_type is not \c NULL</strong>,
 	the reference count of \p payload_type is incremented.

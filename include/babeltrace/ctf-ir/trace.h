@@ -483,7 +483,8 @@ extern int bt_ctf_trace_set_environment_field_string(
 
 @prenotnull{trace_class}
 @postrefcountsame{trace_class}
-@postsuccessrefcountretinc
+@post <strong>On success, if the return value is a field type</strong>, its
+	reference count is incremented.
 
 @sa bt_ctf_trace_set_packet_header_type(): Sets the packet
 	header field type of a given trace class.
@@ -511,7 +512,8 @@ As of Babeltrace \btversion, if \p packet_header_type is not \c NULL,
 
 @prenotnull{trace_class}
 @prehot{trace_class}
-@pre \p packet_header_type, if not \c NULL, is a CTF IR structure field type.
+@pre <strong>\p packet_header_type, if not \c NULL</strong>, is a CTF IR
+	structure field type.
 @postrefcountsame{trace_class}
 @post <strong>On success, if \p packet_header_type is not \c NULL</strong>,
 	the reference count of \p packet_header_type is incremented.

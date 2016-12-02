@@ -294,9 +294,9 @@ of \p event.
 
 @prenotnull{event}
 @prehot{event}
-@pre \p header, if not \c NULL, has a field type equivalent to the field type
-	returned by bt_ctf_stream_class_get_event_header_type() for the parent
-	stream class of \p event.
+@pre <strong>\p header, if not \c NULL</strong>, has a field type equivalent to
+	the field type returned by bt_ctf_stream_class_get_event_header_type()
+	for the parent stream class of \p event.
 @postrefcountsame{event}
 @post <strong>On success, if \p header is not \c NULL</strong>,
 	the reference count of \p header is incremented.
@@ -343,11 +343,11 @@ of \p event.
 
 @prenotnull{event}
 @prehot{event}
-@pre \p context, if not \c NULL, has a field type equivalent to the field type
-	returned by bt_ctf_stream_class_get_event_context_type() for the parent
-	stream class of \p event.
+@pre <strong>\p context, if not \c NULL</strong>, has a field type equivalent to
+	the field type returned by bt_ctf_stream_class_get_event_context_type()
+	for the parent stream class of \p event.
 @postrefcountsame{event}
-@post <strong>On success, if \p contextis not \c NULL</strong>, the reference
+@post <strong>On success, if \p context is not \c NULL</strong>, the reference
 	count of \p context is incremented.
 
 @sa bt_ctf_event_get_stream_event_context(): Returns the stream event context
@@ -387,9 +387,9 @@ bt_ctf_event_class_get_context_type() for the parent class of \p event.
 
 @prenotnull{event}
 @prehot{event}
-@pre \p context, if not \c NULL, has a field type equivalent to the field type
-	returned by bt_ctf_event_class_get_context_type() for the parent
-	class of \p event.
+@pre <strong>\p context, if not \c NULL</strong>, has a field type equivalent to
+	the field type returned by bt_ctf_event_class_get_context_type() for the
+	parent class of \p event.
 @postrefcountsame{event}
 @post <strong>On success, if \p context is not \c NULL</strong>, the reference
 	count of \p context is incremented.
@@ -410,7 +410,7 @@ extern int bt_ctf_event_set_event_context(struct bt_ctf_event *event,
 @postrefcountsame{event}
 @postsuccessrefcountretinc
 
-@sa bt_ctf_event_set_event_payload_field(): Sets the payload field of a given
+@sa bt_ctf_event_set_payload_field(): Sets the payload field of a given
 	event.
 */
 extern struct bt_ctf_field *bt_ctf_event_get_payload_field(
@@ -430,9 +430,9 @@ bt_ctf_event_class_get_payload_type() for the parent class of \p event.
 
 @prenotnull{event}
 @prehot{event}
-@pre \p payload, if not \c NULL, has a field type equivalent to the field type
-	returned by bt_ctf_event_class_get_payload_type() for the parent
-	class of \p event.
+@pre <strong>\p payload, if not \c NULL</strong>, has a field type equivalent to
+	the field typereturned by bt_ctf_event_class_get_payload_type() for the
+	parent class of \p event.
 @postrefcountsame{event}
 @post <strong>On success, if \p payload is not \c NULL</strong>, the reference
 	count of \p payload is incremented.

@@ -301,7 +301,8 @@ extern int bt_ctf_stream_class_set_id(
 
 @prenotnull{stream_class}
 @postrefcountsame{stream_class}
-@postsuccessrefcountretinc
+@post <strong>On success, if the return value is a field type</strong>, its
+	reference count is incremented.
 
 @sa bt_ctf_stream_class_set_packet_context_type(): Sets the packet
 	context field type of a given stream class.
@@ -329,7 +330,8 @@ As of Babeltrace \btversion, if \p packet_context_type is not \c NULL,
 
 @prenotnull{stream_class}
 @prehot{stream_class}
-@pre \p packet_context_type, if not \c NULL, is a CTF IR structure field type.
+@pre <strong>\p packet_context_type, if not \c NULL</strong>, is a CTF IR
+	structure field type.
 @postrefcountsame{stream_class}
 @post <strong>On success, if \p packet_context_type is not \c NULL</strong>,
 	the reference count of \p packet_context_type is incremented.
@@ -353,7 +355,8 @@ extern int bt_ctf_stream_class_set_packet_context_type(
 
 @prenotnull{stream_class}
 @postrefcountsame{stream_class}
-@postsuccessrefcountretinc
+@post <strong>On success, if the return value is a field type</strong>, its
+	reference count is incremented.
 
 @sa bt_ctf_stream_class_set_event_header_type(): Sets the event
 	header field type of a given stream class.
@@ -382,7 +385,8 @@ As of Babeltrace \btversion, if \p event_header_type is not \c NULL,
 
 @prenotnull{stream_class}
 @prehot{stream_class}
-@pre \p event_header_type, if not \c NULL, is a CTF IR structure field type.
+@pre <strong>\p event_header_type, if not \c NULL</strong>, is a CTF IR
+	structure field type.
 @postrefcountsame{stream_class}
 @post <strong>On success, if \p event_header_type is not \c NULL</strong>,
 	the reference count of \p event_header_type is incremented.
@@ -406,7 +410,9 @@ extern int bt_ctf_stream_class_set_event_header_type(
 
 @prenotnull{stream_class}
 @postrefcountsame{stream_class}
-@postsuccessrefcountretinc
+@post <strong>On success, if the return value is a field type</strong>,
+	its reference count is incremented.
+
 
 @sa bt_ctf_stream_class_set_event_context_type(): Sets the event
 	context field type of a given stream class.
@@ -435,7 +441,8 @@ As of Babeltrace \btversion, if \p event_context_type is not \c NULL,
 
 @prenotnull{stream_class}
 @prehot{stream_class}
-@pre \p event_context_type, if not \c NULL, is a CTF IR structure field type.
+@pre <strong>\p event_context_type, if not \c NULL</strong>, is a CTF IR
+	structure field type.
 @postrefcountsame{stream_class}
 @post <strong>On success, if \p event_context_type is not \c NULL</strong>,
 	the reference count of \p event_context_type is incremented.
