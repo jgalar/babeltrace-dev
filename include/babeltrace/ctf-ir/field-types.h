@@ -174,10 +174,14 @@ The following functions can \em freeze field type objects:
 - bt_ctf_event_create() freezes the root field types of its event class
   parameter and of ther parent stream class of this event class.
 
+You cannot modify a frozen field type object: it is considered
+immutable, except for \link refs reference counting\endlink.
+
 @sa ctfirfields
+@sa \ref ctfirfieldtypesexamples "Examples"
 
 @file
-@brief CTF IR field type type and functions.
+@brief CTF IR field types type and functions.
 @sa ctfirfieldtypes
 
 @addtogroup ctfirfieldtypes
@@ -647,6 +651,7 @@ in the detailed description of this module).
 @prenotnull{field_type}
 @postrefcountsame{field_type}
 @postsuccessrefcountret1
+@post <strong>On success</strong>, the returned field type is not frozen.
 */
 extern struct bt_ctf_field_type *bt_ctf_field_type_copy(
 		struct bt_ctf_field_type *field_type);
@@ -728,6 +733,7 @@ An integer field type has the following properties:
 
 @sa ctfirintfield
 @sa ctfirfieldtypes
+@sa \ref ctfirfieldtypesexamples_intfieldtype "Examples"
 
 @addtogroup ctfirintfieldtype
 @{
@@ -1042,6 +1048,7 @@ A floating point number field type has the following properties:
 
 @sa ctfirfloatfield
 @sa ctfirfieldtypes
+@sa \ref ctfirfieldtypesexamples_floatfieldtype "Examples"
 
 @addtogroup ctfirfloatfieldtype
 @{
