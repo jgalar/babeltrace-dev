@@ -180,7 +180,7 @@ void print_timestamp_wall(struct text_component *text,
 
 			/* Print date and time */
 			res = strftime(timestr, sizeof(timestr),
-					"%F ", &tm);
+					"%Y-%m-%d ", &tm);
 			if (!res) {
 				fprintf(stderr, "[warning] Unable to print ascii time.\n");
 				goto seconds;
