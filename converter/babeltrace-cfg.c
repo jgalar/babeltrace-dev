@@ -966,7 +966,11 @@ end:
 static
 bool is_setuid_setgid(void)
 {
+#ifdef __MINGW32__
+	return false;
+#else
 	return (geteuid() != getuid() || getegid() != getgid());
+#endif
 }
 
 /*
