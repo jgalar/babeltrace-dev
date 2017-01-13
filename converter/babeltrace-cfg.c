@@ -34,7 +34,6 @@
 #include <popt.h>
 #include <glib.h>
 #include <sys/types.h>
-#include <pwd.h>
 #include "babeltrace-cfg.h"
 
 #define SYSTEM_PLUGIN_PATH		INSTALL_LIBDIR "/babeltrace/plugins"
@@ -2254,34 +2253,6 @@ not_found:
 	return -1;
 }
 
-static char *bt_secure_getenv(const char *name)
-{
-	if (is_setuid_setgid()) {
-		printf_err("Disregarding %s environment variable for setuid/setgid binary", name);
-		return NULL;
-	}
-	return getenv(name);
-}
-
-static const char *get_home_dir(void)
-{
-	char *val = NULL;
-	struct passwd *pwd;
-
-	val = bt_secure_getenv(HOME_ENV_VAR);
-	if (val) {
-		goto end;
-	}
-	/* Fallback on password file. */
-	pwd = getpwuid(getuid());
-	if (!pwd) {
-		goto end;
-	}
-	val = pwd->pw_dir;
-end:
-	return val;
-}
-
 static int add_internal_plugin_paths(struct bt_config *cfg)
 {
 	if (!cfg->omit_home_plugin_path) {
@@ -2291,7 +2262,7 @@ static int add_internal_plugin_paths(struct bt_config *cfg)
 		if (is_setuid_setgid()) {
 			printf_debug("Skipping non-system plugin paths for setuid/setgid binary.");
 		} else {
-			home_dir = get_home_dir();
+			home_dir = g_get_home_dir();
 			if (home_dir) {
 				if (strlen(home_dir) + strlen(HOME_SUBPATH) + 1
 						>= PATH_MAX) {
