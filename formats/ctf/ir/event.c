@@ -593,6 +593,8 @@ int bt_ctf_event_set_clock_value(struct bt_ctf_event *event,
 		goto end;
 	}
 
+	/* FIXME validate clock class existence. */
+
 	g_hash_table_insert(event->clock_values, bt_get(clock), bt_get(value));
 end:
 	return ret;
