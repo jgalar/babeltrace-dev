@@ -140,7 +140,12 @@ void print_component_classes_found(void)
 	for (i = 0; i < plugins_count; i++) {
 		int j;
 		struct bt_plugin *plugin = g_ptr_array_index(loaded_plugins, i);
+		unsigned int major, minor, patch;
+		const char *extra;
+		enum bt_plugin_status version_status;
 
+		version_status = bt_plugin_get_version(plugin, &major, &minor,
+			&patch, &extra);
 		comp_classes_count =
 			bt_plugin_get_component_class_count(plugin);
 
@@ -169,6 +174,18 @@ void print_component_classes_found(void)
 				license ? license : "Unknown");
 			printf_verbose("\tplugin description: %s\n",
 				plugin_description ? plugin_description : "None");
+
+			if (version_status == BT_PLUGIN_STATUS_OK) {
+				printf_verbose("\tplugin version: %u.%u.%u",
+					major, minor, patch);
+
+				if (extra) {
+					printf("%s", extra);
+				}
+
+				printf("\n");
+			}
+
 			printf_verbose("\tcomponent description: %s\n",
 				comp_class_description ? comp_class_description : "None");
 			bt_put(comp_class);
