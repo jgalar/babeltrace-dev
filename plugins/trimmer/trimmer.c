@@ -26,12 +26,13 @@
  * SOFTWARE.
  */
 
-#include <babeltrace/plugin/plugin-macros.h>
-#include <babeltrace/plugin/component.h>
-#include <babeltrace/plugin/filter.h>
-#include <babeltrace/plugin/notification/notification.h>
-#include <babeltrace/plugin/notification/iterator.h>
-#include <babeltrace/plugin/notification/event.h>
+#include <babeltrace/plugin/plugin-dev.h>
+#include <babeltrace/component/component.h>
+#include <babeltrace/component/component-filter.h>
+#include <babeltrace/component/notification/notification.h>
+#include <babeltrace/component/notification/iterator.h>
+#include <babeltrace/component/notification/event.h>
+#include <plugins-common.h>
 #include "trimmer.h"
 #include "iterator.h"
 #include <assert.h>
@@ -349,7 +350,8 @@ end:
 }
 
 enum bt_component_status trimmer_component_init(
-	struct bt_component *component, struct bt_value *params)
+	struct bt_component *component, struct bt_value *params,
+	UNUSED_VAR void *init_method_data)
 {
 	enum bt_component_status ret;
 	struct trimmer *trimmer = create_trimmer_data();
@@ -359,19 +361,7 @@ enum bt_component_status trimmer_component_init(
 		goto end;
 	}
 
-	ret = bt_component_set_destroy_cb(component,
-			destroy_trimmer);
-	if (ret != BT_COMPONENT_STATUS_OK) {
-		goto error;
-	}
-
 	ret = bt_component_set_private_data(component, trimmer);
-	if (ret != BT_COMPONENT_STATUS_OK) {
-		goto error;
-	}
-
-	ret = bt_component_filter_set_iterator_init_cb(component,
-			trimmer_iterator_init);
 	if (ret != BT_COMPONENT_STATUS_OK) {
 		goto error;
 	}
@@ -385,13 +375,12 @@ error:
 }
 
 /* Initialize plug-in entry points. */
-BT_PLUGIN_NAME("utils");
+BT_PLUGIN(utils);
 BT_PLUGIN_DESCRIPTION("Babeltrace Trace Trimmer Plug-In.");
 BT_PLUGIN_AUTHOR("Jérémie Galarneau");
 BT_PLUGIN_LICENSE("MIT");
-
-BT_PLUGIN_COMPONENT_CLASSES_BEGIN
-BT_PLUGIN_FILTER_COMPONENT_CLASS_ENTRY("trimmer",
-		"Ensure that trace notifications outside of a given range are filtered-out.",
-		trimmer_component_init)
-BT_PLUGIN_COMPONENT_CLASSES_END
+BT_PLUGIN_FILTER_COMPONENT_CLASS(trimmer, trimmer_iterator_init);
+BT_PLUGIN_FILTER_COMPONENT_CLASS_DESCRIPTION(trimmer,
+	"Ensure that trace notifications outside of a given range are filtered-out.");
+BT_PLUGIN_FILTER_COMPONENT_CLASS_INIT_METHOD(trimmer, trimmer_component_init);
+BT_PLUGIN_FILTER_COMPONENT_CLASS_DESTROY_METHOD(trimmer, destroy_trimmer);

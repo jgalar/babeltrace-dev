@@ -27,11 +27,19 @@
  */
 
 #include "lttng-live-internal.h"
-#include <babeltrace/plugin/source.h>
+#include <babeltrace/component/component-source.h>
+#include <plugins-common.h>
+
+BT_HIDDEN
+enum bt_component_status lttng_live_iterator_init(struct bt_component *source,
+		struct bt_notification_iterator *it)
+{
+    return BT_COMPONENT_STATUS_OK;
+}
 
 BT_HIDDEN
 enum bt_component_status lttng_live_init(struct bt_component *component,
-		struct bt_value *params)
+		struct bt_value *params, UNUSED_VAR void *init_method_data)
 {
 	return BT_COMPONENT_STATUS_OK;
 }

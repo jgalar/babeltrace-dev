@@ -27,20 +27,19 @@
  * SOFTWARE.
  */
 
-#include <babeltrace/plugin/plugin-macros.h>
-#include <babeltrace/plugin/component.h>
-#include <babeltrace/plugin/sink.h>
-#include <babeltrace/plugin/notification/notification.h>
-#include <babeltrace/plugin/notification/iterator.h>
-#include <babeltrace/plugin/notification/event.h>
+#include <babeltrace/plugin/plugin-dev.h>
+#include <babeltrace/component/component.h>
+#include <babeltrace/component/component-sink.h>
+#include <babeltrace/component/notification/notification.h>
+#include <babeltrace/component/notification/iterator.h>
+#include <babeltrace/component/notification/event.h>
 #include <babeltrace/values.h>
 #include <babeltrace/compiler.h>
+#include <plugins-common.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <glib.h>
 #include "text.h"
-
-#define PLUGIN_NAME	"text"
 
 static
 const char *plugin_options[] = {
@@ -224,8 +223,7 @@ bool check_param_exists(const char *key, struct bt_value *object, void *data)
 
 	if (!bt_value_map_get(plugin_opt_map, key)) {
 		fprintf(text->err,
-			"[warning] Parameter \"%s\" unknown to \"%s\" plugin\n",
-			key, PLUGIN_NAME);
+			"[warning] Parameter \"%s\" unknown to \"text\" plugin\n", key);
 	}
 	return true;
 }
@@ -607,7 +605,8 @@ end:
 
 static
 enum bt_component_status text_component_init(
-		struct bt_component *component, struct bt_value *params)
+		struct bt_component *component, struct bt_value *params,
+		UNUSED_VAR void *init_method_data)
 {
 	enum bt_component_status ret;
 	struct text_component *text = create_text();
@@ -631,19 +630,7 @@ enum bt_component_status text_component_init(
 		goto error;
 	}
 
-	ret = bt_component_set_destroy_cb(component,
-			destroy_text);
-	if (ret != BT_COMPONENT_STATUS_OK) {
-		goto error;
-	}
-
 	ret = bt_component_set_private_data(component, text);
-	if (ret != BT_COMPONENT_STATUS_OK) {
-		goto error;
-	}
-
-	ret = bt_component_sink_set_consume_cb(component,
-			run);
 	if (ret != BT_COMPONENT_STATUS_OK) {
 		goto error;
 	}
@@ -655,13 +642,13 @@ error:
 }
 
 /* Initialize plug-in entry points. */
-BT_PLUGIN_NAME("text");
+BT_PLUGIN(text);
 BT_PLUGIN_DESCRIPTION("Babeltrace text output plug-in.");
 BT_PLUGIN_AUTHOR("Jérémie Galarneau");
 BT_PLUGIN_LICENSE("MIT");
+BT_PLUGIN_SINK_COMPONENT_CLASS(text, run);
+BT_PLUGIN_SINK_COMPONENT_CLASS_INIT_METHOD(text, text_component_init);
+BT_PLUGIN_SINK_COMPONENT_CLASS_DESTROY_METHOD(text, destroy_text);
+BT_PLUGIN_SINK_COMPONENT_CLASS_DESCRIPTION(text,
+	"Formats CTF-IR to text. Formerly known as ctf-text.");
 
-BT_PLUGIN_COMPONENT_CLASSES_BEGIN
-BT_PLUGIN_SINK_COMPONENT_CLASS_ENTRY(PLUGIN_NAME,
-		"Formats CTF-IR to text. Formerly known as ctf-text.",
-		text_component_init)
-BT_PLUGIN_COMPONENT_CLASSES_END

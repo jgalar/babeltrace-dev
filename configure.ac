@@ -349,8 +349,11 @@ AC_SUBST(babeltracectfirincludedir)
 babeltracepluginincludedir="${includedir}/babeltrace/plugin"
 AC_SUBST(babeltracepluginincludedir)
 
-# Add a rule to $program_transform_name to rename babeltrace.bin to babeltrace on installation
+babeltracecomponentincludedir="${includedir}/babeltrace/component"
+AC_SUBST(babeltracecomponentincludedir)
+
 program_transform_name="s&babeltrace\.bin&babeltrace&;$program_transform_name"
+AC_SUBST(program_transform_name)
 
 # check for Doxygen
 AC_ARG_ENABLE(
@@ -402,8 +405,9 @@ AC_CONFIG_FILES([
 	doc/images/Makefile
 	lib/Makefile
 	lib/prio_heap/Makefile
-	lib/plugin-system/Makefile
-	lib/plugin-system/notification/Makefile
+	lib/plugin/Makefile
+        lib/component/Makefile
+	lib/component/notification/Makefile
 	include/Makefile
 	bindings/Makefile
 	bindings/python/Makefile
@@ -412,6 +416,7 @@ AC_CONFIG_FILES([
 	tests/bin/Makefile
 	tests/bin/intersection/Makefile
 	tests/lib/Makefile
+	tests/lib/test-plugin-plugins/Makefile
 	tests/utils/Makefile
 	tests/utils/tap/Makefile
 	extras/Makefile
@@ -434,6 +439,7 @@ AC_CONFIG_FILES([
 
 #AC_CONFIG_FILES([converter/babeltrace], [chmod +x converter/babeltrace])
 AC_CONFIG_FILES([tests/lib/test_ctf_writer_complete], [chmod +x tests/lib/test_ctf_writer_complete])
+AC_CONFIG_FILES([tests/lib/test_plugin_complete], [chmod +x tests/lib/test_plugin_complete])
 AC_CONFIG_FILES([tests/lib/test_seek_big_trace], [chmod +x tests/lib/test_seek_big_trace])
 AC_CONFIG_FILES([tests/lib/test_seek_empty_packet], [chmod +x tests/lib/test_seek_empty_packet])
 AC_CONFIG_FILES([tests/lib/test_dwarf_complete], [chmod +x tests/lib/test_dwarf_complete])

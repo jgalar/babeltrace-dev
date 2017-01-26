@@ -28,13 +28,16 @@
  */
 
 #include <babeltrace/babeltrace-internal.h>
-#include <babeltrace/plugin/component.h>
+#include <babeltrace/component/component.h>
 
-#define LTTNG_LIVE_COMPONENT_NAME "lttng-live"
 #define LTTNG_LIVE_COMPONENT_DESCRIPTION "Component implementing an LTTng-live client."
 
 BT_HIDDEN
+enum bt_component_status lttng_live_iterator_init(struct bt_component *source,
+        struct bt_notification_iterator *it);
+
+BT_HIDDEN
 enum bt_component_status lttng_live_init(struct bt_component *source,
-		struct bt_value *params);
+		struct bt_value *params, void *init_method_data);
 
 #endif /* BABELTRACE_PLUGIN_CTF_LTTNG_LIVE_INTERNAL_H */

@@ -27,13 +27,14 @@
  */
 
 #include <babeltrace/ctf-ir/packet.h>
-#include <babeltrace/plugin/plugin-macros.h>
-#include <babeltrace/plugin/component.h>
-#include <babeltrace/plugin/sink.h>
-#include <babeltrace/plugin/notification/notification.h>
-#include <babeltrace/plugin/notification/iterator.h>
-#include <babeltrace/plugin/notification/event.h>
-#include <babeltrace/plugin/notification/packet.h>
+#include <babeltrace/plugin/plugin-dev.h>
+#include <babeltrace/component/component.h>
+#include <babeltrace/component/component-sink.h>
+#include <babeltrace/component/notification/notification.h>
+#include <babeltrace/component/notification/iterator.h>
+#include <babeltrace/component/notification/event.h>
+#include <babeltrace/component/notification/packet.h>
+#include <plugins-common.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <glib.h>
@@ -213,7 +214,8 @@ end:
 
 static
 enum bt_component_status writer_component_init(
-	struct bt_component *component, struct bt_value *params)
+	struct bt_component *component, struct bt_value *params,
+	UNUSED_VAR void *init_method_data)
 {
 	enum bt_component_status ret;
 	enum bt_value_status value_ret;
@@ -246,19 +248,7 @@ enum bt_component_status writer_component_init(
 		goto error;
 	}
 
-	ret = bt_component_set_destroy_cb(component,
-			destroy_writer_component);
-	if (ret != BT_COMPONENT_STATUS_OK) {
-		goto error;
-	}
-
 	ret = bt_component_set_private_data(component, writer_component);
-	if (ret != BT_COMPONENT_STATUS_OK) {
-		goto error;
-	}
-
-	ret = bt_component_sink_set_consume_cb(component,
-			run);
 	if (ret != BT_COMPONENT_STATUS_OK) {
 		goto error;
 	}
@@ -272,13 +262,11 @@ error:
 }
 
 /* Initialize plug-in entry points. */
-BT_PLUGIN_NAME("writer");
+BT_PLUGIN(writer);
 BT_PLUGIN_DESCRIPTION("Babeltrace CTF-Writer output plug-in.");
 BT_PLUGIN_AUTHOR("Jérémie Galarneau");
 BT_PLUGIN_LICENSE("MIT");
-
-BT_PLUGIN_COMPONENT_CLASSES_BEGIN
-BT_PLUGIN_SINK_COMPONENT_CLASS_ENTRY("writer",
-		"Formats CTF-IR to CTF.",
-		writer_component_init)
-BT_PLUGIN_COMPONENT_CLASSES_END
+BT_PLUGIN_SINK_COMPONENT_CLASS(writer, run);
+BT_PLUGIN_SINK_COMPONENT_CLASS_INIT_METHOD(writer, writer_component_init);
+BT_PLUGIN_SINK_COMPONENT_CLASS_DESTROY_METHOD(writer, destroy_writer_component);
+BT_PLUGIN_SINK_COMPONENT_CLASS_DESCRIPTION(writer, "Formats CTF-IR to CTF.");

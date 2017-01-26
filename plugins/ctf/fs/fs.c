@@ -26,14 +26,14 @@
  * SOFTWARE.
  */
 
-#include <babeltrace/plugin/plugin-system.h>
 #include <babeltrace/ctf-ir/packet.h>
 #include <babeltrace/ctf-ir/clock-class.h>
-#include <babeltrace/plugin/notification/iterator.h>
-#include <babeltrace/plugin/notification/stream.h>
-#include <babeltrace/plugin/notification/event.h>
-#include <babeltrace/plugin/notification/packet.h>
-#include <babeltrace/plugin/notification/heap.h>
+#include <babeltrace/component/notification/iterator.h>
+#include <babeltrace/component/notification/stream.h>
+#include <babeltrace/component/notification/event.h>
+#include <babeltrace/component/notification/packet.h>
+#include <babeltrace/component/notification/heap.h>
+#include <plugins-common.h>
 #include <glib.h>
 #include <assert.h>
 #include <unistd.h>
@@ -584,7 +584,6 @@ end:
 	return ret;
 }
 
-static
 enum bt_component_status ctf_fs_iterator_init(struct bt_component *source,
 		struct bt_notification_iterator *it)
 {
@@ -669,7 +668,6 @@ void ctf_fs_destroy_data(struct ctf_fs_component *ctf_fs)
 	g_free(ctf_fs);
 }
 
-static
 void ctf_fs_destroy(struct bt_component *component)
 {
 	void *data = bt_component_get_private_data(component);
@@ -726,7 +724,7 @@ end:
 
 BT_HIDDEN
 enum bt_component_status ctf_fs_init(struct bt_component *source,
-		struct bt_value *params)
+		struct bt_value *params, UNUSED_VAR void *init_method_data)
 {
 	struct ctf_fs_component *ctf_fs;
 	enum bt_component_status ret = BT_COMPONENT_STATUS_OK;
@@ -739,18 +737,7 @@ enum bt_component_status ctf_fs_init(struct bt_component *source,
 		goto end;
 	}
 
-	ret = bt_component_set_destroy_cb(source, ctf_fs_destroy);
-	if (ret != BT_COMPONENT_STATUS_OK) {
-		goto error;
-	}
-
 	ret = bt_component_set_private_data(source, ctf_fs);
-	if (ret != BT_COMPONENT_STATUS_OK) {
-		goto error;
-	}
-
-	ret = bt_component_source_set_iterator_init_cb(source,
-			ctf_fs_iterator_init);
 	if (ret != BT_COMPONENT_STATUS_OK) {
 		goto error;
 	}
