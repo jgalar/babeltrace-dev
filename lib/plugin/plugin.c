@@ -523,12 +523,20 @@ enum bt_plugin_status bt_plugin_init(
 		/* Add component class to the plugin object */
 		status = bt_plugin_add_component_class(plugin,
 			comp_class);
-		BT_PUT(comp_class);
 		if (status < 0) {
 			printf_verbose("Cannot add component class %s (type %d) to plugin `%s`: status = %d\n",
 				cc_full_descr->descriptor->name,
 				cc_full_descr->descriptor->type,
 				plugin->name, status);
+			BT_PUT(comp_class);
+			goto end;
+		}
+
+		/* No way to edit this component class afterwards */
+		ret = bt_component_class_freeze(comp_class);
+		BT_PUT(comp_class);
+		if (ret) {
+			status = BT_PLUGIN_STATUS_ERROR;
 			goto end;
 		}
 	}
