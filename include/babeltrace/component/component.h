@@ -1,5 +1,5 @@
-#ifndef BABELTRACE_PLUGIN_COMPONENT_H
-#define BABELTRACE_PLUGIN_COMPONENT_H
+#ifndef BABELTRACE_COMPONENT_COMPONENT_H
+#define BABELTRACE_COMPONENT_COMPONENT_H
 
 /*
  * BabelTrace - Babeltrace Component Interface
@@ -307,4 +307,4 @@ extern struct bt_component_class *bt_component_get_class(
 }
 #endif
 
-#endif /* BABELTRACE_PLUGIN_COMPONENT_H */
+#endif /* BABELTRACE_COMPONENT_COMPONENT_H */

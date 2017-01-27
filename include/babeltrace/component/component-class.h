@@ -1,5 +1,5 @@
-#ifndef BABELTRACE_PLUGIN_COMPONENT_CLASS_H
-#define BABELTRACE_PLUGIN_COMPONENT_CLASS_H
+#ifndef BABELTRACE_COMPONENT_COMPONENT_CLASS_H
+#define BABELTRACE_COMPONENT_COMPONENT_CLASS_H
 
 /*
  * Babeltrace - Component Class Interface.
@@ -84,4 +84,4 @@ extern const char *bt_component_class_get_description(
 extern enum bt_component_type bt_component_class_get_type(
 		struct bt_component_class *component_class);
 
-#endif /* BABELTRACE_PLUGIN_COMPONENT_CLASS_H */
+#endif /* BABELTRACE_COMPONENT_COMPONENT_CLASS_H */
