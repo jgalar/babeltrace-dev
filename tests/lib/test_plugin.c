@@ -211,14 +211,22 @@ static void test_create_all_from_dir(const char *plugin_dir)
 
 int main(int argc, char **argv)
 {
+	int ret;
 	const char *plugin_dir;
 
-	assert(argc == 2);
+	if (argc != 2) {
+		puts("Usage: test_plugin plugin_directory");
+		ret = 1;
+		goto end;
+	}
+
 	plugin_dir = argv[1];
 	plan_tests(NR_TESTS);
 	test_invalid(plugin_dir);
 	test_minimal(plugin_dir);
 	test_sfs(plugin_dir);
 	test_create_all_from_dir(plugin_dir);
-	return exit_status();
+	ret = exit_status();
+end:
+	return ret;
 }
