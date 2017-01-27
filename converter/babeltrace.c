@@ -435,6 +435,29 @@ end:
 }
 
 static
+void add_to_loaded_plugins(struct bt_plugin **plugins)
+{
+	while (*plugins) {
+		struct bt_plugin *plugin = *plugins;
+		/* Check if it's already loaded (from another path). */
+		struct bt_plugin *loaded_plugin =
+				find_plugin(bt_plugin_get_name(plugin));
+
+		if (loaded_plugin) {
+			printf_verbose("Not loading plugin `%s`: already loaded from `%s`\n",
+					bt_plugin_get_path(plugin),
+					bt_plugin_get_path(loaded_plugin));
+			BT_PUT(loaded_plugin);
+			BT_PUT(plugin);
+		} else {
+			/* Transfer ownership to global array. */
+			g_ptr_array_add(loaded_plugins, plugin);
+		}
+		*(plugins++) = NULL;
+	}
+}
+
+static
 int load_dynamic_plugins(struct bt_config *cfg)
 {
 	int nr_paths, i, ret = 0;
@@ -449,8 +472,6 @@ int load_dynamic_plugins(struct bt_config *cfg)
 		struct bt_value *plugin_path_value = NULL;
 		const char *plugin_path;
 		struct bt_plugin **plugins;
-		struct bt_plugin *plugin;
-		int j = 0;
 
 		plugin_path_value = bt_value_array_get(cfg->plugin_paths, i);
 		if (bt_value_string_get(plugin_path_value,
@@ -467,27 +488,7 @@ int load_dynamic_plugins(struct bt_config *cfg)
 			continue;
 		}
 
-		while ((plugin = plugins[j])) {
-			/* Check if it's already loaded (from another path) */
-			struct bt_plugin *loaded_plugin =
-				find_plugin(bt_plugin_get_name(plugin));
-
-			if (loaded_plugin) {
-				printf_verbose("Not loading plugin `%s`: already loaded from `%s`\n",
-					bt_plugin_get_path(plugin),
-					bt_plugin_get_path(loaded_plugin));
-				BT_PUT(loaded_plugin);
-				BT_PUT(plugin);
-				plugins[j] = NULL;
-				j++;
-				continue;
-			}
-
-			/* Transfer ownership to global array */
-			g_ptr_array_add(loaded_plugins, plugin);
-			j++;
-		}
-
+		add_to_loaded_plugins(plugins);
 		free(plugins);
 
 		BT_PUT(plugin_path_value);
@@ -501,8 +502,6 @@ int load_static_plugins(void)
 {
 	int ret = 0;
 	struct bt_plugin **plugins;
-	struct bt_plugin *plugin;
-	int j = 0;
 
 	plugins = bt_plugin_create_all_from_static();
 	if (!plugins) {
@@ -511,27 +510,7 @@ int load_static_plugins(void)
 		goto end;
 	}
 
-	while ((plugin = plugins[j])) {
-		/* Check if it's already loaded (from another path) */
-		struct bt_plugin *loaded_plugin =
-			find_plugin(bt_plugin_get_name(plugin));
-
-		if (loaded_plugin) {
-			printf_verbose("Not loading plugin `%s`: already loaded from `%s`\n",
-				bt_plugin_get_path(plugin),
-				bt_plugin_get_path(loaded_plugin));
-			BT_PUT(loaded_plugin);
-			BT_PUT(plugin);
-			plugins[j] = NULL;
-			j++;
-			continue;
-		}
-
-		/* Transfer ownership to global array */
-		g_ptr_array_add(loaded_plugins, plugin);
-		j++;
-	}
-
+	add_to_loaded_plugins(plugins);
 	free(plugins);
 end:
 	return ret;
