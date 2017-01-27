@@ -434,14 +434,17 @@ end:
 	return ret;
 }
 
-static int load_dynamic_plugins(struct bt_config *cfg)
+static
+int load_dynamic_plugins(struct bt_config *cfg)
 {
-	int nr_paths, i;
+	int nr_paths, i, ret = 0;
 
 	nr_paths = bt_value_array_size(cfg->plugin_paths);
 	if (nr_paths < 0) {
-		return -1;
+		ret = -1;
+		goto end;
 	}
+
 	for (i = 0; i < nr_paths; i++) {
 		struct bt_value *plugin_path_value = NULL;
 		const char *plugin_path;
@@ -489,11 +492,14 @@ static int load_dynamic_plugins(struct bt_config *cfg)
 
 		BT_PUT(plugin_path_value);
 	}
-	return 0;
+end:
+	return ret;
 }
 
-static int load_static_plugins(void)
+static
+int load_static_plugins(void)
 {
+	int ret = 0;
 	struct bt_plugin **plugins;
 	struct bt_plugin *plugin;
 	int j = 0;
@@ -501,7 +507,8 @@ static int load_static_plugins(void)
 	plugins = bt_plugin_create_all_from_static();
 	if (!plugins) {
 		printf_debug("Unable to load static plugins.\n");
-		return -1;
+		ret = -1;
+		goto end;
 	}
 
 	while ((plugin = plugins[j])) {
@@ -526,8 +533,8 @@ static int load_static_plugins(void)
 	}
 
 	free(plugins);
-
-	return 0;
+end:
+	return ret;
 }
 
 int main(int argc, const char **argv)
