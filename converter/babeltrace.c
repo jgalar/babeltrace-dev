@@ -116,7 +116,7 @@ const char *component_type_str(enum bt_component_type type)
 static
 void print_component_classes_found(void)
 {
-	int plugins_count, comp_classes_count = 0, i;
+	int plugins_count, component_classes_count = 0, i;
 
 	if (!babeltrace_verbose) {
 		return;
@@ -131,20 +131,20 @@ void print_component_classes_found(void)
 	for (i = 0; i < plugins_count; i++) {
 		struct bt_plugin *plugin = g_ptr_array_index(loaded_plugins, i);
 
-		comp_classes_count += bt_plugin_get_component_class_count(plugin);
+		component_classes_count += bt_plugin_get_component_class_count(plugin);
 	}
 
 	printf_verbose("Found %d component classes in %d plugins.\n",
-		comp_classes_count, plugins_count);
+		component_classes_count, plugins_count);
 
 	for (i = 0; i < plugins_count; i++) {
 		int j;
 		struct bt_plugin *plugin = g_ptr_array_index(loaded_plugins, i);
 
-		comp_classes_count =
+		component_classes_count =
 			bt_plugin_get_component_class_count(plugin);
 
-		for (j = 0; j < comp_classes_count; j++) {
+		for (j = 0; j < component_classes_count; j++) {
 			struct bt_component_class *comp_class =
 				bt_plugin_get_component_class(plugin, j);
 			const char *plugin_name = bt_plugin_get_name(plugin);
