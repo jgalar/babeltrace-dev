@@ -87,13 +87,13 @@ struct bt_component_class *find_component_class(const char *plugin_name,
 	struct bt_plugin *plugin = find_plugin(plugin_name);
 
 	if (!plugin) {
-		return NULL;
+		goto end;
 	}
 
 	comp_class = bt_plugin_get_component_class_by_name_and_type(plugin,
-		comp_class_name, comp_class_type);
+			comp_class_name, comp_class_type);
 	BT_PUT(plugin);
-
+end:
 	return comp_class;
 }
 
