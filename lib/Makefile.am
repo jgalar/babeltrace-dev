@@ -13,7 +13,8 @@ libbabeltrace_la_SOURCES = babeltrace.c \
 			   values.c \
 			   ref.c
 
-libbabeltrace_la_LDFLAGS = -version-info $(BABELTRACE_LIBRARY_VERSION)
+libbabeltrace_la_LDFLAGS = \
+	$(LT_NO_UNDEFINED) -version-info $(BABELTRACE_LIBRARY_VERSION)
 
 if ENABLE_DEBUG_INFO
 noinst_LTLIBRARIES = libdebug-info.la

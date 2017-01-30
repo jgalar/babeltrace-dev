@@ -1,10 +1,10 @@
-#ifndef _BABELTRACE_COMPAT_MMAN_H
-#define _BABELTRACE_COMPAT_MMAN_H
+#ifndef _BABELTRACE_COMPAT_UNISTD_H
+#define _BABELTRACE_COMPAT_UNISTD_H
 
 /*
- * babeltrace/compat/mman.h
+ * babeltrace/compat/unistd.h
  *
- * Copyright (C) 2015-2016  Michael Jeanson <mjeanson@efficios.com>
+ * (C) Copyright 2016 - Michael Jeanson <mjeanson@efficios.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,38 +25,37 @@
  * SOFTWARE.
  */
 
-#ifndef __MINGW32__
 
-#include <sys/mman.h>
+#include <unistd.h>
 
-#else /* __MINGW32__ */
+#ifdef __MINGW32__
+#include <windows.h>
+#include <errno.h>
 
-#include <sys/types.h>
+#define _SC_PAGESIZE 30
 
-#define PROT_NONE	0x0
-#define PROT_READ	0x1
-#define PROT_WRITE	0x2
-#define PROT_EXEC	0x4
+static inline
+long bt_sysconf(int name)
+{
+	SYSTEM_INFO si;
 
-#define MAP_FILE	0
-#define MAP_SHARED	1
-#define MAP_PRIVATE	2
-#define MAP_TYPE	0xF
-#define MAP_FIXED	0x10
-#define MAP_ANONYMOUS	0x20
-#define MAP_ANON	MAP_ANONYMOUS
-#define MAP_FAILED	((void *) -1)
+	switch(name) {
+	case _SC_PAGESIZE:
+		GetNativeSystemInfo(&si);
+		return si.dwPageSize;
+	default:
+		errno = EINVAL;
+		return -1;
+	}
+}
 
-void *mmap(void *addr, size_t length, int prot, int flags, int fd,
-	off_t offset);
-int munmap(void *addr, size_t length);
+#else
 
-#endif /* __MINGW32__ */
+static inline
+long bt_sysconf(int name)
+{
+	return sysconf(name);
+}
 
-#ifndef MAP_ANONYMOUS
-# ifdef MAP_ANON
-#   define MAP_ANONYMOUS MAP_ANON
-# endif
 #endif
-
-#endif /* _BABELTRACE_COMPAT_MMAN_H */
+#endif /* _BABELTRACE_COMPAT_UNISTD_H */

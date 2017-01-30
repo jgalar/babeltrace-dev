@@ -40,15 +40,16 @@
 #include <babeltrace/ctf/ctf-index.h>
 #include <inttypes.h>
 #include <stdio.h>
-#include <sys/mman.h>
+#include <babeltrace/compat/mman.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <dirent.h>
+#include <ftw.h>
 #include <glib.h>
-#include <unistd.h>
+#include <babeltrace/compat/unistd.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #include "metadata/ctf-scanner.h"
 #include "metadata/ctf-parser.h"
@@ -56,18 +57,10 @@
 #include "events-private.h"
 #include <babeltrace/compat/memstream.h>
 #include <babeltrace/compat/fcntl.h>
+#include <babeltrace/compat/time.h>
 
 #define LOG2_CHAR_BIT	3
-
-/*
- * Length of first attempt at mapping a packet header, in bits.
- */
-#define DEFAULT_HEADER_LEN	(getpagesize() * CHAR_BIT)
-
-/*
- * Lenght of packet to write, in bits.
- */
-#define WRITE_PACKET_LEN	(getpagesize() * 8 * CHAR_BIT)
+#define OPEN_TRACE_NFDOPEN_MAX	8
 
 #define NSEC_PER_SEC 1000000000LL
 
@@ -91,6 +84,14 @@ char *opt_debug_info_target_prefix;
  * with the plugin system redesign.
  */
 int babeltrace_ctf_console_output;
+
+static struct {
+	pthread_mutex_t lock;
+	struct ctf_trace *td;
+	void *	packet_seek;
+} open_trace_info = {
+	.lock = PTHREAD_MUTEX_INITIALIZER
+};
 
 static
 struct bt_trace_descriptor *ctf_open_trace(const char *path, int flags,
@@ -165,6 +166,31 @@ void bt_ctf_hook(void)
 	 * Dummy function to prevent the linker from discarding this format as
 	 * "unused" in static builds.
 	 */
+}
+
+/*
+ * Length of first attempt at mapping a packet header, in bits.
+ */
+static
+size_t get_default_header_len(void)
+{
+	int page_size;
+
+	page_size = bt_sysconf(_SC_PAGESIZE);
+	if (page_size < 0) {
+		return 0;
+	}
+
+	return page_size * CHAR_BIT;
+}
+
+/*
+ * Length of packet to write, in bits.
+ */
+static
+size_t get_write_packet_len(void)
+{
+	return get_default_header_len() * 8;
 }
 
 static
@@ -401,7 +427,7 @@ void ctf_print_timestamp_real(FILE *fp,
 		if (!opt_clock_gmt) {
 			struct tm *res;
 
-			res = localtime_r(&time_s, &tm);
+			res = bt_localtime_r(&time_s, &tm);
 			if (!res) {
 				fprintf(stderr, "[warning] Unable to get localtime.\n");
 				goto seconds;
@@ -409,7 +435,7 @@ void ctf_print_timestamp_real(FILE *fp,
 		} else {
 			struct tm *res;
 
-			res = gmtime_r(&time_s, &tm);
+			res = bt_gmtime_r(&time_s, &tm);
 			if (!res) {
 				fprintf(stderr, "[warning] Unable to get gmtime.\n");
 				goto seconds;
@@ -421,7 +447,7 @@ void ctf_print_timestamp_real(FILE *fp,
 
 			/* Print date and time */
 			res = strftime(timestr, sizeof(timestr),
-				"%F ", &tm);
+				"%Y-%m-%d ", &tm);
 			if (!res) {
 				fprintf(stderr, "[warning] Unable to print ascii time.\n");
 				goto seconds;
@@ -725,7 +751,7 @@ int find_data_offset(struct ctf_stream_pos *pos,
 		struct ctf_file_stream *file_stream,
 		struct packet_index *packet_index)
 {
-	uint64_t packet_map_len = DEFAULT_HEADER_LEN, tmp_map_len;
+	uint64_t packet_map_len, tmp_map_len;
 	struct stat filestats;
 	size_t filesize;
 	int ret;
@@ -740,6 +766,11 @@ int find_data_offset(struct ctf_stream_pos *pos,
 	/* Deal with empty files */
 	if (!filesize) {
 		return 0;
+	}
+
+	packet_map_len = get_default_header_len();
+	if (packet_map_len == 0) {
+		return -1;
 	}
 
 begin:
@@ -1147,7 +1178,10 @@ void ctf_packet_seek(struct bt_stream_pos *stream_pos, size_t index, int whence)
 			assert(0);
 		}
 		pos->content_size = -1U;	/* Unknown at this point */
-		pos->packet_size = WRITE_PACKET_LEN;
+		pos->packet_size = get_write_packet_len();
+		if (pos->packet_size == 0) {
+			assert(0);
+		}
 		do {
 			ret = bt_posix_fallocate(pos->fd, pos->mmap_offset,
 					      pos->packet_size / CHAR_BIT);
@@ -1415,7 +1449,7 @@ int ctf_trace_metadata_stream_read(struct ctf_trace *td, FILE **fp,
 	 * because its size includes garbage at the end (after final
 	 * \0). This is the allocated size, not the actual string size.
 	 */
-	out = babeltrace_open_memstream(buf, &size);
+	out = bt_open_memstream(buf, &size);
 	if (out == NULL) {
 		perror("Metadata open_memstream");
 		return -errno;
@@ -1431,7 +1465,7 @@ int ctf_trace_metadata_stream_read(struct ctf_trace *td, FILE **fp,
 		}
 	}
 	/* close to flush the buffer */
-	ret = babeltrace_close_memstream(buf, &size, out);
+	ret = bt_close_memstream(buf, &size, out);
 	if (ret < 0) {
 		int closeret;
 
@@ -1453,7 +1487,7 @@ int ctf_trace_metadata_stream_read(struct ctf_trace *td, FILE **fp,
 		*fp = NULL;
 		return -ENOENT;
 	}
-	*fp = babeltrace_fmemopen(*buf, buflen, "rb");
+	*fp = bt_fmemopen(*buf, buflen, "rb");
 	if (!*fp) {
 		perror("Metadata fmemopen");
 		return -errno;
@@ -1485,7 +1519,7 @@ int ctf_trace_metadata_read(struct ctf_trace *td, FILE *metadata_fp,
 			goto end_free;
 		}
 
-		fp = fdopen(metadata_stream->pos.fd, "r");
+		fp = fdopen(metadata_stream->pos.fd, "rb");
 		if (!fp) {
 			fprintf(stderr, "[error] Unable to open metadata stream.\n");
 			perror("Metadata stream open");
@@ -1748,10 +1782,15 @@ int create_stream_one_packet_index(struct ctf_stream_pos *pos,
 {
 	struct packet_index packet_index;
 	uint64_t stream_id = 0;
-	uint64_t packet_map_len = DEFAULT_HEADER_LEN, tmp_map_len;
+	uint64_t packet_map_len, tmp_map_len;
 	int first_packet = 0;
 	int len_index;
 	int ret;
+
+	packet_map_len = get_default_header_len();
+	if (packet_map_len == 0) {
+		return -1;
+	}
 
 begin:
 	memset(&packet_index, 0, sizeof(packet_index));
@@ -2278,7 +2317,7 @@ int ctf_open_file_stream_read(struct ctf_trace *td, const char *path, int flags,
 			ret = -1;
 			goto error_free;
 		}
-		file_stream->pos.index_fp = fdopen(ret, "r");
+		file_stream->pos.index_fp = fdopen(ret, "rb");
 		if (!file_stream->pos.index_fp) {
 			perror("fdopen() error");
 			goto error_free;
@@ -2330,18 +2369,56 @@ error:
 }
 
 static
+int nftw_open_trace(const char *file, const struct stat *sb, int flag,
+		struct FTW *s)
+{
+	int ret = 0;
+	const char *name = file + s->base;
+	char *ext;
+
+	switch (flag) {
+	case FTW_F:
+		/* Ignore hidden files and metadata. */
+		if (!strncmp(name, ".", 1) || !strcmp(name, "metadata")) {
+			goto end;
+		}
+
+		/* Ignore index files : *.idx */
+		ext = strrchr(name, '.');
+		if (ext && (!strcmp(ext, ".idx"))) {
+			goto end;
+		}
+
+		ret = ctf_open_file_stream_read(open_trace_info.td, name,
+				open_trace_info.td->flags,
+				open_trace_info.packet_seek);
+		if (ret) {
+			fprintf(stderr, "[error] Open file stream error.\n");
+		}
+		break;
+	case FTW_DNR:
+		/* Continue to next file / directory. */
+		printf_perror("Failed to read directory: %s\n", file);
+		break;
+	case FTW_NS:
+		/* Continue to next file / directory. */
+		printf_perror("Failed to stat() file: %s\n", file);
+		break;
+}
+
+end:
+	return ret;
+}
+
+static
 int ctf_open_trace_read(struct ctf_trace *td,
 		const char *path, int flags,
 		void (*packet_seek)(struct bt_stream_pos *pos, size_t index,
 			int whence), FILE *metadata_fp)
 {
+	int nftw_flags = FTW_PHYS;
 	struct ctf_scanner *scanner;
 	int ret, closeret;
-	struct dirent *dirent;
-	struct dirent *diriter;
-	size_t dirent_len;
-	int pc_name_max;
-	char *ext;
 
 	td->flags = flags;
 
@@ -2390,51 +2467,21 @@ int ctf_open_trace_read(struct ctf_trace *td,
 	 * the stream array.
 	 */
 
-	pc_name_max = fpathconf(td->dirfd, _PC_NAME_MAX);
-	if (pc_name_max < 0) {
-		perror("Error on fpathconf");
-		fprintf(stderr, "[error] Failed to get _PC_NAME_MAX for path \"%s\".\n", path);
-		ret = -1;
+	pthread_mutex_lock(&open_trace_info.lock);
+
+	open_trace_info.td = td;
+	open_trace_info.packet_seek = packet_seek;
+	ret = nftw(path, nftw_open_trace, OPEN_TRACE_NFDOPEN_MAX, nftw_flags);
+
+	pthread_mutex_unlock(&open_trace_info.lock);
+
+	if (ret != 0) {
+		fprintf(stderr, "[error] nftw error.\n");
 		goto error_metadata;
 	}
 
-	dirent_len = offsetof(struct dirent, d_name) + pc_name_max + 1;
-
-	dirent = malloc(dirent_len);
-
-	for (;;) {
-		ret = readdir_r(td->dir, dirent, &diriter);
-		if (ret) {
-			fprintf(stderr, "[error] Readdir error.\n");
-			goto readdir_error;
-		}
-		if (!diriter)
-			break;
-		/* Ignore hidden files, ., .. and metadata. */
-		if (!strncmp(diriter->d_name, ".", 1)
-				|| !strcmp(diriter->d_name, "..")
-				|| !strcmp(diriter->d_name, "metadata"))
-			continue;
-
-		/* Ignore index files : *.idx */
-		ext = strrchr(diriter->d_name, '.');
-		if (ext && (!strcmp(ext, ".idx"))) {
-			continue;
-		}
-
-		ret = ctf_open_file_stream_read(td, diriter->d_name,
-					flags, packet_seek);
-		if (ret) {
-			fprintf(stderr, "[error] Open file stream error.\n");
-			goto readdir_error;
-		}
-	}
-
-	free(dirent);
 	return 0;
 
-readdir_error:
-	free(dirent);
 error_metadata:
 	closeret = close(td->dirfd);
 	if (closeret) {

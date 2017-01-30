@@ -37,6 +37,7 @@
 #include <babeltrace/ctf-ir/fields.h>
 #include <babeltrace/ctf-ir/trace.h>
 #include <babeltrace/bitfield.h>
+#include <babeltrace/compat/time.h>
 #include <inttypes.h>
 #include "text.h"
 
@@ -159,7 +160,7 @@ void print_timestamp_wall(struct text_component *text,
 		if (!text->options.clock_gmt) {
 			struct tm *res;
 
-			res = localtime_r(&time_s, &tm);
+			res = bt_localtime_r(&time_s, &tm);
 			if (!res) {
 				fprintf(stderr, "[warning] Unable to get localtime.\n");
 				goto seconds;
@@ -167,7 +168,7 @@ void print_timestamp_wall(struct text_component *text,
 		} else {
 			struct tm *res;
 
-			res = gmtime_r(&time_s, &tm);
+			res = bt_gmtime_r(&time_s, &tm);
 			if (!res) {
 				fprintf(stderr, "[warning] Unable to get gmtime.\n");
 				goto seconds;
@@ -179,7 +180,7 @@ void print_timestamp_wall(struct text_component *text,
 
 			/* Print date and time */
 			res = strftime(timestr, sizeof(timestr),
-					"%F ", &tm);
+					"%Y-%m-%d ", &tm);
 			if (!res) {
 				fprintf(stderr, "[warning] Unable to print ascii time.\n");
 				goto seconds;

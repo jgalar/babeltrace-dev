@@ -11,6 +11,7 @@ libbabeltrace_plugin_ctf_text_la_SOURCES = \
 	print.c
 
 libbabeltrace_plugin_ctf_text_la_LDFLAGS = \
+	$(LT_NO_UNDEFINED) \
 	-version-info $(BABELTRACE_LIBRARY_VERSION)
 
 libbabeltrace_plugin_ctf_text_la_LIBADD = \

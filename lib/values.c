@@ -234,7 +234,7 @@ struct bt_value *bt_value_map_copy(const struct bt_value *map_obj)
 	g_hash_table_iter_init(&iter, typed_map_obj->ght);
 
 	while (g_hash_table_iter_next(&iter, &key, &element_obj)) {
-		const char *key_str = g_quark_to_string((unsigned long) key);
+		const char *key_str = g_quark_to_string(GPOINTER_TO_UINT(key));
 
 		element_obj_copy = bt_value_copy(element_obj);
 
@@ -365,7 +365,7 @@ bool bt_value_map_compare(const struct bt_value *object_a,
 
 	while (g_hash_table_iter_next(&iter, &key, &element_obj_a)) {
 		struct bt_value *element_obj_b;
-		const char *key_str = g_quark_to_string((unsigned long) key);
+		const char *key_str = g_quark_to_string(GPOINTER_TO_UINT(key));
 
 		element_obj_b = bt_value_map_get(object_b, key_str);
 
@@ -614,7 +614,7 @@ struct bt_value *bt_value_array_create(void)
 	}
 
 	array_obj->base = bt_value_create_base(BT_VALUE_TYPE_ARRAY);
-	array_obj->garray = babeltrace_g_ptr_array_new_full(0,
+	array_obj->garray = bt_g_ptr_array_new_full(0,
 		(GDestroyNotify) bt_put);
 
 	if (!array_obj->garray) {
@@ -1037,7 +1037,7 @@ bool bt_value_map_has_key(const struct bt_value *map_obj, const char *key)
 	}
 
 	quark = g_quark_from_string(key);
-	ret = babeltrace_g_hash_table_contains(typed_map_obj->ght,
+	ret = bt_g_hash_table_contains(typed_map_obj->ght,
 		GUINT_TO_POINTER(quark));
 
 end:
@@ -1164,7 +1164,7 @@ enum bt_value_status bt_value_map_foreach(const struct bt_value *map_obj,
 	g_hash_table_iter_init(&iter, typed_map_obj->ght);
 
 	while (g_hash_table_iter_next(&iter, &key, &element_obj)) {
-		const char *key_str = g_quark_to_string((unsigned long) key);
+		const char *key_str = g_quark_to_string(GPOINTER_TO_UINT(key));
 
 		if (!cb(key_str, element_obj, data)) {
 			ret = BT_VALUE_STATUS_CANCELLED;

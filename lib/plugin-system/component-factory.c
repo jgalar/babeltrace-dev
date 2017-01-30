@@ -39,7 +39,9 @@
 #include <sys/stat.h>
 #include <gmodule.h>
 #include <stdbool.h>
-#include <dirent.h>
+#include <ftw.h>
+#include <pthread.h>
+#include <string.h>
 
 #define NATIVE_PLUGIN_SUFFIX ".so"
 #define NATIVE_PLUGIN_SUFFIX_LEN sizeof(NATIVE_PLUGIN_SUFFIX)
@@ -47,25 +49,17 @@
 #define LIBTOOL_PLUGIN_SUFFIX_LEN sizeof(LIBTOOL_PLUGIN_SUFFIX)
 #define PLUGIN_SUFFIX_LEN max_t(size_t, sizeof(NATIVE_PLUGIN_SUFFIX), \
 		sizeof(LIBTOOL_PLUGIN_SUFFIX))
+#define LOAD_DIR_NFDOPEN_MAX 8
 
 DECLARE_PLUG_IN_SECTIONS;
 
-/* Allocate dirent as recommended by READDIR(3), NOTES on readdir_r */
-static
-struct dirent *alloc_dirent(const char *path)
-{
-	size_t len;
-	long name_max;
-	struct dirent *entry;
-
-	name_max = pathconf(path, _PC_NAME_MAX);
-	if (name_max == -1) {
-		name_max = PATH_MAX;
-	}
-	len = offsetof(struct dirent, d_name) + name_max + 1;
-	entry = zmalloc(len);
-	return entry;
-}
+static struct {
+	pthread_mutex_t lock;
+	struct bt_component_factory *factory;
+	bool recurse;
+} load_dir_info = {
+	.lock = PTHREAD_MUTEX_INITIALIZER
+};
 
 static
 enum bt_component_factory_status init_plugin(
@@ -153,13 +147,45 @@ end:
 }
 
 static
+int nftw_load_dir(const char *file, const struct stat *sb, int flag,
+		struct FTW *s)
+{
+	int ret = 0;
+	const char *name = file + s->base;
+
+	/* Check for recursion */
+	if (!load_dir_info.recurse && s->level > 1) {
+		goto end;
+	}
+
+	switch (flag) {
+	case FTW_F:
+		if (name[0] == '.') {
+			/* Skip hidden files */
+			goto end;
+		}
+		bt_component_factory_load_file(load_dir_info.factory, file);
+		break;
+	case FTW_DNR:
+		/* Continue to next file / directory. */
+		printf_perror("Failed to read directory: %s\n", file);
+		break;
+	case FTW_NS:
+		/* Continue to next file / directory. */
+		printf_perror("Failed to stat() plugin file: %s\n", file);
+		break;
+	}
+
+end:
+	return ret;
+}
+
+static
 enum bt_component_factory_status
 bt_component_factory_load_dir(struct bt_component_factory *factory,
 		const char *path, bool recurse)
 {
-	DIR *directory = NULL;
-	struct dirent *entry = NULL, *result = NULL;
-	char *file_path = NULL;
+	int nftw_flags = FTW_PHYS;
 	size_t path_len = strlen(path);
 	enum bt_component_factory_status ret = BT_COMPONENT_FACTORY_STATUS_OK;
 
@@ -168,80 +194,20 @@ bt_component_factory_load_dir(struct bt_component_factory *factory,
 		goto end;
 	}
 
-	entry = alloc_dirent(path);
-	if (!entry) {
-		ret = BT_COMPONENT_FACTORY_STATUS_NOMEM;
-		goto end;
-	}
+	pthread_mutex_lock(&load_dir_info.lock);
 
-	file_path = zmalloc(PATH_MAX);
-	if (!file_path) {
-		ret = BT_COMPONENT_FACTORY_STATUS_NOMEM;
-		goto end;
-	}
+	load_dir_info.factory = factory;
+	load_dir_info.recurse = recurse;
+	ret = nftw(path, nftw_load_dir, LOAD_DIR_NFDOPEN_MAX, nftw_flags);
 
-	strncpy(file_path, path, path_len);
-	/* Append a trailing '/' to the path */
-	if (file_path[path_len - 1] != '/') {
-		file_path[path_len++] = '/';
-	}
+	pthread_mutex_unlock(&load_dir_info.lock);
 
-	directory = opendir(file_path);
-	if (!directory) {
+	if (ret != 0) {
 		perror("Failed to open plug-in directory");
 		ret = BT_COMPONENT_FACTORY_STATUS_ERROR;
-		goto end;
 	}
 
-	/* Recursively walk directory */
-	while (!readdir_r(directory, entry, &result) && result) {
-		struct stat st;
-		int stat_ret;
-		size_t file_name_len;
-
-		if (result->d_name[0] == '.') {
-			/* Skip hidden files, . and .. */
-			continue;
-		}
-
-		file_name_len = strlen(result->d_name);
-
-		if (path_len + file_name_len >= PATH_MAX) {
-			continue;
-		}
-
-		strncpy(file_path + path_len, result->d_name, file_name_len);
-		file_path[path_len + file_name_len] = '\0';
-
-		stat_ret = stat(file_path, &st);
-		if (stat_ret < 0) {
-			/* Continue to next file / directory. */
-			printf_perror("Failed to stat() plugin file\n");
-			continue;
-		}
-
-		if (S_ISDIR(st.st_mode) && recurse) {
-			ret = bt_component_factory_load_dir(factory,
-				file_path, true);
-			if (ret != BT_COMPONENT_FACTORY_STATUS_OK) {
-				goto end;
-			}
-		} else if (S_ISREG(st.st_mode)) {
-			bt_component_factory_load_file(factory, file_path);
-		}
-	}
 end:
-	if (directory) {
-		if (closedir(directory)) {
-			/*
-			 * We don't want to override the error since there is
-			 * nothing could do.
-			 */
-		        perror("Failed to close plug-in directory");
-		}
-	}
-	free(entry);
-	free(file_path);
 	return ret;
 }
 

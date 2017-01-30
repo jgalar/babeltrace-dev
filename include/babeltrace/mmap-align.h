@@ -27,7 +27,8 @@
 
 #include <babeltrace/align.h>
 #include <stdlib.h>
-#include <sys/mman.h>
+#include <babeltrace/compat/mman.h>
+#include <babeltrace/compat/unistd.h>
 
 /*
  * This header implements a wrapper over mmap (mmap_align) that memory
@@ -46,28 +47,57 @@ struct mmap_align {
 	size_t length;			/* virtual mmap length */
 };
 
+#ifdef __WIN32__
+/*
+ * On windows the memory mapping offset must be aligned to the memory
+ * allocator allocation granularity and not the page size.
+ */
+static inline
+off_t get_page_aligned_offset(off_t offset, long page_size)
+{
+       SYSTEM_INFO sysinfo;
+
+       ZeroMemory(&sysinfo, sizeof(SYSTEM_INFO));
+       GetSystemInfo(&sysinfo);
+
+       return ALIGN_FLOOR(offset, sysinfo.dwAllocationGranularity);
+}
+#else
+static inline
+off_t get_page_aligned_offset(off_t offset, long page_size)
+{
+       return ALIGN_FLOOR(offset, page_size);
+}
+#endif
+
 static inline
 struct mmap_align *mmap_align(size_t length, int prot,
 		int flags, int fd, off_t offset)
 {
 	struct mmap_align *mma;
 	off_t page_aligned_offset;	/* mmap offset, aligned to floor */
+	long page_size;
+
+	page_size = bt_sysconf(_SC_PAGESIZE);
+	if (page_size == -1) {
+		return MAP_FAILED;
+	}
 
 	mma = malloc(sizeof(*mma));
 	if (!mma)
 		return MAP_FAILED;
 	mma->length = length;
-	page_aligned_offset = ALIGN_FLOOR(offset, PAGE_SIZE);
+	page_aligned_offset = get_page_aligned_offset(offset, page_size);
 	/*
 	 * Page aligned length needs to contain the requested range.
 	 * E.g., for a small range that fits within a single page, we might
 	 * require a 2 pages page_aligned_length if the range crosses a page
 	 * boundary.
 	 */
-	mma->page_aligned_length = ALIGN(length + offset - page_aligned_offset, PAGE_SIZE);
+	mma->page_aligned_length = ALIGN(length + offset - page_aligned_offset, page_size);
 	mma->page_aligned_addr = mmap(NULL, mma->page_aligned_length,
 		prot, flags, fd, page_aligned_offset);
-	if (mma->page_aligned_addr == (void *) -1UL) {
+	if (mma->page_aligned_addr == MAP_FAILED) {
 		free(mma);
 		return MAP_FAILED;
 	}

@@ -28,7 +28,7 @@
 #include <babeltrace/format.h>
 #include <babeltrace/babeltrace-internal.h>
 #include <inttypes.h>
-#include <sys/mman.h>
+#include <babeltrace/compat/mman.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>

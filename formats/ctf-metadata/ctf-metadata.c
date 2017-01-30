@@ -31,7 +31,7 @@
 #include <babeltrace/babeltrace-internal.h>
 #include <babeltrace/ctf/events-internal.h>
 #include <inttypes.h>
-#include <sys/mman.h>
+#include <babeltrace/compat/mman.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -98,7 +98,7 @@ struct bt_trace_descriptor *ctf_metadata_open_trace(const char *path, int flags,
 		if (!path)
 			fp = stdout;
 		else
-			fp = fopen(path, "w");
+			fp = fopen(path, "wb");
 		if (!fp)
 			goto error;
 		pos->fp = fp;

@@ -52,6 +52,7 @@ AC_HEADER_STDBOOL
 AC_CHECK_HEADERS([ \
 	fcntl.h \
 	float.h \
+	ftw.h \
 	libintl.h \
 	limits.h \
 	malloc.h \
@@ -143,6 +144,7 @@ AC_CHECK_FUNCS([ \
 
 MINGW32=no
 DEFAULT_ENABLE_DEBUG_INFO=yes
+LT_NO_UNDEFINED=""
 AS_CASE([$host_os],
   [solaris*|darwin*],
     [
@@ -151,10 +153,13 @@ AS_CASE([$host_os],
   [mingw*],
     [
 	MINGW32=yes
+	DEFAULT_ENABLE_DEBUG_INFO=no
+	LT_NO_UNDEFINED="-no-undefined"
     ]
 )
 
 AM_CONDITIONAL([BABELTRACE_BUILD_WITH_MINGW], [test "x$MINGW32" = "xyes"])
+AC_SUBST(LT_NO_UNDEFINED)
 
 # Check for uuid in system libs
 AC_CHECK_FUNCS([uuid_generate],

@@ -10,6 +10,7 @@ libbabeltrace_plugin_ctf_writer_la_SOURCES = \
 	writer.h writer.c write.c
 
 libbabeltrace_plugin_ctf_writer_la_LDFLAGS = \
+	$(LT_NO_UNDEFINED) \
 	-version-info $(BABELTRACE_LIBRARY_VERSION)
 
 libbabeltrace_plugin_ctf_writer_la_LIBADD = \

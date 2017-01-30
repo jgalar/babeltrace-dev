@@ -34,9 +34,10 @@
 #include <babeltrace/plugin/notification/event.h>
 #include <babeltrace/plugin/notification/packet.h>
 #include <babeltrace/plugin/notification/heap.h>
+#include <babeltrace/align.h>
 #include <glib.h>
 #include <assert.h>
-#include <unistd.h>
+#include <babeltrace/compat/unistd.h>
 #include "fs.h"
 #include "metadata.h"
 #include "data-stream.h"
@@ -684,6 +685,7 @@ struct ctf_fs_component *ctf_fs_create(struct bt_value *params)
 	struct bt_value *value = NULL;
 	const char *path;
 	enum bt_value_status ret;
+	long page_size;
 
 	ctf_fs = g_new0(struct ctf_fs_component, 1);
 	if (!ctf_fs) {
@@ -706,7 +708,11 @@ struct ctf_fs_component *ctf_fs_create(struct bt_value *params)
 		goto error;
 	}
 	ctf_fs->error_fp = stderr;
-	ctf_fs->page_size = (size_t) getpagesize();
+	page_size = bt_sysconf(_SC_PAGESIZE);
+	if (page_size < 0) {
+		goto error;
+	}
+	ctf_fs->page_size = page_size;
 
 	// FIXME: check error.
 	ctf_fs->metadata = g_new0(struct ctf_fs_metadata, 1);

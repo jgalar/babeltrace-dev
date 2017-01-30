@@ -86,16 +86,16 @@ extern bool babeltrace_verbose, babeltrace_debug;
 
 #define _bt_printf_perror(fp, fmt, args...)				\
 	({								\
-		char buf[PERROR_BUFLEN] = "Error in strerror_r()";	\
-		compat_strerror_r(errno, buf, sizeof(buf));		\
-		_bt_printfe(fp, "error", buf, fmt, ## args);		\
+		const char *errstr;					\
+		errstr = g_strerror(errno);				\
+		_bt_printfe(fp, "error", errstr, fmt, ## args);		\
 	})
 
 #define _bt_printfl_perror(fp, lineno, fmt, args...)			\
 	({								\
-		char buf[PERROR_BUFLEN] = "Error in strerror_r()";	\
-		compat_strerror_r(errno, buf, sizeof(buf));		\
-		_bt_printfle(fp, "error", lineno, buf, fmt, ## args);	\
+		const char *errstr;					\
+		errstr = g_strerror(errno);				\
+		_bt_printfle(fp, "error", lineno, errstr, fmt, ## args);\
 	})
 
 /* printf without lineno information */
@@ -174,8 +174,14 @@ extern bool babeltrace_verbose, babeltrace_debug;
 
 /*
  * BT_HIDDEN: set the hidden attribute for internal functions
+ * On Windows, symbols are local unless explicitly exported,
+ * see https://gcc.gnu.org/wiki/Visibility
  */
+#ifdef _WIN32
+#define BT_HIDDEN
+#else
 #define BT_HIDDEN __attribute__((visibility("hidden")))
+#endif
 
 #define BT_CTF_MAJOR	1
 #define BT_CTF_MINOR	8

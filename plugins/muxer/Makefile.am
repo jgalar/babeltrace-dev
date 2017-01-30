@@ -9,6 +9,7 @@ libbabeltrace_plugin_muxer_la_SOURCES = \
 	muxer.h muxer.c
 
 libbabeltrace_plugin_muxer_la_LDFLAGS = \
+	$(LT_NO_UNDEFINED) \
 	-version-info $(BABELTRACE_LIBRARY_VERSION)
 
 libbabeltrace_plugin_muxer_la_LIBADD = \

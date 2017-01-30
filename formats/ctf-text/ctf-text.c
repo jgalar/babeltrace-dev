@@ -33,7 +33,7 @@
 #include <babeltrace/ctf/events-internal.h>
 #include <babeltrace/trace-debug-info.h>
 #include <inttypes.h>
-#include <sys/mman.h>
+#include <babeltrace/compat/mman.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -136,7 +136,7 @@ struct ctf_callsite_dups *ctf_trace_callsite_lookup(struct ctf_trace *trace,
 			GQuark callsite_name)
 {
 	return g_hash_table_lookup(trace->callsites,
-			(gpointer) (unsigned long) callsite_name);
+			GUINT_TO_POINTER(callsite_name));
 }
 
 void bt_ctf_text_hook(void)
@@ -567,7 +567,7 @@ struct bt_trace_descriptor *ctf_text_open_trace(const char *path, int flags,
 		if (!path)
 			fp = stdout;
 		else
-			fp = fopen(path, "w");
+			fp = fopen(path, "wb");
 		if (!fp)
 			goto error;
 		pos->fp = fp;
