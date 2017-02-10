@@ -37,19 +37,14 @@ extern "C" {
 struct bt_component;
 struct bt_notification_iterator;
 
-/**
- * Create an iterator on a component instance.
- *
- * @param component	Component instance
- * @returns		Notification iterator instance
- */
-extern
-struct bt_notification_iterator *bt_component_source_create_notification_iterator(
+extern int bt_component_source_get_output_port_count(
 		struct bt_component *component);
-
-extern
-struct bt_notification_iterator *bt_component_source_create_notification_iterator_with_init_method_data(
-        struct bt_component *component, void *init_method_data);
+extern struct bt_port *bt_component_source_get_output_port(
+		struct bt_component *component, const char *name);
+extern struct bt_port *bt_component_source_get_output_port_at_index(
+		struct bt_component *component, int index);
+extern struct bt_port *bt_component_source_get_default_output_port(
+		struct bt_component *component);
 
 #ifdef __cplusplus
 }

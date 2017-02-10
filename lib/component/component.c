@@ -32,6 +32,7 @@
 #include <babeltrace/component/component-source-internal.h>
 #include <babeltrace/component/component-filter-internal.h>
 #include <babeltrace/component/component-sink-internal.h>
+#include <babeltrace/component/component-graph-internal.h>
 #include <babeltrace/component/notification/iterator-internal.h>
 #include <babeltrace/babeltrace-internal.h>
 #include <babeltrace/compiler.h>
@@ -295,3 +296,18 @@ bt_component_set_private_data(struct bt_component *component,
 end:
 	return ret;
 }
+
+BT_HIDDEN
+enum bt_component_status bt_component_set_graph(struct bt_component *component,
+		struct bt_graph *graph)
+{
+	bt_object_set_parent(component, &graph->base);
+	return BT_COMPONENT_STATUS_OK;
+}
+
+struct bt_graph *bt_component_get_graph(
+		struct bt_component *component)
+{
+	return (struct bt_graph *) bt_object_get_parent(&component->base);
+}
+

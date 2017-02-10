@@ -58,6 +58,7 @@ enum bt_component_status {
 	BT_COMPONENT_STATUS_NOMEM =		-4,
 };
 
+struct bt_component_graph;
 struct bt_component_class;
 struct bt_component;
 struct bt_value;
@@ -115,6 +116,8 @@ extern struct bt_component_class *bt_component_get_class(
 
 extern enum bt_component_class_type bt_component_get_class_type(
 		struct bt_component *component);
+
+extern struct bt_graph *bt_component_get_graph(struct bt_component *component);
 
 #ifdef __cplusplus
 }

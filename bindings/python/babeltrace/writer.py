@@ -283,7 +283,8 @@ class Clock:
         :exc:`ValueError` is raised on error.
         """
 
-        ret, time = nbt._bt_ctf_clock_get_time(self._c)
+        #ret, time = nbt._bt_ctf_clock_get_time(self._c)
+        pass
 
         if ret < 0:
             raise ValueError("Invalid clock instance")
@@ -584,9 +585,11 @@ class EnumerationFieldDeclaration(FieldDeclaration):
 
         for i in range(count):
             if signed:
-                ret = nbt._bt_python_ctf_field_type_enumeration_get_mapping(self._ft, i)
+                #ret = nbt._bt_python_ctf_field_type_enumeration_get_mapping(self._ft, i)
+                pass
             else:
-                ret = nbt._bt_python_ctf_field_type_enumeration_get_mapping_unsigned(self._ft, i)
+                #ret = nbt._bt_python_ctf_field_type_enumeration_get_mapping_unsigned(self._ft, i)
+                pass
 
             if len(ret) != 3:
                 msg = "Could not get Enumeration mapping at index {}".format(i)
@@ -603,15 +606,17 @@ class EnumerationFieldDeclaration(FieldDeclaration):
         :exc:`TypeError` is raised on error.
         """
 
-        index = nbt._bt_ctf_field_type_enumeration_get_mapping_index_by_name(self._ft, name)
+        #index = nbt._bt_ctf_field_type_enumeration_get_mapping_index_by_name(self._ft, name)
 
         if index < 0:
             return None
 
         if self.container.signed:
-            ret = nbt._bt_python_ctf_field_type_enumeration_get_mapping(self._ft, index)
+            #ret = nbt._bt_python_ctf_field_type_enumeration_get_mapping(self._ft, index)
+            pass
         else:
-            ret = nbt._bt_python_ctf_field_type_enumeration_get_mapping_unsigned(self._ft, index)
+            #ret = nbt._bt_python_ctf_field_type_enumeration_get_mapping_unsigned(self._ft, index)
+            pass
 
         if len(ret) != 3:
             msg = "Could not get Enumeration mapping at index {}".format(i)
@@ -630,17 +635,19 @@ class EnumerationFieldDeclaration(FieldDeclaration):
         """
 
         if value < 0:
-            index = nbt._bt_ctf_field_type_enumeration_get_mapping_index_by_value(self._ft, value)
+            #index = nbt._bt_ctf_field_type_enumeration_get_mapping_index_by_value(self._ft, value)
+            pass
         else:
-            index = nbt._bt_ctf_field_type_enumeration_get_mapping_index_by_unsigned_value(self._ft, value)
+            #index = nbt._bt_ctf_field_type_enumeration_get_mapping_index_by_unsigned_value(self._ft, value)
+            pass
 
         if index < 0:
             return None
 
-        if self.container.signed:
-            ret = nbt._bt_python_ctf_field_type_enumeration_get_mapping(self._ft, index)
-        else:
-            ret = nbt._bt_python_ctf_field_type_enumeration_get_mapping_unsigned(self._ft, index)
+        #if self.container.signed:
+            #ret = nbt._bt_python_ctf_field_type_enumeration_get_mapping(self._ft, index)
+        #else:
+            #ret = nbt._bt_python_ctf_field_type_enumeration_get_mapping_unsigned(self._ft, index)
 
         if len(ret) != 3:
             msg = "Could not get Enumeration mapping at index {}".format(i)
@@ -1277,7 +1284,7 @@ class EnumerationField(Field):
         :exc:`ValueError` is raised on error.
         """
 
-        value = nbt._bt_ctf_field_enumeration_get_mapping_name(self._f)
+        #value = nbt._bt_ctf_field_enumeration_get_mapping_name(self._f)
 
         if value is None:
             raise ValueError("Could not get enumeration mapping name.")
@@ -1679,7 +1686,8 @@ class Event:
         the event class is not registered to a stream class.
         """
 
-        clock_instance = nbt._bt_ctf_event_get_clock(self._e)
+        #clock_instance = nbt._bt_ctf_event_get_clock(self._e)
+        pass
 
         if clock_instance is None:
             return None
@@ -1934,7 +1942,7 @@ class StreamClass:
         field_type_native = nbt._bt_ctf_stream_class_get_packet_context_type(self._sc)
 
         if field_type_native is None:
-            raise ValueError("Invalid StreamClass")
+            return None
 
         field_type = FieldDeclaration._create_field_declaration_from_native_instance(field_type_native)
 
@@ -1942,11 +1950,15 @@ class StreamClass:
 
     @packet_context_type.setter
     def packet_context_type(self, field_type):
-        if not isinstance(field_type, StructureFieldDeclaration):
+        if field_type and not isinstance(field_type, StructureFieldDeclaration):
             raise TypeError("field_type argument must be of type StructureFieldDeclaration.")
 
+        if field_type:
+            packet_context_type = field_type._ft
+        else:
+            packet_context_type_ptr = None
         ret = nbt._bt_ctf_stream_class_set_packet_context_type(self._sc,
-                                                               field_type._ft)
+                                                               packet_context_type_ptr)
 
         if ret < 0:
             raise ValueError("Failed to set packet context type.")

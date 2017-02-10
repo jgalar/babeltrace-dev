@@ -2,7 +2,7 @@
 #define BABELTRACE_COMPONENT_CONNECTION_INTERNAL_H
 
 /*
- * BabelTrace - Component Graph Internal
+ * BabelTrace - Component Connection Internal
  *
  * Copyright 2017 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *

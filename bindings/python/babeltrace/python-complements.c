@@ -31,7 +31,7 @@
 #include <babeltrace/ctf-ir/field-types.h>
 #include <babeltrace/ctf-ir/event.h>
 #include <babeltrace/ctf-ir/event-class.h>
-#include <babeltrace/ctf-ir/clock-internal.h>
+#include <babeltrace/ctf-ir/clock-class-internal.h>
 #include <babeltrace/iterator.h>
 #include <babeltrace/ctf/iterator.h>
 #include <babeltrace/ctf/events-internal.h>
@@ -245,8 +245,8 @@ const char *_bt_python_ctf_field_type_enumeration_get_mapping(
 	int ret;
 	const char *name;
 
-	ret = bt_ctf_field_type_enumeration_get_mapping(enumeration, index,
-		&name, range_start, range_end);
+	//ret = bt_ctf_field_type_enumeration_get_mapping(enumeration, index,
+		//&name, range_start, range_end);
 	return !ret ? name : NULL;
 }
 
@@ -257,8 +257,8 @@ const char *_bt_python_ctf_field_type_enumeration_get_mapping_unsigned(
 	int ret;
 	const char *name;
 
-	ret = bt_ctf_field_type_enumeration_get_mapping_unsigned(enumeration,
-		index, &name, range_start, range_end);
+	//ret = bt_ctf_field_type_enumeration_get_mapping_unsigned(enumeration,
+		//index, &name, range_start, range_end);
 	return !ret ? name : NULL;
 }
 
@@ -355,7 +355,7 @@ struct bt_ctf_field_type *_bt_python_ctf_event_class_get_field_type(
 	return !ret ? type : NULL;
 }
 
-int _bt_python_ctf_clock_get_uuid_index(struct bt_ctf_clock *clock,
+int _bt_python_ctf_clock_get_uuid_index(struct bt_ctf_clock_class *clock,
 		size_t index, unsigned char *value)
 {
 	int ret = 0;
@@ -377,7 +377,7 @@ end:
 	return ret;
 }
 
-int _bt_python_ctf_clock_set_uuid_index(struct bt_ctf_clock *clock,
+int _bt_python_ctf_clock_set_uuid_index(struct bt_ctf_clock_class *clock,
 		size_t index, unsigned char value)
 {
 	int ret = 0;

@@ -32,6 +32,8 @@ extern "C" {
 #endif
 
 struct bt_component_class;
+struct bt_port;
+struct bt_connection;
 
 /**
  * Component class type.
@@ -77,6 +79,9 @@ typedef struct bt_value *(*bt_component_class_query_info_method)(
 		struct bt_component_class *component_class,
 		const char *action, struct bt_value *params);
 
+typedef enum bt_component_status (*bt_component_class_new_connection_method)(
+		struct bt_connection *connection, struct bt_port *port);
+
 extern int bt_component_class_set_init_method(
 		struct bt_component_class *component_class,
 		bt_component_class_init_method init_method);
@@ -84,6 +89,10 @@ extern int bt_component_class_set_init_method(
 extern int bt_component_class_set_destroy_method(
 		struct bt_component_class *component_class,
 		bt_component_class_destroy_method destroy_method);
+
+extern int bt_component_class_set_new_connection_method(
+		struct bt_component_class *component_class,
+		bt_component_class_new_connection_method new_connection_method);
 
 extern int bt_component_class_set_description(
 		struct bt_component_class *component_class,
