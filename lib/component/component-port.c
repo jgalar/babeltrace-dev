@@ -1,0 +1,138 @@
+/*
+ * component-port.c
+ *
+ * Babeltrace Port
+ *
+ * Copyright 2017 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ *
+ * Author: Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#include <babeltrace/component/component-internal.h>
+#include <babeltrace/component/component-port-internal.h>
+#include <babeltrace/object-internal.h>
+#include <babeltrace/compiler.h>
+
+static
+void bt_port_destroy(struct bt_object *obj)
+{
+	struct bt_port *port = container_of(obj, struct bt_port, base);
+
+	if (port->name) {
+		g_string_free(port->name, TRUE);
+	}
+	if (port->connections) {
+		g_ptr_array_free(port->connections, TRUE);
+	}
+	g_free(port);
+}
+
+BT_HIDDEN
+struct bt_port *bt_port_create(struct bt_component *parent_component,
+		enum bt_port_type type, const char *name)
+{
+	struct bt_port *port;
+
+	assert(name);
+	assert(parent_component);
+	assert(type == BT_PORT_TYPE_INPUT || type == BT_PORT_TYPE_OUTPUT);
+
+	if (*name == '\0') {
+		port = NULL;
+		goto end;
+	}
+
+	port = g_new0(struct bt_port, 1);
+	if (!port) {
+		goto end;
+	}
+
+	bt_object_init(port, bt_port_destroy);
+	port->name = g_string_new(name);
+	if (!port->name) {
+		BT_PUT(port);
+		goto end;
+	}
+
+	port->type = type;
+	port->connections = g_ptr_array_new_with_free_func(
+			(GDestroyNotify) bt_put);
+	if (!port->connections) {
+		BT_PUT(port);
+		goto end;
+	}
+
+	bt_object_set_parent(port, &parent_component->base);
+end:
+	return port;
+}
+
+const char *bt_port_get_name(struct bt_port *port)
+{
+	return port ? port->name->str : NULL;
+}
+
+enum bt_port_type bt_port_get_type(struct bt_port *port)
+{
+	enum bt_port_type type;
+
+	if (!port) {
+		type = BT_PORT_TYPE_UNKOWN;
+		goto end;
+	}
+
+	type = port->type;
+end:
+	return type;
+}
+
+int bt_port_get_connection_count(struct bt_port *port)
+{
+	int count;
+
+	if (!port) {
+		count = -1;
+		goto end;
+	}
+
+	count = port->connections->len;
+end:
+	return count;
+}
+
+struct bt_connection *bt_port_get_connection(struct bt_port *port, int index)
+{
+	struct bt_connection *connection;
+
+	if (!port || index < 0 || index >= port->connections->len) {
+		connection = NULL;
+		goto end;
+	}
+
+	connection = bt_get(g_ptr_array_index(port->connections, index));
+end:
+	return connection;
+}
+
+struct bt_component *bt_port_get_component(struct bt_port *port)
+{
+	return (struct bt_component *) bt_object_get_parent(port);
+}
