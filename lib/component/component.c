@@ -298,11 +298,11 @@ end:
 }
 
 BT_HIDDEN
-enum bt_component_status bt_component_set_graph(struct bt_component *component,
+void bt_component_set_graph(struct bt_component *component,
 		struct bt_graph *graph)
 {
+	assert(bt_object_get_parent(&component->base));
 	bt_object_set_parent(component, &graph->base);
-	return BT_COMPONENT_STATUS_OK;
 }
 
 struct bt_graph *bt_component_get_graph(
