@@ -43,10 +43,6 @@ extern struct bt_port *bt_connection_get_output_port(
 
 extern struct bt_notification_iterator *
 bt_connection_create_notification_iterator(struct bt_connection *connection);
-extern struct bt_notification_iterator *
-bt_connection_get_notification_iterator(struct bt_connection *connection,
-		int index);
-extern int bt_connection_get_iterator_count(struct bt_connection *connection);
 
 #ifdef __cplusplus
 }

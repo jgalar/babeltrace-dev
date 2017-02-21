@@ -85,15 +85,13 @@ struct bt_component *bt_component_filter_create(
 	ret = bt_component_init_input_ports(&filter->parent,
 			&filter->input_ports);
 	if (ret) {
-		BT_PUT(filter);
-		goto end;
+		goto error;
 	}
 
 	ret = bt_component_init_output_ports(&filter->parent,
 			&filter->output_ports);
 	if (ret) {
-		BT_PUT(filter);
-		goto end;
+		goto error;
 	}
 
 end:

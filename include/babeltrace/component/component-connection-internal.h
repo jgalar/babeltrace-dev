@@ -44,11 +44,9 @@ struct bt_connection {
 	 * components.
 	 */
 	/* Downstream port. */
-	struct bt_port *input;
+	struct bt_port *input_port;
 	/* Upstream port. */
-	struct bt_port *output;
-	/* Array of all iterators created on this connection. */
-	GPtrArray *iterators;
+	struct bt_port *output_port;
 };
 
 BT_HIDDEN

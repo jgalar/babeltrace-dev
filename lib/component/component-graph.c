@@ -40,14 +40,14 @@ void bt_graph_destroy(struct bt_object *obj)
 	struct bt_graph *graph = container_of(obj,
 			struct bt_graph, base);
 
+	if (graph->components) {
+		g_ptr_array_free(graph->components, TRUE);
+	}
 	if (graph->connections) {
 		g_ptr_array_free(graph->connections, TRUE);
 	}
 	if (graph->sinks_to_consume) {
 		g_queue_free(graph->sinks_to_consume);
-	}
-	if (graph->components) {
-		g_ptr_array_free(graph->components, TRUE);
 	}
 	g_free(graph);
 }
@@ -91,6 +91,8 @@ struct bt_connection *bt_graph_connect(struct bt_graph *graph,
 	struct bt_graph *downstream_graph = NULL;
 	struct bt_component *upstream_component = NULL;
 	struct bt_component *downstream_component = NULL;
+	enum bt_component_status component_status;
+	bool components_added = false;
 
 	if (!graph || !upstream_port || !downstream_port) {
 		goto end;
@@ -119,24 +121,61 @@ struct bt_connection *bt_graph_connect(struct bt_graph *graph,
 		goto error;
 	}
 
+	/*
+	 * Ownership of up/downstream_component and of the connection object is
+	 * transferred to the graph.
+	 */
 	g_ptr_array_add(graph->connections, connection);
 	g_ptr_array_add(graph->components, upstream_component);
-	g_ptr_array_add(graph->components, downstream_port);
+	g_ptr_array_add(graph->components, downstream_component);
 	if (bt_component_get_class_type(downstream_component) ==
 			BT_COMPONENT_CLASS_TYPE_SINK) {
 		g_queue_push_tail(graph->sinks_to_consume,
 				downstream_component);
 	}
 
+	/*
+	 * The graph is now the parent of these components which garantees their
+	 * existence for the duration of the graph's lifetime.
+	 */
 	bt_component_set_graph(upstream_component, graph);
+	bt_put(upstream_component);
 	bt_component_set_graph(downstream_component, graph);
+	bt_put(downstream_component);
+
+	/* Rollback the connection from this point on. */
+	components_added = true;
+
+	/*
+	 * The components and connection are added to the graph before invoking
+	 * the new_connection method in order to make them visible to the
+	 * components during the method's invocation.
+	 */
+	component_status = bt_component_new_connection(upstream_component,
+			upstream_port, connection);
+	if (component_status != BT_COMPONENT_STATUS_OK) {
+		goto error;
+	}
+	component_status = bt_component_new_connection(downstream_component,
+			downstream_port, connection);
+	if (component_status != BT_COMPONENT_STATUS_OK) {
+		goto error;
+	}
 end:
 	bt_put(upstream_graph);
 	bt_put(downstream_graph);
 	return connection;
 error:
-	bt_put(upstream_component);
-	bt_put(downstream_component);
+	if (components_added) {
+		if (bt_component_get_class_type(downstream_component) ==
+				BT_COMPONENT_CLASS_TYPE_SINK) {
+			g_queue_pop_tail(graph->sinks_to_consume);
+		}
+		g_ptr_array_set_size(graph->connections,
+				graph->connections->len - 1);
+		g_ptr_array_set_size(graph->components,
+				graph->components->len - 2);
+	}
 	goto end;
 }
 

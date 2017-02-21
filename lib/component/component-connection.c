@@ -28,7 +28,9 @@
 
 #include <babeltrace/component/component-connection-internal.h>
 #include <babeltrace/component/component-graph-internal.h>
-#include <babeltrace/component/component-port.h>
+#include <babeltrace/component/component-port-internal.h>
+#include <babeltrace/component/component-source-internal.h>
+#include <babeltrace/component/component-filter-internal.h>
 #include <babeltrace/object-internal.h>
 #include <babeltrace/compiler.h>
 #include <glib.h>
@@ -38,8 +40,6 @@ void bt_connection_destroy(struct bt_object *obj)
 {
 	struct bt_connection *connection = container_of(obj,
 			struct bt_connection, base);
-
-	g_ptr_array_free(connection->iterators, TRUE);
 
 	/*
 	 * No bt_put on ports as a connection only holds _weak_ references
@@ -69,10 +69,10 @@ struct bt_connection *bt_connection_create(
 
 	bt_object_init(connection, bt_connection_destroy);
 	/* Weak references are taken, see comment in header. */
-	connection->output = upstream;
-	connection->input = downstream;
-	connection->iterators = g_ptr_array_new_with_free_func(
-			(GDestroyNotify) bt_object_release);
+	connection->output_port = upstream;
+	connection->input_port = downstream;
+	bt_port_add_connection(upstream, connection);
+	bt_port_add_connection(downstream, connection);
 	bt_object_set_parent(connection, &graph->base);
 end:
 	return connection;
@@ -81,62 +81,41 @@ end:
 struct bt_port *bt_connection_get_input_port(
 		struct bt_connection *connection)
 {
-	struct bt_port *port = NULL;
-
-	if (!connection) {
-		goto end;
-	}
-
-	port = connection->input;
-end:
-	return port;
+	return connection ? connection->input_port : NULL;
 }
 
 struct bt_port *bt_connection_get_output_port(
 		struct bt_connection *connection)
 {
-	struct bt_port *port = NULL;
-
-	if (!connection) {
-		goto end;
-	}
-
-	port = connection->output;
-end:
-	return port;
+	return connection ? connection->output_port : NULL;
 }
 
 struct bt_notification_iterator *
 bt_connection_create_notification_iterator(struct bt_connection *connection)
 {
-	return NULL;
-}
-
-struct bt_notification_iterator *
-bt_connection_get_notification_iterator(struct bt_connection *connection,
-		int index)
-{
-	struct bt_notification_iterator *iterator = NULL;
-
-	if (!connection || index < 0 || index >= connection->iterators->len) {
-		goto end;
-	}
-
-	iterator = bt_get(g_ptr_array_index(connection->iterators, index));
-end:
-	return iterator;
-}
-
-int bt_connection_get_iterator_count(struct bt_connection *connection)
-{
-	int ret;
+	struct bt_component *upstream_component = NULL;
+	struct bt_notification_iterator *it = NULL;
 
 	if (!connection) {
-		ret = -1;
 		goto end;
 	}
 
-	ret = connection->iterators->len;
+	upstream_component = bt_port_get_component(connection->output_port);
+	assert(upstream_component);
+
+	switch (bt_component_get_class_type(upstream_component)) {
+	case BT_COMPONENT_CLASS_TYPE_SOURCE:
+		it = bt_component_source_create_notification_iterator(
+				upstream_component);
+		break;
+	case BT_COMPONENT_CLASS_TYPE_FILTER:
+		it = bt_component_filter_create_notification_iterator(
+				upstream_component);
+		break;
+	default:
+		goto end;
+	}
 end:
-	return ret;
+	bt_put(upstream_component);
+	return it;
 }

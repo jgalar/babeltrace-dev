@@ -73,12 +73,13 @@ struct bt_port *bt_port_create(struct bt_component *parent_component,
 	}
 
 	port->type = type;
-	port->connections = g_ptr_array_new_with_free_func(
-			(GDestroyNotify) bt_put);
+	port->connections = g_ptr_array_new();
 	if (!port->connections) {
 		BT_PUT(port);
 		goto end;
 	}
+
+	port->max_connection_count = 1;
 
 	bt_object_set_parent(port, &parent_component->base);
 end:
@@ -92,30 +93,22 @@ const char *bt_port_get_name(struct bt_port *port)
 
 enum bt_port_type bt_port_get_type(struct bt_port *port)
 {
-	enum bt_port_type type;
-
-	if (!port) {
-		type = BT_PORT_TYPE_UNKOWN;
-		goto end;
-	}
-
-	type = port->type;
-end:
-	return type;
+	return port ? port->type : BT_PORT_TYPE_UNKOWN;
 }
 
-int bt_port_get_connection_count(struct bt_port *port)
+enum bt_port_status bt_port_get_connection_count(struct bt_port *port,
+		uint64_t *count)
 {
-	int count;
+	enum bt_port_status status = BT_PORT_STATUS_OK;
 
-	if (!port) {
-		count = -1;
+	if (!port || !count) {
+		status = BT_PORT_STATUS_INVALID;
 		goto end;
 	}
 
-	count = port->connections->len;
+	*count = (uint64_t) port->connections->len;
 end:
-	return count;
+	return status;
 }
 
 struct bt_connection *bt_port_get_connection(struct bt_port *port, int index)
@@ -135,4 +128,54 @@ end:
 struct bt_component *bt_port_get_component(struct bt_port *port)
 {
 	return (struct bt_component *) bt_object_get_parent(port);
+}
+
+BT_HIDDEN
+int bt_port_add_connection(struct bt_port *port,
+		struct bt_connection *connection)
+{
+	int ret = 0;
+
+	if (port->connections->len == port->max_connection_count) {
+		ret = -1;
+		goto end;
+	}
+
+	/*
+	 * Don't take a reference on connection as its existence is guaranteed
+	 * by the existence of the graph in which the connection exists.
+	 */
+	g_ptr_array_add(port->connections, connection);
+end:
+	return ret;
+}
+
+enum bt_port_status bt_port_get_maximum_connection_count(
+		struct bt_port *port, uint64_t *count)
+{
+	enum bt_port_status status = BT_PORT_STATUS_OK;
+
+	if (!port || !count) {
+		status = BT_PORT_STATUS_INVALID;
+		goto end;
+	}
+
+	*count = port->max_connection_count;
+end:
+	return status;
+}
+
+enum bt_port_status bt_port_set_maximum_connection_count(
+		struct bt_port *port, uint64_t count)
+{
+	enum bt_port_status status = BT_PORT_STATUS_OK;
+
+	if (!port || count < port->connections->len || count == 0) {
+		status = BT_PORT_STATUS_INVALID;
+		goto end;
+	}
+
+	port->max_connection_count = count;
+end:
+	return status;
 }

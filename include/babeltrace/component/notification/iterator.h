@@ -52,7 +52,6 @@ enum bt_notification_iterator_status {
 	BT_NOTIFICATION_ITERATOR_STATUS_NOMEM = -3,
 	/** Unsupported iterator feature. */
 	BT_NOTIFICATION_ITERATOR_STATUS_UNSUPPORTED = -4,
-
 };
 
 /**
@@ -123,9 +122,6 @@ extern enum bt_notification_iterator_status bt_notification_iterator_seek_time(
 		enum bt_notification_iterator_seek_origin seek_origin,
 		int64_t time);
 
-extern struct bt_component *bt_notification_iterator_get_component(
-		struct bt_notification_iterator *iterator);
-
 /**
  * Set an iterator's private data.
  *
@@ -144,6 +140,10 @@ bt_notification_iterator_set_private_data(
  * @returns		Iterator instance private data
  */
 extern void *bt_notification_iterator_get_private_data(
+		struct bt_notification_iterator *iterator);
+
+/* TODO Replace by connection */
+extern struct bt_component *bt_notification_iterator_get_component(
 		struct bt_notification_iterator *iterator);
 
 #ifdef __cplusplus

@@ -49,7 +49,7 @@ extern struct bt_port *bt_component_sink_add_input_port(
 /* Only allowed during the sink's initialization. */
 extern enum bt_component_status bt_component_sink_remove_input_port(
 		struct bt_component *component, const char *name);
-extern struct bt_port *bt_component_sink_get_default_output_port(
+extern struct bt_port *bt_component_sink_get_default_input_port(
 		struct bt_component *component);
 
 #ifdef __cplusplus

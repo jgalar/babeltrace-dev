@@ -64,6 +64,10 @@ extern struct bt_connection *bt_graph_connect(struct bt_graph *graph,
 		struct bt_port *upstream,
 		struct bt_port *downstream);
 
+extern enum bt_graph_status bt_graph_disconnect(struct bt_graph *graph,
+		struct bt_port *upstream,
+		struct bt_port *downstream);
+
 /**
  * Add a component as a "sibling" of the origin component. Sibling share
  * connections equivalent to each other at the time of connection (same

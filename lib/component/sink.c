@@ -92,6 +92,12 @@ struct bt_component *bt_component_sink_create(
 		goto error;
 	}
 */
+	ret = bt_component_init_input_ports(&sink->parent,
+			&sink->input_ports);
+	if (ret) {
+		goto error;
+	}
+
 end:
 	return sink ? &sink->parent : NULL;
 error:

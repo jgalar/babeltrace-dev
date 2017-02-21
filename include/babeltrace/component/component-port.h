@@ -27,12 +27,20 @@
  * SOFTWARE.
  */
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct bt_port;
 struct bt_connection;
+
+enum bt_port_status {
+	BT_PORT_STATUS_OK = 0,
+	BT_PORT_STATUS_ERROR = -1,
+	BT_PORT_STATUS_INVALID = -2,
+};
 
 enum bt_port_type {
 	BT_PORT_TYPE_INPUT = 0,
@@ -45,11 +53,18 @@ extern const char *BT_DEFAULT_PORT_NAME;
 extern const char *bt_port_get_name(struct bt_port *port);
 extern enum bt_port_type bt_port_get_type(struct bt_port *port);
 
-extern int bt_port_get_connection_count(struct bt_port *port);
+extern enum bt_port_status bt_port_get_connection_count(struct bt_port *port,
+		uint64_t *count);
 extern struct bt_connection *bt_port_get_connection(struct bt_port *port,
 		int index);
 
 extern struct bt_component *bt_port_get_component(struct bt_port *port);
+
+/* Only valid before a connection is established. */
+extern enum bt_port_status bt_port_get_maximum_connection_count(
+		struct bt_port *port, uint64_t *count);
+extern enum bt_port_status bt_port_set_maximum_connection_count(
+		struct bt_port *port, uint64_t count);
 
 #ifdef __cplusplus
 }
