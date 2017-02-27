@@ -208,6 +208,7 @@ static
 enum bt_component_status run(struct bt_component *component)
 {
 	enum bt_component_status ret;
+	enum bt_notification_iterator_status it_ret;
 	struct bt_notification *notification = NULL;
 	struct bt_notification_iterator *it;
 	struct writer_component *writer_component =
@@ -222,14 +223,21 @@ enum bt_component_status run(struct bt_component *component)
 		goto end;
 	}
 
-	ret = bt_notification_iterator_next(it);
-	if (ret != BT_COMPONENT_STATUS_OK) {
-		goto end;
+	it_ret = bt_notification_iterator_next(it);
+	switch (it_ret) {
+		case BT_NOTIFICATION_ITERATOR_STATUS_ERROR:
+			ret = BT_COMPONENT_STATUS_ERROR;
+			goto end;
+		case BT_NOTIFICATION_ITERATOR_STATUS_END:
+			ret = BT_COMPONENT_STATUS_END;
+			BT_PUT(writer_component->input_iterator);
+			goto end;
+		default:
+			break;
 	}
 
 	ret = handle_notification(writer_component, notification);
 end:
-	bt_put(it);
 	bt_put(notification);
 	return ret;
 }
