@@ -67,22 +67,19 @@ void destroy_writer_component(struct bt_component *component)
 static
 void unref_stream_class(struct bt_ctf_stream_class *writer_stream_class)
 {
-	BT_PUT(writer_stream_class);
-	g_free(writer_stream_class);
+	return;
 }
 
 static
 void unref_stream(struct bt_ctf_stream_class *writer_stream)
 {
-	BT_PUT(writer_stream);
-	g_free(writer_stream);
+	bt_put(writer_stream);
 }
 
 static
 void unref_trace(struct bt_ctf_writer *writer)
 {
-	BT_PUT(writer);
-	g_free(writer);
+	return;
 }
 
 static
@@ -211,6 +208,7 @@ static
 enum bt_component_status run(struct bt_component *component)
 {
 	enum bt_component_status ret;
+	enum bt_notification_iterator_status it_ret;
 	struct bt_notification *notification = NULL;
 	struct bt_notification_iterator *it;
 	struct writer_component *writer_component =
@@ -225,14 +223,21 @@ enum bt_component_status run(struct bt_component *component)
 		goto end;
 	}
 
-	ret = bt_notification_iterator_next(it);
-	if (ret != BT_COMPONENT_STATUS_OK) {
-		goto end;
+	it_ret = bt_notification_iterator_next(it);
+	switch (it_ret) {
+		case BT_NOTIFICATION_ITERATOR_STATUS_ERROR:
+			ret = BT_COMPONENT_STATUS_ERROR;
+			goto end;
+		case BT_NOTIFICATION_ITERATOR_STATUS_END:
+			ret = BT_COMPONENT_STATUS_END;
+			BT_PUT(writer_component->input_iterator);
+			goto end;
+		default:
+			break;
 	}
 
 	ret = handle_notification(writer_component, notification);
 end:
-	bt_put(it);
 	bt_put(notification);
 	return ret;
 }
@@ -266,6 +271,7 @@ enum bt_component_status writer_component_init(
 		ret = BT_COMPONENT_STATUS_INVALID;
 		goto error;
 	}
+	bt_put(value);
 
 	writer_component->base_path = g_string_new(path);
 	if (!writer_component) {
