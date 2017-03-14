@@ -67,22 +67,19 @@ void destroy_writer_component(struct bt_component *component)
 static
 void unref_stream_class(struct bt_ctf_stream_class *writer_stream_class)
 {
-	BT_PUT(writer_stream_class);
-	g_free(writer_stream_class);
+	return;
 }
 
 static
 void unref_stream(struct bt_ctf_stream_class *writer_stream)
 {
-	BT_PUT(writer_stream);
-	g_free(writer_stream);
+	bt_put(writer_stream);
 }
 
 static
 void unref_trace(struct bt_ctf_writer *writer)
 {
-	BT_PUT(writer);
-	g_free(writer);
+	return;
 }
 
 static
@@ -266,6 +263,7 @@ enum bt_component_status writer_component_init(
 		ret = BT_COMPONENT_STATUS_INVALID;
 		goto error;
 	}
+	bt_put(value);
 
 	writer_component->base_path = g_string_new(path);
 	if (!writer_component) {
