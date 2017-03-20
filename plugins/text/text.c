@@ -71,6 +71,7 @@ const char *plugin_options[] = {
 	"field-trace:vpid",
 	"field-loglevel",
 	"field-emf",
+	"field-callsite",
 };
 
 static
@@ -126,10 +127,8 @@ enum bt_component_status handle_notification(struct text_component *text,
 
 	switch (bt_notification_get_type(notification)) {
 	case BT_NOTIFICATION_TYPE_PACKET_BEGIN:
-		puts("<packet>");
 		break;
 	case BT_NOTIFICATION_TYPE_PACKET_END:
-		puts("</packet>");
 		break;
 	case BT_NOTIFICATION_TYPE_EVENT:
 	{
@@ -148,7 +147,6 @@ enum bt_component_status handle_notification(struct text_component *text,
 		break;
 	}
 	case BT_NOTIFICATION_TYPE_STREAM_END:
-		puts("</stream>");
 		break;
 	default:
 		puts("Unhandled notification type");
@@ -558,7 +556,7 @@ enum bt_component_status apply_params(struct text_component *text,
 		text->options.print_trace_vpid_field = true;
 		text->options.print_loglevel_field = false;
 		text->options.print_emf_field = false;
-		text->options.print_emf_field = false;
+		text->options.print_callsite_field = false;
 		break;
 	case TEXT_DEFAULT_SHOW:
 		text->options.print_trace_field = true;
@@ -568,7 +566,7 @@ enum bt_component_status apply_params(struct text_component *text,
 		text->options.print_trace_vpid_field = true;
 		text->options.print_loglevel_field = true;
 		text->options.print_emf_field = true;
-		text->options.print_emf_field = true;
+		text->options.print_callsite_field = true;
 		break;
 	case TEXT_DEFAULT_HIDE:
 		text->options.print_trace_field = false;
@@ -578,7 +576,7 @@ enum bt_component_status apply_params(struct text_component *text,
 		text->options.print_trace_vpid_field = false;
 		text->options.print_loglevel_field = false;
 		text->options.print_emf_field = false;
-		text->options.print_emf_field = false;
+		text->options.print_callsite_field = false;
 		break;
 	default:
 		ret = BT_COMPONENT_STATUS_ERROR;
@@ -657,12 +655,12 @@ enum bt_component_status apply_params(struct text_component *text,
 
 	value = false;
 	found = false;
-	ret = apply_one_bool("field-emf", params, &value, &found);
+	ret = apply_one_bool("field-callsite", params, &value, &found);
 	if (ret != BT_COMPONENT_STATUS_OK) {
 		goto end;
 	}
 	if (found) {
-		text->options.print_emf_field = value;
+		text->options.print_callsite_field = value;
 	}
 
 end:
