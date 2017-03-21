@@ -94,6 +94,8 @@ struct ctf_fs_iterator {
 };
 
 struct ctf_fs_component_options {
+	uint64_t clock_offset;
+	uint64_t clock_offset_ns;
 	bool opt_dummy : 1;
 };
 
