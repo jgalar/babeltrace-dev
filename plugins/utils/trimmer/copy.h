@@ -1,12 +1,12 @@
-#ifndef BABELTRACE_PLUGIN_WRITER_H
-#define BABELTRACE_PLUGIN_WRITER_H
+#ifndef BABELTRACE_PLUGIN_TRIMMER_COPY_H
+#define BABELTRACE_PLUGIN_TRIMMER_COPY_H
 
 /*
- * BabelTrace - CTF Writer Output Plug-in
+ * BabelTrace - Copy Trace Structure
  *
- * Copyright 2016 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * Copyright 2017 Julien Desfossez <jdesfossez@efficios.com>
  *
- * Author: Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * Author: Julien Desfossez <jdesfossez@efficios.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,31 +31,20 @@
 #include <babeltrace/babeltrace-internal.h>
 #include <babeltrace/component/component.h>
 #include <babeltrace/ctf-writer/writer.h>
-
-struct writer_component {
-	GString *base_path;
-	GString *trace_name_base;
-	/* For the directory name suffix. */
-	int trace_id;
-	/* Map between struct bt_ctf_trace and struct bt_ctf_writer. */
-	GHashTable *trace_map;
-	/* Map between reader and writer stream. */
-	GHashTable *stream_map;
-	/* Map between reader and writer stream class. */
-	GHashTable *stream_class_map;
-	FILE *err;
-	struct bt_notification_iterator *input_iterator;
-	bool processed_first_event;
-};
+#include <babeltrace/ctf-ir/packet.h>
 
 BT_HIDDEN
-enum bt_component_status writer_output_event(struct writer_component *writer,
+struct bt_ctf_event *trimmer_output_event(struct trimmer_iterator *trim_it,
 		struct bt_ctf_event *event);
 BT_HIDDEN
-enum bt_component_status writer_new_packet(struct writer_component *writer,
+struct bt_ctf_packet *trimmer_new_packet(struct trimmer_iterator *trim_it,
 		struct bt_ctf_packet *packet);
 BT_HIDDEN
-enum bt_component_status writer_close_packet(struct writer_component *writer,
+struct bt_ctf_packet *trimmer_close_packet(struct trimmer_iterator *trim_it,
 		struct bt_ctf_packet *packet);
+BT_HIDDEN
+enum bt_component_status update_packet_context_field(FILE *err,
+		struct bt_ctf_packet *writer_packet,
+		const char *name, int64_t value);
 
-#endif /* BABELTRACE_PLUGIN_WRITER_H */
+#endif /* BABELTRACE_PLUGIN_TRIMMER_COPY_H */

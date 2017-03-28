@@ -1,7 +1,12 @@
+#ifndef BABELTRACE_CLOCK_FIELDS_H
+#define BABELTRACE_CLOCK_FIELDS_H
+
 /*
- * Babeltrace - Debug info utilities
+ * BabelTrace - Update clock fields to write uint64 values
  *
- * Copyright (c) 2016 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * Copyright 2017 Julien Desfossez <jdesfossez@efficios.com>
+ *
+ * Author: Julien Desfossez <jdesfossez@efficios.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,31 +27,35 @@
  * SOFTWARE.
  */
 
-#include <babeltrace/utils.h>
+#include <stdbool.h>
+#include <babeltrace/babeltrace-internal.h>
+#include <babeltrace/component/component.h>
+#include <babeltrace/ctf-writer/writer.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 BT_HIDDEN
-const char *get_filename_from_path(const char *path)
-{
-	size_t i = strlen(path);
+struct bt_ctf_field_type *override_header_type(FILE *err,
+		struct bt_ctf_field_type *type,
+		struct bt_ctf_trace *writer_trace);
 
-	if (i == 0) {
-		goto end;
-	}
+BT_HIDDEN
+int copy_override_field(FILE *err, struct bt_ctf_event *event,
+		struct bt_ctf_event *writer_event, struct bt_ctf_field *field,
+		struct bt_ctf_field *copy_field);
 
-	if (path[i - 1] == '/') {
-		/*
-		 * Path ends with a trailing slash, no filename to return.
-		 * Return the original path.
-		 */
-		goto end;
-	}
+BT_HIDDEN
+struct bt_ctf_clock_class *stream_class_get_clock_class(FILE *err,
+		struct bt_ctf_stream_class *stream_class);
 
-	while (i-- > 0) {
-		if (path[i] == '/') {
-			path = &path[i + 1];
-			goto end;
-		}
-	}
-end:
-	return path;
+BT_HIDDEN
+struct bt_ctf_clock_class *event_get_clock_class(FILE *err,
+		struct bt_ctf_event *event);
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif /* BABELTRACE_CLOCK_FIELDS_H */

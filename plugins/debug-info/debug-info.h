@@ -1,13 +1,11 @@
-#ifndef _BABELTRACE_DEBUG_INFO_H
-#define _BABELTRACE_DEBUG_INFO_H
+#ifndef BABELTRACE_PLUGIN_DEBUG_INFO_H
+#define BABELTRACE_PLUGIN_DEBUG_INFO_H
 
 /*
- * Babeltrace - Debug information state tracker
+ * Babeltrace - Debug information Plug-in
  *
  * Copyright (c) 2015 EfficiOS Inc.
- * Copyright (c) 2015 Philippe Proulx <pproulx@efficios.com>
  * Copyright (c) 2015 Antoine Busque <abusque@efficios.com>
- * Copyright (c) 2016 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,15 +26,41 @@
  * SOFTWARE.
  */
 
-struct debug_info;
-struct ctf_event_definition;
-
-#ifdef ENABLE_DEBUG_INFO
-
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stddef.h>
 #include <babeltrace/babeltrace-internal.h>
+#include <babeltrace/ctf-ir/event.h>
+#include <babeltrace/ctf-ir/trace.h>
+#include <babeltrace/ctf-ir/fields.h>
+#include <babeltrace/ctf-ir/event-class.h>
+
+struct debug_info_component {
+	FILE *err;
+	char *arg_debug_info_field_name;
+	const char *arg_debug_dir;
+	bool arg_full_path;
+	const char *arg_target_prefix;
+};
+
+struct debug_info_iterator {
+	struct debug_info_component *debug_info_component;
+	/* Map between struct bt_ctf_trace and struct bt_ctf_writer. */
+	GHashTable *trace_map;
+	/* Map between reader and writer stream. */
+	GHashTable *stream_map;
+	/* Map between reader and writer stream class. */
+	GHashTable *stream_class_map;
+	/* Map between reader and writer stream class. */
+	GHashTable *packet_map;
+	/* Map between a trace_class and its corresponding debug_info. */
+	GHashTable *trace_debug_map;
+	/* Input iterators associated with this output iterator. */
+	GPtrArray *input_iterator_group;
+	struct bt_notification *current_notification;
+	struct bt_notification_iterator *input_iterator;
+	FILE *err;
+};
 
 struct debug_info_source {
 	/* Strings are owned by debug_info_source. */
@@ -62,21 +86,19 @@ BT_HIDDEN
 void debug_info_destroy(struct debug_info *debug_info);
 
 BT_HIDDEN
-void debug_info_handle_event(struct debug_info *debug_info,
-		struct ctf_event_definition *event);
+struct debug_info_source *debug_info_query(struct debug_info *debug_info,
+		int64_t vpid, uint64_t ip);
 
-#else /* ifdef ENABLE_DEBUG_INFO */
+BT_HIDDEN
+void debug_info_handle_event(FILE *err, struct bt_ctf_event *event,
+		struct debug_info *debug_info);
 
+#if 0
 static inline
-struct debug_info *debug_info_create(void) { return malloc(1); }
+void trace_debug_info_destroy(struct bt_ctf_trace *trace)
+{
+	debug_info_destroy(trace->debug_info);
+}
+#endif
 
-static inline
-void debug_info_destroy(struct debug_info *debug_info) { free(debug_info); }
-
-static inline
-void debug_info_handle_event(struct debug_info *debug_info,
-		struct ctf_event_definition *event) { }
-
-#endif /* ENABLE_DEBUG_INFO */
-
-#endif /* _BABELTRACE_DEBUG_INFO_H */
+#endif /* BABELTRACE_PLUGIN_DEBUG_INFO_H */

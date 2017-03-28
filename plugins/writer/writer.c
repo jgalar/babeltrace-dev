@@ -67,22 +67,19 @@ void destroy_writer_component(struct bt_component *component)
 static
 void unref_stream_class(struct bt_ctf_stream_class *writer_stream_class)
 {
-	BT_PUT(writer_stream_class);
-	g_free(writer_stream_class);
+	bt_put(writer_stream_class);
 }
 
 static
 void unref_stream(struct bt_ctf_stream_class *writer_stream)
 {
-	BT_PUT(writer_stream);
-	g_free(writer_stream);
+	bt_put(writer_stream);
 }
 
 static
 void unref_trace(struct bt_ctf_writer *writer)
 {
-	BT_PUT(writer);
-	g_free(writer);
+	bt_put(writer);
 }
 
 static
@@ -98,6 +95,7 @@ struct writer_component *create_writer_component(void)
 	writer_component->err = stderr;
 	writer_component->trace_id = 0;
 	writer_component->trace_name_base = g_string_new("trace");
+	writer_component->processed_first_event = false;
 	if (!writer_component->trace_name_base) {
 		g_free(writer_component);
 		writer_component = NULL;
@@ -219,20 +217,32 @@ enum bt_component_status run(struct bt_component *component)
 	it = writer_component->input_iterator;
 	assert(it);
 
+	if (likely(writer_component->processed_first_event)) {
+		enum bt_notification_iterator_status it_ret;
+
+		it_ret = bt_notification_iterator_next(it);
+		switch (it_ret) {
+			case BT_NOTIFICATION_ITERATOR_STATUS_ERROR:
+				ret = BT_COMPONENT_STATUS_ERROR;
+				goto end;
+			case BT_NOTIFICATION_ITERATOR_STATUS_END:
+				ret = BT_COMPONENT_STATUS_END;
+				BT_PUT(writer_component->input_iterator);
+				goto end;
+			default:
+				break;
+		}
+	}
+
 	notification = bt_notification_iterator_get_notification(it);
 	if (!notification) {
 		ret = BT_COMPONENT_STATUS_ERROR;
 		goto end;
 	}
 
-	ret = bt_notification_iterator_next(it);
-	if (ret != BT_COMPONENT_STATUS_OK) {
-		goto end;
-	}
-
 	ret = handle_notification(writer_component, notification);
+	writer_component->processed_first_event = true;
 end:
-	bt_put(it);
 	bt_put(notification);
 	return ret;
 }
@@ -266,6 +276,7 @@ enum bt_component_status writer_component_init(
 		ret = BT_COMPONENT_STATUS_INVALID;
 		goto error;
 	}
+	bt_put(value);
 
 	writer_component->base_path = g_string_new(path);
 	if (!writer_component) {

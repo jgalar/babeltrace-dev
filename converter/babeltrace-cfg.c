@@ -1203,6 +1203,7 @@ int insert_flat_names_fields_from_array(struct bt_value *map_obj,
 	int ret = 0;
 	int i;
 	GString *tmpstr = NULL, *default_value = NULL;
+	bool default_set = false, non_default_set = false;
 
 	/*
 	 * array_obj may be NULL if no CLI options were specified to
@@ -1256,6 +1257,7 @@ int insert_flat_names_fields_from_array(struct bt_value *map_obj,
 			g_string_assign(default_value, "hide");
 		}
 		if (is_default) {
+			default_set = true;
 			g_string_append(tmpstr, "default");
 			ret = map_insert_string_or_null(map_obj,
 					tmpstr->str,
@@ -1265,6 +1267,7 @@ int insert_flat_names_fields_from_array(struct bt_value *map_obj,
 				goto end;
 			}
 		} else {
+			non_default_set = true;
 			g_string_append(tmpstr, suffix);
 			ret = bt_value_map_insert_bool(map_obj, tmpstr->str,
 					true);
@@ -1272,6 +1275,20 @@ int insert_flat_names_fields_from_array(struct bt_value *map_obj,
 				print_err_oom();
 				goto end;
 			}
+		}
+	}
+
+	/* Implicit field-default=hide if any non-default option is set. */
+	if (non_default_set && !default_set) {
+		g_string_assign(tmpstr, prefix);
+		g_string_append(tmpstr, "-default");
+		g_string_assign(default_value, "hide");
+		ret = map_insert_string_or_null(map_obj,
+				tmpstr->str,
+				default_value);
+		if (ret) {
+			print_err_oom();
+			goto end;
 		}
 	}
 

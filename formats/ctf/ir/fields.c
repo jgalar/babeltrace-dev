@@ -574,7 +574,6 @@ error:
 	return ret_field;
 }
 
-BT_HIDDEN
 int bt_ctf_field_structure_set_field(struct bt_ctf_field *field,
 		const char *name, struct bt_ctf_field *value)
 {
@@ -2144,6 +2143,10 @@ int bt_ctf_field_floating_point_copy(
 		sizeof(struct definition_integer));
 	memcpy(&float_dst->exp, &float_src->exp,
 		sizeof(struct definition_integer));
+	float_dst->definition.sign = &float_dst->sign;
+	float_dst->definition.mantissa = &float_dst->mantissa;
+	float_dst->definition.exp = &float_dst->exp;
+
 	return 0;
 }
 
