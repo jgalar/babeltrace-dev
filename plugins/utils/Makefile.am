@@ -16,7 +16,7 @@ babeltrace_plugin_utils_la_LIBADD = \
 	muxer/libbabeltrace-plugin-muxer.la
 
 if !BUILT_IN_PLUGINS
-libbabeltrace_plugin_utils_la_LIBADD += \
+babeltrace_plugin_utils_la_LIBADD += \
 	$(top_builddir)/lib/libbabeltrace.la \
 	$(top_builddir)/plugins/libctfcopytrace/libctfcopytrace.la \
 	$(top_builddir)/common/libbabeltrace-common.la \
