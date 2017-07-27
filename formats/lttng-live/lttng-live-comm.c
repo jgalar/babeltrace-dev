@@ -157,8 +157,8 @@ int lttng_live_establish_connection(struct lttng_live_ctx *ctx)
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_connect connect;
-	const uint32_t onstack_buff_len = sizeof(cmd) + sizeof(connect);
-	char onstack_buff[onstack_buff_len];
+	const size_t cmd_buf_len = sizeof(cmd) + sizeof(connect);
+	char cmd_buf[cmd_buf_len];
 	int ret;
 	ssize_t ret_len;
 
@@ -177,20 +177,19 @@ int lttng_live_establish_connection(struct lttng_live_ctx *ctx)
 	connect.type = htobe32(LTTNG_VIEWER_CLIENT_COMMAND);
 
 	/*
-	 * Bundle the cmd and connection request to prevent a write write
-	 * sequence on the tcp socket. Otherwise, a delayed ack will prevent the
-	 * second write to perform quickly in presence of the Nagle's algorithm.
+	 * Merge the cmd and connection request to prevent a write-write
+	 * sequence on the TCP socket. Otherwise, a delayed ACK will prevent the
+	 * second write to be performed quickly in presence of Nagle's algorithm.
 	 */
-	memset(onstack_buff, 0 , onstack_buff_len);
-	memcpy(onstack_buff, &cmd, sizeof(cmd));
-	memcpy(onstack_buff + sizeof(cmd), &connect, sizeof(connect));
+	memcpy(cmd_buf, &cmd, sizeof(cmd));
+	memcpy(cmd_buf + sizeof(cmd), &connect, sizeof(connect));
 
-	ret_len = lttng_live_send(ctx->control_sock, onstack_buff, onstack_buff_len);
+	ret_len = lttng_live_send(ctx->control_sock, cmd_buf, cmd_buf_len);
 	if (ret_len < 0) {
 		perror("[error] Error sending cmd for establishing session");
 		goto error;
 	}
-	assert(ret_len == onstack_buff_len);
+	assert(ret_len == cmd_buf_len);
 
 	ret_len = lttng_live_recv(ctx->control_sock, &connect, sizeof(connect));
 	if (ret_len == 0) {
@@ -427,8 +426,8 @@ int lttng_live_attach_session(struct lttng_live_ctx *ctx, uint64_t id)
 	struct lttng_viewer_attach_session_request rq;
 	struct lttng_viewer_attach_session_response rp;
 	struct lttng_viewer_stream stream;
-	const uint32_t onstack_buff_len = sizeof(cmd) + sizeof(rq);
-	char onstack_buff[onstack_buff_len];
+	const size_t cmd_buf_len = sizeof(cmd) + sizeof(rq);
+	char cmd_buf[cmd_buf_len];
 	int ret, i;
 	ssize_t ret_len;
 
@@ -448,20 +447,19 @@ int lttng_live_attach_session(struct lttng_live_ctx *ctx, uint64_t id)
 	rq.seek = htobe32(LTTNG_VIEWER_SEEK_LAST);
 
 	/*
-	 * Bundle the cmd and request to prevent a write write sequence on the
-	 * tcp socket. Otherwise, a delayed ack will prevent the second write to
-	 * perform quickly in presence of the Nagle's algorithm.
+	 * Merge the cmd and connection request to prevent a write-write
+	 * sequence on the TCP socket. Otherwise, a delayed ACK will prevent the
+	 * second write to be performed quickly in presence of Nagle's algorithm.
 	 */
-	memset(onstack_buff, 0, onstack_buff_len);
-	memcpy(onstack_buff, &cmd, sizeof(cmd));
-	memcpy(onstack_buff + sizeof(cmd), &rq, sizeof(rq));
+	memcpy(cmd_buf, &cmd, sizeof(cmd));
+	memcpy(cmd_buf + sizeof(cmd), &rq, sizeof(rq));
 
-	ret_len = lttng_live_send(ctx->control_sock, onstack_buff, onstack_buff_len);
+	ret_len = lttng_live_send(ctx->control_sock, cmd_buf, cmd_buf_len);
 	if (ret_len < 0) {
 		perror("[error] Error sending attach command and request");
 		goto error;
 	}
-	assert(ret_len == onstack_buff_len);
+	assert(ret_len == cmd_buf_len);
 
 	ret_len = lttng_live_recv(ctx->control_sock, &rp, sizeof(rp));
 	if (ret_len == 0) {
@@ -649,8 +647,8 @@ int get_data_packet(struct lttng_live_ctx *ctx,
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_get_packet rq;
 	struct lttng_viewer_trace_packet rp;
-	const uint32_t onstack_buff_len = sizeof(cmd) + sizeof(rq);
-	char onstack_buff[onstack_buff_len];
+	const uint32_t cmd_buf_len = sizeof(cmd) + sizeof(rq);
+	char cmd_buf[cmd_buf_len];
 	ssize_t ret_len;
 	int ret;
 
@@ -670,20 +668,19 @@ retry:
 	rq.len = htobe32(len);
 
 	/*
-	 * Bundle the cmd and request to prevent a write write sequence on the
-	 * tcp socket. Otherwise, a delayed ack will prevent the second write to
-	 * perform quickly in presence of the Nagle's algorithm.
+	 * Merge the cmd and connection request to prevent a write-write
+	 * sequence on the TCP socket. Otherwise, a delayed ACK will prevent the
+	 * second write to be performed quickly in presence of Nagle's algorithm.
 	 */
-	memset(onstack_buff, 0, onstack_buff_len);
-	memcpy(onstack_buff, &cmd, sizeof(cmd));
-	memcpy(onstack_buff + sizeof(cmd), &rq, sizeof(rq));
+	memcpy(cmd_buf, &cmd, sizeof(cmd));
+	memcpy(cmd_buf + sizeof(cmd), &rq, sizeof(rq));
 
-	ret_len = lttng_live_send(ctx->control_sock, onstack_buff, onstack_buff_len);
+	ret_len = lttng_live_send(ctx->control_sock, cmd_buf, cmd_buf_len);
 	if (ret_len < 0) {
 		perror("[error] Error sending get_data_packet cmd and request");
 		goto error;
 	}
-	assert(ret_len == onstack_buff_len);
+	assert(ret_len == cmd_buf_len);
 
 	ret_len = lttng_live_recv(ctx->control_sock, &rp, sizeof(rp));
 	if (ret_len == 0) {
@@ -807,8 +804,8 @@ int get_one_metadata_packet(struct lttng_live_ctx *ctx,
 	struct lttng_viewer_metadata_packet rp;
 	char *data = NULL;
 	ssize_t ret_len;
-	const uint32_t onstack_buff_len = sizeof(cmd) + sizeof(rq);
-	char onstack_buff[onstack_buff_len];
+	const uint32_t cmd_buf_len = sizeof(cmd) + sizeof(rq);
+	char cmd_buf[cmd_buf_len];
 
 	if (lttng_live_should_quit()) {
 		ret = -1;
@@ -821,20 +818,19 @@ int get_one_metadata_packet(struct lttng_live_ctx *ctx,
 	cmd.cmd_version = htobe32(0);
 
 	/*
-	 * Bundle the cmd and request to prevent a write write sequence on the
-	 * tcp socket. Otherwise, a delayed ack will prevent the second write to
-	 * perform quickly in presence of the Nagle's algorithm.
+	 * Merge the cmd and connection request to prevent a write-write
+	 * sequence on the TCP socket. Otherwise, a delayed ACK will prevent the
+	 * second write to be performed quickly in presence of Nagle's algorithm.
 	 */
-	memset(onstack_buff, 0, onstack_buff_len);
-	memcpy(onstack_buff, &cmd, sizeof(cmd));
-	memcpy(onstack_buff + sizeof(cmd), &rq, sizeof(rq));
+	memcpy(cmd_buf, &cmd, sizeof(cmd));
+	memcpy(cmd_buf + sizeof(cmd), &rq, sizeof(rq));
 
-	ret_len = lttng_live_send(ctx->control_sock, onstack_buff, onstack_buff_len);
+	ret_len = lttng_live_send(ctx->control_sock, cmd_buf, cmd_buf_len);
 	if (ret_len < 0) {
 		perror("[error] Error sending get_metadata cmd and request");
 		goto error;
 	}
-	assert(ret_len == onstack_buff_len);
+	assert(ret_len == cmd_buf_len);
 
 	ret_len = lttng_live_recv(ctx->control_sock, &rp, sizeof(rp));
 	if (ret_len == 0) {
@@ -992,8 +988,8 @@ int get_next_index(struct lttng_live_ctx *ctx,
 	int ret;
 	ssize_t ret_len;
 	struct lttng_viewer_index *rp = &viewer_stream->current_index;
-	const uint32_t onstack_buff_len = sizeof(cmd) + sizeof(rq);
-	char onstack_buff[onstack_buff_len];
+	const uint32_t cmd_buf_len = sizeof(cmd) + sizeof(rq);
+	char cmd_buf[cmd_buf_len];
 
 	cmd.cmd = htobe32(LTTNG_VIEWER_GET_NEXT_INDEX);
 	cmd.data_size = htobe64((uint64_t) sizeof(rq));
@@ -1003,24 +999,23 @@ int get_next_index(struct lttng_live_ctx *ctx,
 	rq.stream_id = htobe64(viewer_stream->id);
 
 	/*
-	 * Bundle the cmd and request to prevent a write write sequence on the
-	 * tcp socket. Otherwise, a delayed ack will prevent the second write to
-	 * perform quickly in presence of the Nagle's algorithm.
+	 * Merge the cmd and connection request to prevent a write-write
+	 * sequence on the TCP socket. Otherwise, a delayed ACK will prevent the
+	 * second write to be performed quickly in presence of Nagle's algorithm.
 	 */
-	memset(onstack_buff, 0, onstack_buff_len);
-	memcpy(onstack_buff, &cmd, sizeof(cmd));
-	memcpy(onstack_buff + sizeof(cmd), &rq, sizeof(rq));
+	memcpy(cmd_buf, &cmd, sizeof(cmd));
+	memcpy(cmd_buf + sizeof(cmd), &rq, sizeof(rq));
 retry:
 	if (lttng_live_should_quit()) {
 		ret = -1;
 		goto end;
 	}
-	ret_len = lttng_live_send(ctx->control_sock, &onstack_buff, onstack_buff_len);
+	ret_len = lttng_live_send(ctx->control_sock, &cmd_buf, cmd_buf_len);
 	if (ret_len < 0) {
 		perror("[error] Error sending get_next_index cmd and request");
 		goto error;
 	}
-	assert(ret_len == onstack_buff_len);
+	assert(ret_len == cmd_buf_len);
 
 	ret_len = lttng_live_recv(ctx->control_sock, rp, sizeof(*rp));
 	if (ret_len == 0) {
@@ -1534,8 +1529,8 @@ int lttng_live_get_new_streams(struct lttng_live_ctx *ctx, uint64_t id)
 	int ret, i, nb_streams = 0;
 	ssize_t ret_len;
 	uint32_t stream_count;
-	const uint32_t onstack_buff_len = sizeof(cmd) + sizeof(rq);
-	char onstack_buff[onstack_buff_len];
+	const uint32_t cmd_buf_len = sizeof(cmd) + sizeof(rq);
+	char cmd_buf[cmd_buf_len];
 
 	if (lttng_live_should_quit()) {
 		ret = -1;
@@ -1550,20 +1545,19 @@ int lttng_live_get_new_streams(struct lttng_live_ctx *ctx, uint64_t id)
 	rq.session_id = htobe64(id);
 
 	/*
-	 * Bundle the cmd and request to prevent a write write sequence on the
-	 * tcp socket. Otherwise, a delayed ack will prevent the second write to
-	 * perform quickly in presence of the Nagle's algorithm.
+	 * Merge the cmd and connection request to prevent a write-write
+	 * sequence on the TCP socket. Otherwise, a delayed ACK will prevent the
+	 * second write to be performed quickly in presence of Nagle's algorithm.
 	 */
-	memset(onstack_buff, 0, onstack_buff_len);
-	memcpy(onstack_buff, &cmd, sizeof(cmd));
-	memcpy(onstack_buff + sizeof(cmd), &rq, sizeof(rq));
+	memcpy(cmd_buf, &cmd, sizeof(cmd));
+	memcpy(cmd_buf + sizeof(cmd), &rq, sizeof(rq));
 
-	ret_len = lttng_live_send(ctx->control_sock, onstack_buff, onstack_buff_len);
+	ret_len = lttng_live_send(ctx->control_sock, cmd_buf, cmd_buf_len);
 	if (ret_len < 0) {
 		perror("[error] Error sending get_new_streams cmd and request");
 		goto error;
 	}
-	assert(ret_len == onstack_buff_len);
+	assert(ret_len == cmd_buf_len);
 
 	ret_len = lttng_live_recv(ctx->control_sock, &rp, sizeof(rp));
 	if (ret_len == 0) {
