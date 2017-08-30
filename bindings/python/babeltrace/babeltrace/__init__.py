@@ -27,7 +27,7 @@ from .reader import \
 # backward compatibility with old `babeltrace` module: import CTF writer API
 # module as `CTFWriter`, since `CTFWriter` used to be a class in the
 # `babeltrace` module
-import babeltrace.writer as CTFWriter
+#import babeltrace.writer as CTFWriter
 
 
-__version__ = 'BABELTRACE_VERSION_STR'
+__version__ = '2.0.0-pre1'

@@ -2,7 +2,7 @@
 #
 # Babeltrace writer interface Python module
 #
-# Copyright 2012-2015 EfficiOS Inc.
+# Copyright 2012-2017 EfficiOS Inc.
 #
 # Author: Jérémie Galarneau <jeremie.galarneau@efficios.com>
 #
@@ -26,12 +26,8 @@
 
 import babeltrace.nativebt as nbt
 import babeltrace.common as common
+import bt2
 from uuid import UUID
-
-
-# Used to compare to -1ULL in error checks
-_MAX_UINT64 = 0xFFFFFFFFFFFFFFFF
-
 
 class EnumerationMapping:
     """
@@ -2209,12 +2205,11 @@ class Writer:
 
         :exc:`ValueError` is raised on error.
         """
-
         raise NotImplementedError("Getter not implemented.")
 
     @byte_order.setter
     def byte_order(self, byte_order):
-        ret = nbt._bt_ctf_writer_set_byte_order(self._w, byte_order)
+        # ret = nbt._bt_ctf_writer_set_byte_order(self._w, byte_order)
 
         if ret < 0:
             raise ValueError("Could not set trace byte order.")
